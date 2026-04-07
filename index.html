@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#27ae60">
-    <title>Арабский Словарь Sync</title>
+    <title>Арабский Словарь v3</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -41,7 +41,7 @@
 
 <div class="container">
     <h1>📖 Словарь</h1>
-    <div id="userInfo" class="user-info">Загрузка...</div>
+    <div id="userInfo" class="user-info">Подключение...</div>
     <div class="auth-bar">
         <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
     </div>
@@ -86,7 +86,8 @@
     async function loadDatabase() {
         const statusEl = document.getElementById('dbStatus');
         try {
-            const response = await fetch('base.js');
+            // Добавляем случайное число к ссылке, чтобы обмануть кэш браузера
+            const response = await fetch('base.js?v=' + Math.random());
             const text = await response.text();
             const jsonStr = text.replace(/^const dictBase\s*=\s*/, '').replace(/;$/, '').trim();
             dictionaryData = JSON.parse(jsonStr);
@@ -103,12 +104,12 @@
         if (user) {
             currentUser = user;
             authBtn.innerHTML = "Выйти (" + user.displayName.split(' ')[0] + ")";
-            userInfo.innerHTML = "Облако активно: " + user.email;
+            userInfo.innerHTML = "Облако АКТИВНО: " + user.email;
             await loadFavoritesFromCloud();
         } else {
             currentUser = null;
             authBtn.innerHTML = "🌐 Войти через Google";
-            userInfo.innerHTML = "Локальный режим";
+            userInfo.innerHTML = "Локальный режим (без облака)";
             savedFavorites = JSON.parse(localStorage.getItem('arabic_favorites')) || [];
             filterWords();
         }
@@ -139,19 +140,16 @@
         await saveFavorites();
     }
 
-    // --- НОВАЯ ОЗВУЧКА (Speech Synthesis) ---
+    // --- НОВАЯ СИСТЕМНАЯ ОЗВУЧКА ---
     function speakWord(text, event) {
         event.stopPropagation();
-        
-        // Прекращаем текущую речь, если она идет
-        window.speechSynthesis.cancel();
+        window.speechSynthesis.cancel(); // Остановить, если уже говорит
 
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ar-SA'; // Арабский (Саудовская Аравия)
-        utterance.pitch = 1.0;
-        utterance.rate = 0.85; // Чуть медленнее для обучения
+        utterance.lang = 'ar-SA'; 
+        utterance.rate = 0.8; 
 
-        // Если встроенный движок не сработал, пробуем запасной метод Google
+        // Если системный голос не сработал (редко на Android), пробуем Google
         utterance.onerror = () => {
             const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&q=${encodeURIComponent(text)}`);
             audio.play();
@@ -206,7 +204,7 @@
     }
 
     function clearFavorites() {
-        if(confirm("Очистить список избранного?")) {
+        if(confirm("Очистить всё избранное?")) {
             savedFavorites = [];
             saveFavorites();
             filterWords();
