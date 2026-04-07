@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#27ae60">
+    <title>Мой Арабский Словарь</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 15px; -webkit-tap-highlight-color: transparent; }
+        .container { max-width: 100%; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: #2c3e50; font-size: 22px; margin-top: 0; margin-bottom: 15px; }
+        
+        .tabs { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #27ae60; }
+        .tab { flex: 1; padding: 10px; text-align: center; background: white; color: #27ae60; border: none; font-size: 14px; cursor: pointer; }
+        .tab.active { background: #27ae60; color: white; font-weight: bold; }
+
+        input[type="text"] { width: 100%; padding: 14px; margin-bottom: 20px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
+        input[type="text"]:focus { border-color: #27ae60; }
+        
+        .word-list { list-style-type: none; padding: 0; margin: 0; }
+        .word-item { border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
+        .word-item:last-child { border-bottom: none; }
+        
+        .word-header { padding: 15px 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .arabic-word { font-size: 24px; font-weight: bold; color: #27ae60; direction: rtl; white-space: nowrap; }
+        .short-translation { font-size: 16px; color: #555; padding-right: 15px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+
+        .word-details { display: none; padding: 0 0 15px 0; border-top: 1px dashed #eee; margin-top: -5px; padding-top: 15px; }
+        .word-item.expanded { background-color: #fafafa; margin: 0 -20px; padding: 0 20px; }
+        .word-item.expanded .word-details { display: block; }
+        .word-item.expanded .short-translation { color: #2c3e50; font-weight: bold; white-space: normal; }
+
+        .full-translation { font-size: 15px; color: #333; line-height: 1.6; white-space: pre-wrap; margin-bottom: 15px; }
+        
+        .meta-info { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; }
+        .meta-tag { background: #f0f4f8; padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #555; border: 1px solid #dce4ec;}
+        .arabic-small { font-size: 18px; font-weight: bold; color: #2980b9; direction: rtl; }
+        
+        .actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .action-text-btn { flex: 1; background: white; border: 1px solid #ddd; padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold;}
+        .fav-btn { color: #888; }
+        .fav-btn.active { color: #f39c12; border-color: #f39c12; background: #fffdf5; }
+        .speak-btn { color: #3498db; border-color: #3498db; background: #f5faff; }
+
+        .settings-panel { display: none; text-align: center; padding: 20px 10px; }
+        .action-btn { background: #e74c3c; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; width: 100%; box-sizing: border-box; }
+        .status-text { margin-top: 15px; font-size: 14px; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📖 Словарь</h1>
+    <div class="tabs">
+        <button id="tabAll" class="tab active" onclick="setTab('all')">Словарь</button>
+        <button id="tabFav" class="tab" onclick="setTab('fav')">Избранное</button>
+        <button id="tabSettings" class="tab" onclick="setTab('settings')">⚙️ Инфо</button>
+    </div>
+
+    <div id="mainContent">
+        <input type="text" id="searchInput" placeholder="Поиск (рус / араб / корень)..." onkeyup="filterWords()">
+        <ul id="dictionaryList" class="word-list"></ul>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel">
+        <h3 style="color: #2c3e50; margin-top: 0;">Словарь Баранова</h3>
+        <p style="color: #666; font-size: 14px;">База данных надежно вшита в приложение.</p>
+        <div id="dbStatus" class="status-text" style="font-size: 16px; color: #27ae60; font-weight: bold;">⏳ Проверка...</div>
+        
+        <button class="action-btn" style="margin-top: 40px;" onclick="clearFavorites()">🗑 Очистить избранное</button>
+    </div>
+</div>
+
+<script src="base.js"></script>
+
+<script>
+    const listElement = document.getElementById('dictionaryList');
+    const mainContent = document.getElementById('mainContent');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const dbStatus = document.getElementById('dbStatus');
+    
+    // Безопасное чтение Избранного (чтобы не сломалось, если Android запретит)
+    let savedFavorites = [];
+    try {
+        savedFavorites = JSON.parse(localStorage.getItem('arabic_favorites')) || [];
+    } catch(e) { console.log("Память заблокирована"); }
+    
+    let currentTab = 'all';
+
+    // База мгновенно берется из подключенного файла base.js
+    let dictionaryData = [];
+    if (typeof dictBase !== 'undefined') {
+        dictionaryData = dictBase;
+    }
+
+    // Запуск приложения происходит мгновенно
+    window.onload = function() {
+        if (dictionaryData.length > 0) {
+            dbStatus.innerHTML = `✅ Работает идеально: <b>${dictionaryData.length} слов</b>`;
+            filterWords();
+        } else {
+            dbStatus.innerHTML = "❌ Ошибка: Файл base.js не найден или пуст.";
+            dbStatus.style.color = "red";
+        }
+    };
+
+    function setTab(tabName) {
+        currentTab = tabName;
+        document.getElementById('tabAll').className = tabName === 'all' ? 'tab active' : 'tab';
+        document.getElementById('tabFav').className = tabName === 'fav' ? 'tab active' : 'tab';
+        document.getElementById('tabSettings').className = tabName === 'settings' ? 'tab active' : 'tab';
+        
+        if (tabName === 'settings') { 
+            mainContent.style.display = 'none'; 
+            settingsPanel.style.display = 'block'; 
+        } else { 
+            mainContent.style.display = 'block'; 
+            settingsPanel.style.display = 'none'; 
+            filterWords(); 
+        }
+    }
+
+    function clearFavorites() {
+        if(confirm("Удалить все слова из избранного?")) { 
+            savedFavorites = []; 
+            try { localStorage.removeItem('arabic_favorites'); } catch(e){}
+            filterWords(); 
+            alert("Избранное очищено!");
+        }
+    }
+
+    function toggleCard(element) {
+        const expanded = document.querySelector('.word-item.expanded');
+        if (expanded && expanded !== element.parentElement) expanded.classList.remove('expanded');
+        element.parentElement.classList.toggle('expanded');
+    }
+
+    function toggleFavorite(arabicWord, event) {
+        event.stopPropagation();
+        if (savedFavorites.includes(arabicWord)) savedFavorites = savedFavorites.filter(w => w !== arabicWord);
+        else savedFavorites.push(arabicWord);
+        
+        try { localStorage.setItem('arabic_favorites', JSON.stringify(savedFavorites)); } catch(e){}
+        filterWords(); 
+    }
+
+    // Умная озвучка (родной голос + облако Google)
+    function speakWord(text, event) {
+        event.stopPropagation();
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            let utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ar-SA'; utterance.rate = 0.85; 
+            utterance.onerror = function() { playCloudAudio(text); };
+            window.speechSynthesis.speak(utterance);
+            setTimeout(() => { if (!window.speechSynthesis.speaking) playCloudAudio(text); }, 500);
+        } else {
+            playCloudAudio(text);
+        }
+    }
+
+    function playCloudAudio(text) {
+        const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ar&client=gtx&q=${encodeURIComponent(text)}`;
+        let player = document.getElementById('arabAudioPlayer');
+        if (!player) {
+            player = document.createElement('audio');
+            player.id = 'arabAudioPlayer';
+            player.style.display = 'none';
+            document.body.appendChild(player);
+        }
+        player.src = audioUrl;
+        player.play().catch(err => alert("Звук недоступен. Проверьте интернет."));
+    }
+
+    function renderWords(wordsToRender) {
+        listElement.innerHTML = ""; 
+        const limit = Math.min(wordsToRender.length, 50);
+        
+        for (let i = 0; i < limit; i++) {
+            const word = wordsToRender[i];
+            const isFav = savedFavorites.includes(word.ar);
+            const li = document.createElement('li');
+            li.className = 'word-item';
+            
+            const rootText = word.root ? word.root : '-';
+            const pluralHtml = word.plural ? `<span class="meta-tag">Мн.ч: <span class="arabic-small">${word.plural}</span></span>` : '';
+            const displayTitle = word.short_ru ? word.short_ru : word.ru;
+            
+            li.innerHTML = `
+                <div class="word-header" onclick="toggleCard(this)">
+                    <div class="short-translation">${displayTitle}</div>
+                    <div class="arabic-word">${word.ar}</div>
+                </div>
+                <div class="word-details">
+                    <div class="full-translation">${word.ru}</div>
+                    <div class="meta-info">
+                        <span class="meta-tag">Корень: ${rootText}</span>
+                        ${pluralHtml}
+                    </div>
+                    <div class="actions">
+                        <button class="action-text-btn speak-btn" onclick="speakWord('${word.ar}', event)">🔊 Слушать</button>
+                        <button class="action-text-btn fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${word.ar}', event)">
+                            ${isFav ? '★ В избранном' : '☆ В избранное'}
+                        </button>
+                    </div>
+                </div>
+            `;
+            listElement.appendChild(li);
+        }
+    }
+
+    function normalizeArabic(text) {
+        if (!text) return "";
+        return text.replace(/[\u0617-\u061A\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
+    }
+
+    function filterWords() {
+        const queryInput = document.getElementById('searchInput').value.toLowerCase().trim();
+        const normalizedQuery = normalizeArabic(queryInput);
+
+        let filtered = dictionaryData.filter(word => {
+            if (currentTab === 'fav' && !savedFavorites.includes(word.ar)) return false;
+            if (queryInput === "" && currentTab === 'all') return true; 
+
+            const ru = word.ru.toLowerCase();
+            const shortRu = word.short_ru ? word.short_ru.toLowerCase() : "";
+            const ar = normalizeArabic(word.ar);
+            const root = normalizeArabic(word.root);
+            const plural = word.plural ? normalizeArabic(word.plural) : ""; 
+
+            return ru.includes(queryInput) || shortRu.includes(queryInput) || ar.includes(normalizedQuery) || root.includes(normalizedQuery) || plural.includes(normalizedQuery); 
+        });
+
+        if (queryInput !== "") {
+            const exactRuWordRegex = new RegExp(`(?:^|[^а-яё])` + queryInput + `(?:[^а-яё]|$)`, 'i');
+
+            filtered.sort((a, b) => {
+                const ruA = a.ru.toLowerCase();
+                const ruB = b.ru.toLowerCase();
+                const shortRuA = a.short_ru ? a.short_ru.toLowerCase() : ruA;
+                const shortRuB = b.short_ru ? b.short_ru.toLowerCase() : ruB;
+                const arA = normalizeArabic(a.ar);
+                const arB = normalizeArabic(b.ar);
+                const plA = a.plural ? normalizeArabic(a.plural) : "";
+                const plB = b.plural ? normalizeArabic(b.plural) : "";
+                const rootA = normalizeArabic(a.root);
+                const rootB = normalizeArabic(b.root);
+
+                const exactArA = (arA === normalizedQuery || plA === normalizedQuery || rootA === normalizedQuery) ? 1 : 0;
+                const exactArB = (arB === normalizedQuery || plB === normalizedQuery || rootB === normalizedQuery) ? 1 : 0;
+                if (exactArA !== exactArB) return exactArB - exactArA;
+
+                const exactShortA = exactRuWordRegex.test(shortRuA) ? 1 : 0;
+                const exactShortB = exactRuWordRegex.test(shortRuB) ? 1 : 0;
+                if (exactShortA !== exactShortB) return exactShortB - exactShortA;
+
+                const wholeWordRuA = exactRuWordRegex.test(ruA) ? 1 : 0;
+                const wholeWordRuB = exactRuWordRegex.test(ruB) ? 1 : 0;
+                if (wholeWordRuA !== wholeWordRuB) return wholeWordRuB - wholeWordRuA;
+
+                return shortRuA.length - shortRuB.length;
+            });
+        }
+        renderWords(filtered);
+    }
+</script>
+
+</body>
+</html>
