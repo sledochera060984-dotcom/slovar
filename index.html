@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -7,7 +6,6 @@
     <meta name="theme-color" content="#27ae60">
     <title>Арабский Словарь Pro</title>
     
-    <!-- Firebase (Подключаем библиотеки) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -16,35 +14,29 @@
         body { font-family: -apple-system, sans-serif; background-color: #f4f4f9; margin: 0; padding: 10px; -webkit-tap-highlight-color: transparent; }
         .container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
         
-        /* Статусы и кнопки */
         .status-box { text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; font-weight: bold; }
         .status-ok { background: #e8f8f5; color: #27ae60; border: 1px solid #a3e4d7; }
         .status-warn { background: #fef9e7; color: #d68910; border: 1px solid #f7dc6f; }
         
         .google-btn { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 15px; font-weight: bold; color: #444; display: flex; align-items: center; justify-content: center; gap: 8px;}
         
-        /* Вкладки */
         .tabs { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #27ae60; }
         .tab { flex: 1; padding: 12px; text-align: center; background: white; color: #27ae60; border: none; cursor: pointer; font-size: 15px; font-weight: 500;}
         .tab.active { background: #27ae60; color: white; font-weight: bold; }
         
-        /* Поиск */
         input[type="text"] { width: 100%; padding: 14px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
         input[type="text"]:focus { border-color: #27ae60; }
         
-        /* Список слов */
         .word-list { list-style: none; padding: 0; margin: 0; }
         .word-item { border-bottom: 1px solid #eee; padding: 12px 0; }
         .word-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .arabic { font-size: 24px; font-weight: bold; color: #27ae60; direction: rtl; }
         .russian { font-size: 16px; color: #444; flex: 1; padding-right: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* Детали */
         .details { display: none; padding-top: 15px; font-size: 15px; color: #333; line-height: 1.5; border-top: 1px dashed #eee; margin-top: 10px; }
         .expanded .details { display: block; }
         .expanded .russian { white-space: normal; font-weight: bold; color: #2c3e50; }
         
-        /* Кнопки действий */
         .btn-row { display: flex; gap: 10px; margin-top: 15px; }
         .btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; font-size: 14px; font-weight: bold; color: #555; }
         .btn-speak { color: #2980b9; border-color: #a9cce3; background: #ebf5fb; }
@@ -68,34 +60,28 @@
     <div id="list" class="word-list"></div>
 </div>
 
-<!-- ПОДКЛЮЧЕНИЕ БАЗЫ (Добавлен version чтобы сбить кеш, если он есть) -->
-<script src="base.js?v=888"></script>
+<script src="base.js?v=1003"></script>
 
 <script>
-    // --- 1. ЗАГРУЗКА БАЗЫ С ЗАЩИТОЙ ОТ СБОЕВ ---
     let data = [];
     let isTestMode = false;
 
-    // Тестовый словарь на случай, если base.js не загрузился
     const testDictionary = [
-        { ar: "رَجُلٌ", ru: "1) мужчина; человек;\n2) пешеход;", short_ru: "мужчина; человек", root: "رجل" },
-        { ar: "بَيْتٌ", ru: "1) дом, жилище;\n2) палатка;\n3) семья;", short_ru: "дом, жилище", root: "بيت", plural: "بُيُوتٌ" },
-        { ar: "كِتَابٌ", ru: "1) книга;\n2) письмо, послание;", short_ru: "книга", root: "كتب", plural: "كُتُبٌ" }
+        { ar: "رَجُلٌ", ru: "1) мужчина; человек;\n2) пешеход;", short_ru: "мужчина; человек", root: "رجل" }
     ];
 
     if (typeof dictBase !== 'undefined' && Array.isArray(dictBase) && dictBase.length > 0) {
-        data = dictBase; // База загрузилась успешно
+        data = dictBase;
     } else {
-        data = testDictionary; // База не загрузилась, используем тестовую
+        data = testDictionary;
         isTestMode = true;
     }
 
-    // --- 2. ЛОКАЛЬНЫЕ ДАННЫЕ ---
     let currentUser = null;
     let savedFavorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let currentTab = 'all';
 
-    // --- 3. FIREBASE СИНХРОНИЗАЦИЯ (Твои Ключи) ---
+    // Ключи Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
@@ -105,9 +91,7 @@
       appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
     };
 
-    let auth = null;
-    let db = null;
-    let provider = null;
+    let auth = null, db = null, provider = null;
 
     try {
         firebase.initializeApp(firebaseConfig);
@@ -121,34 +105,25 @@
             
             if (user) {
                 authBtn.innerText = `Выйти (${user.displayName || user.email.split('@')[0]})`;
-                updateStatus(`✅ Синхронизация активна: ${user.email}`, 'status-ok');
+                updateStatus(`✅ Синхронизация активна: \n${user.email}`, 'status-ok');
                 
-                // Скачиваем избранное с облака
                 try {
                     const doc = await db.collection('users').doc(user.uid).get();
                     if (doc.exists) { 
                         const cloudFavs = doc.data().favs || []; 
-                        // Объединяем локальные и облачные (чтобы ничего не потерять)
                         savedFavorites = [...new Set([...savedFavorites, ...cloudFavs])];
                         localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
-                        
-                        // Отправляем объединенный список обратно в облако
                         await db.collection('users').doc(user.uid).set({ favs: savedFavorites }, { merge: true });
-                        
                         filterWords(); 
                     }
-                } catch(e) { console.error("Ошибка загрузки с облака:", e); }
+                } catch(e) { console.error(e); }
             } else {
                 authBtn.innerText = "🌐 Войти для синхронизации";
                 updateStatusDefault();
             }
         });
-    } catch(e) { 
-        console.error("Firebase ошибка:", e); 
-        updateStatusDefault();
-    }
+    } catch(e) { updateStatusDefault(); }
 
-    // --- 4. ИНТЕРФЕЙС И ПОИСК ---
     function updateStatus(text, className) {
         const box = document.getElementById('statusBox');
         box.className = `status-box ${className}`;
@@ -156,14 +131,10 @@
     }
 
     function updateStatusDefault() {
-        if (isTestMode) {
-            updateStatus("⚠️ Файл base.js не найден. Включен тестовый режим (3 слова).", "status-warn");
-        } else {
-            updateStatus(`✅ База загружена: ${data.length} слов. Локальный режим.`, "status-ok");
-        }
+        if (isTestMode) updateStatus("⚠️ База не найдена.", "status-warn");
+        else updateStatus(`✅ База: ${data.length} слов. Локальный режим.`, "status-ok");
     }
 
-    // Умная нормализация арабского (удаление огласовок)
     function normalize(text) { 
         if (!text) return "";
         return text.toLowerCase().replace(/[\u0617-\u061A\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").trim(); 
@@ -175,9 +146,8 @@
         const list = document.getElementById('list');
         list.innerHTML = "";
 
-        // Если пустой запрос во вкладке "Словарь" - ничего не выводим
         if (!queryInput && currentTab === 'all' && !isTestMode) {
-            list.innerHTML = `<div style="text-align:center; padding: 20px; color:#888;">Начните вводить слово для поиска...</div>`;
+            list.innerHTML = `<div style="text-align:center; padding: 20px; color:#888;">Начните вводить слово...</div>`;
             return;
         }
 
@@ -192,8 +162,9 @@
             return ru.includes(queryInput) || ar.includes(normQuery) || root.includes(normQuery);
         });
 
-        // Умная сортировка при поиске
         if (queryInput) {
+            const ruRegex = new RegExp(`(?:^|[^а-яёa-z])${queryInput}(?:[^а-яёa-z]|$)`, 'i');
+
             filtered.sort((a, b) => {
                 const normA = normalize(a.ar);
                 const normB = normalize(b.ar);
@@ -202,6 +173,24 @@
                 if (normB === normQuery && normA !== normQuery) return 1;
                 if (normA.startsWith(normQuery) && !normB.startsWith(normQuery)) return -1;
                 if (normB.startsWith(normQuery) && !normA.startsWith(normQuery)) return 1;
+                
+                const ruStrA = (a.short_ru || a.ru).toLowerCase();
+                const ruStrB = (b.short_ru || b.ru).toLowerCase();
+                
+                const cleanA = ruStrA.replace(/^[\d\)\s]+/, '');
+                const cleanB = ruStrB.replace(/^[\d\)\s]+/, '');
+
+                const startsRuA = cleanA.startsWith(queryInput);
+                const startsRuB = cleanB.startsWith(queryInput);
+                
+                if (startsRuA && !startsRuB) return -1;
+                if (startsRuB && !startsRuA) return 1;
+
+                const exactRuA = ruRegex.test(ruStrA);
+                const exactRuB = ruRegex.test(ruStrB);
+                
+                if (exactRuA && !exactRuB) return -1;
+                if (exactRuB && !exactRuA) return 1;
                 
                 return a.ru.length - b.ru.length;
             });
@@ -239,7 +228,6 @@
         });
     }
 
-    // --- 5. ДЕЙСТВИЯ (КЛИКИ) ---
     function setTab(tabName) { 
         currentTab = tabName; 
         document.getElementById('tabAll').className = tabName === 'all' ? 'tab active' : 'tab';
@@ -249,7 +237,6 @@
 
     async function toggleFav(word, btnElement, event) {
         event.stopPropagation();
-        
         if (savedFavorites.includes(word)) {
             savedFavorites = savedFavorites.filter(v => v !== word);
             btnElement.classList.remove('active');
@@ -259,52 +246,37 @@
             btnElement.classList.add('active');
             btnElement.innerText = '★ В избранном';
         }
-        
         localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
         
         if (currentUser && db) {
-            try {
-                await db.collection('users').doc(currentUser.uid).set({ favs: savedFavorites }, { merge: true });
-            } catch(e) { console.error("Ошибка сохранения в облако:", e); }
+            try { await db.collection('users').doc(currentUser.uid).set({ favs: savedFavorites }, { merge: true }); } 
+            catch(e) {}
         }
-        
         if (currentTab === 'fav') filterWords();
     }
 
-        function speakWord(text, event) {
-        event.stopPropagation(); // Не даем карточке свернуться
+    function speakWord(text, event) {
+        event.stopPropagation();
         
-        // Используем резервный сервер Google (tw-ob), который не блокирует мобильные браузеры
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&q=${encodeURIComponent(text)}`;
-        
-        // Создаем звук прямо во время клика, чтобы Chrome разрешил воспроизведение
+        // Ссылка на облачную озвучку Google
+        const url = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ar&client=gtx&q=${encodeURIComponent(text)}`;
         const audio = new Audio(url);
         
         audio.play().catch(err => {
-            console.error("Ошибка звука:", err);
-            alert("Если звука нет, проверьте: включена ли громкость МЕДИА на устройстве.");
+            // ЖЕСТКИЙ ОБХОД БЛОКИРОВЩИКОВ:
+            // Если браузер запретил воспроизводить звук "незаметно",
+            // мы принудительно открываем этот звук в новой вкладке/окне.
+            console.warn("Браузер заблокировал фоновый звук. Открываем файл напрямую.");
+            window.location.href = url;
         });
-        }
-    
-
-    async function toggleAuth() {
-        if (!auth) { 
-            alert("Firebase не инициализирован. Проверьте ключи."); 
-            return; 
-        }
-        if (currentUser) {
-            auth.signOut();
-        } else {
-            try {
-                await auth.signInWithPopup(provider);
-            } catch (e) { 
-                console.error("Auth error:", e);
-                alert("Ошибка входа: " + e.message + "\n\nНе забудьте добавить свой домен GitHub в настройки Authorized domains в Firebase!"); 
-            }
-        }
     }
 
-    // --- СТАРТ ---
+    async function toggleAuth() {
+        if (!auth) return;
+        if (currentUser) auth.signOut();
+        else await auth.signInWithPopup(provider).catch(e => console.error(e));
+    }
+
     window.onload = () => {
         updateStatusDefault();
         filterWords();
@@ -312,6 +284,3 @@
 </script>
 </body>
 </html>
-
-
-
