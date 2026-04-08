@@ -1,15 +1,11 @@
 {
-  "name": "Арабский Словарь",
-  "short_name": "Словарь",
-  "start_url": "/slovar/index.html",
+  "name": "Arabus Pro",
+  "short_name": "Arabus",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#f4f4f9",
+  "background_color": "#ffffff",
   "theme_color": "#27ae60",
   "icons": [
-    {
-      "src": "https://www.pwabuilder.com/assets/icons/icon_512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
+    { "src": "https://cdn-icons-png.flaticon.com/512/2907/2907253.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
