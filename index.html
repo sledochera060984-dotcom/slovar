@@ -3,7 +3,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#27ae60">
@@ -13,50 +13,68 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Firebase Libraries -->
+    <!-- Firebase Libraries (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: #f4f4f9; margin: 0; padding: env(safe-area-inset-top) 10px 10px 10px; -webkit-tap-highlight-color: transparent; }
-        .container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
+        :root { --main-color: #27ae60; --bg-color: #f4f4f9; }
+        body { 
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-color); 
+            margin: 0; 
+            padding: env(safe-area-inset-top) 10px 10px 10px; 
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .container { background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 600px; margin: 0 auto; }
         
-        .status-box { text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; font-weight: bold; }
-        .status-ok { background: #e8f8f5; color: #27ae60; border: 1px solid #a3e4d7; }
-        .status-warn { background: #fef9e7; color: #d68910; border: 1px solid #f7dc6f; }
+        .status-box { text-align: center; padding: 12px; border-radius: 10px; margin-bottom: 15px; font-size: 13px; font-weight: 600; line-height: 1.4; }
+        .status-ok { background: #e8f8f5; color: #1e8449; border: 1px solid #a3e4d7; }
+        .status-warn { background: #fef9e7; color: #9c640c; border: 1px solid #f7dc6f; }
         
-        .google-btn { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 15px; font-weight: bold; color: #444; display: flex; align-items: center; justify-content: center; gap: 8px;}
+        .google-btn { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 15px; font-weight: bold; color: #444; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
+        .google-btn:active { background: #f9f9f9; }
         
-        .tabs { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #27ae60; }
-        .tab { flex: 1; padding: 12px; text-align: center; background: white; color: #27ae60; border: none; cursor: pointer; font-size: 15px; font-weight: 500;}
-        .tab.active { background: #27ae60; color: white; font-weight: bold; }
+        .tabs { display: flex; margin-bottom: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--main-color); background: white; }
+        .tab { flex: 1; padding: 12px; text-align: center; background: white; color: var(--main-color); border: none; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
+        .tab.active { background: var(--main-color); color: white; }
         
-        input[type="text"] { width: 100%; padding: 14px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
-        input[type="text"]:focus { border-color: #27ae60; }
+        .search-wrapper { position: relative; width: 100%; }
+        input[type="text"] { 
+            width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #eee; border-radius: 12px; 
+            font-size: 16px; box-sizing: border-box; outline: none; transition: border-color 0.2s;
+            user-select: text;
+        }
+        input[type="text"]:focus { border-color: var(--main-color); }
         
         .word-list { list-style: none; padding: 0; margin: 0; }
-        .word-item { border-bottom: 1px solid #eee; padding: 12px 0; }
+        .word-item { border-bottom: 1px solid #f0f0f0; padding: 14px 0; transition: background 0.2s; }
         .word-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .arabic { font-size: 24px; font-weight: bold; color: #27ae60; direction: rtl; }
-        .russian { font-size: 16px; color: #444; flex: 1; padding-right: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .arabic { font-size: 26px; font-weight: bold; color: var(--main-color); direction: rtl; font-family: "Amiri", serif; }
+        .russian { font-size: 16px; color: #333; flex: 1; padding-right: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
-        .details { display: none; padding-top: 15px; font-size: 15px; color: #333; line-height: 1.5; border-top: 1px dashed #eee; margin-top: 10px; }
+        .details { display: none; padding-top: 15px; font-size: 15px; color: #444; line-height: 1.6; border-top: 1px dashed #eee; margin-top: 12px; user-select: text; }
         .expanded .details { display: block; }
-        .expanded .russian { white-space: normal; font-weight: bold; color: #2c3e50; }
+        .expanded .russian { white-space: normal; font-weight: 700; color: #000; }
         
-        .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
-        .btn { flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; font-size: 13px; font-weight: bold; color: #555; display: flex; align-items: center; justify-content: center; gap: 4px; }
-        
+        .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        .btn { 
+            flex: 1; min-width: 80px; padding: 12px 8px; border-radius: 10px; border: 1px solid #ddd; 
+            background: #fdfdfd; cursor: pointer; font-size: 13px; font-weight: bold; color: #555; 
+            display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .btn:active { transform: scale(0.98); }
         .btn-speak { color: #2980b9; border-color: #a9cce3; background: #ebf5fb; }
         .btn-translate { color: #8e44ad; border-color: #d2b4de; background: #f5eef8; }
-        .btn-fav.active { background: #fef9e7; border-color: #f1c40f; color: #d35400; }
+        .btn-fav.active { background: #fff9e6; border-color: #f1c40f; color: #d35400; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="statusBox" class="status-box status-warn">⏳ Загрузка базы...</div>
+    <div id="statusBox" class="status-box status-warn">⏳ Загрузка Arabus Pro...</div>
     
     <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -65,21 +83,26 @@
         <button id="tabFav" class="tab" onclick="setTab('fav')">Избранное</button>
     </div>
 
-    <input type="text" id="searchInput" placeholder="Поиск (араб / рус / корень)..." oninput="filterWords()">
+    <div class="search-wrapper">
+        <input type="text" id="searchInput" placeholder="Поиск (араб / рус / корень)..." oninput="filterWords()" autocomplete="off">
+    </div>
     
     <div id="list" class="word-list"></div>
 </div>
 
-<script src="base.js?v=2010"></script>
+<script src="base.js?v=3000"></script>
 
 <script>
     let data = [];
     let isTestMode = false;
 
+    // Резервные слова
+    const testDictionary = [{ ar: "رَجُلٌ", ru: "мужчина", root: "رجل" }];
+
     if (typeof dictBase !== 'undefined' && Array.isArray(dictBase) && dictBase.length > 0) {
         data = dictBase;
     } else {
-        data = [{ ar: "رَجُلٌ", ru: "мужчина", root: "رجل" }];
+        data = testDictionary;
         isTestMode = true;
     }
 
@@ -87,6 +110,7 @@
     let savedFavorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let currentTab = 'all';
 
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
@@ -106,7 +130,7 @@
         const authBtn = document.getElementById('authBtn');
         if (user) {
             authBtn.innerText = `Выйти (${user.displayName || user.email.split('@')[0]})`;
-            updateStatus(`✅ Синхронизация: ${user.email}`, 'status-ok');
+            updateStatus(`✅ Синхронизация активна: \n${user.email}`, 'status-ok');
             try {
                 const doc = await db.collection('users').doc(user.uid).get();
                 if (doc.exists) { 
@@ -116,7 +140,7 @@
                     await db.collection('users').doc(user.uid).set({ favs: savedFavorites }, { merge: true });
                     filterWords(); 
                 }
-            } catch(e) {}
+            } catch(e) { console.error("Cloud load error", e); }
         } else {
             authBtn.innerText = "🌐 Войти через Google";
             updateStatusDefault();
@@ -130,12 +154,12 @@
     }
 
     function updateStatusDefault() {
-        if (isTestMode) updateStatus("⚠️ База не найдена", "status-warn");
-        else updateStatus(`✅ База: ${data.length} слов`, "status-ok");
+        if (isTestMode) updateStatus("⚠️ База не найдена. Проверьте интернет.", "status-warn");
+        else updateStatus(`✅ База загружена: ${data.length} слов`, "status-ok");
     }
 
     function normalize(text) { 
-        return text ? text.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").trim() : ""; 
+        return text ? text.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "и").trim() : ""; 
     }
 
     function filterWords() {
@@ -145,7 +169,7 @@
         list.innerHTML = "";
 
         if (!queryInput && currentTab === 'all' && !isTestMode) {
-            list.innerHTML = `<div style="text-align:center; padding: 20px; color:#888;">Введите слово для поиска...</div>`;
+            list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#aaa; font-size: 14px;">Введите арабское слово или русский перевод...</div>`;
             return;
         }
 
@@ -162,9 +186,11 @@
                 if (normA === normQuery && normB !== normQuery) return -1;
                 if (normB === normQuery && normA !== normQuery) return 1;
                 if (normA.startsWith(normQuery) && !normB.startsWith(normQuery)) return -1;
+                
                 const ruStrA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruStrB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 if (ruStrA.startsWith(queryInput) && !ruStrB.startsWith(queryInput)) return -1;
+
                 return a.ru.length - b.ru.length;
             });
         }
@@ -179,12 +205,12 @@
                     <div class="arabic">${w.ar}</div>
                 </div>
                 <div class="details">
-                    <div style="white-space: pre-wrap; margin-bottom:10px;">${w.ru}</div>
+                    <div style="white-space: pre-wrap; margin-bottom:12px;">${w.ru}</div>
                     <div class="btn-row">
                         <button class="btn btn-speak" onclick="speakWord('${w.ar}', event)">🔊 Слушать</button>
                         <button class="btn btn-translate" onclick="openTranslate('${w.ar}', event)">🌍 Google</button>
                         <button class="btn btn-fav ${isFav ? 'active' : ''}" onclick="toggleFav('${w.ar}', this, event)">
-                            ${isFav ? '★' : '☆'}
+                            ${isFav ? '★ В избранном' : '☆ В избранное'}
                         </button>
                     </div>
                 </div>`;
@@ -207,21 +233,24 @@
         });
     }
 
-    // --- ОБНОВЛЕННАЯ ФУНКЦИЯ ПЕРЕВОДА ---
+    // --- УЛУЧШЕННАЯ ФУНКЦИЯ ПЕРЕВОДА ДЛЯ PWA ---
     function openTranslate(text, event) {
         event.stopPropagation();
-        // Используем максимально простую ссылку, которую поймет и мобильный Google
-        // Мы НЕ чистим огласовки здесь, так как Google отлично понимает их
-        const url = `https://translate.google.com/?sl=ar&tl=ru&text=${encodeURIComponent(text)}`;
+        // Чистим слово от огласовок для Google Translate (так он работает точнее в режиме поиска)
+        const cleanText = text.replace(/[\u064B-\u0652]/g, "");
         
-        // Пытаемся открыть в новой вкладке
-        const newWindow = window.open(url, '_blank');
+        // Универсальная ссылка, которая лучше всего работает с Intents на Android
+        const url = `https://translate.google.com/?sl=ar&tl=ru&text=${encodeURIComponent(cleanText)}&op=translate`;
         
-        // Если браузер заблокировал всплывающее окно (в PWA такое бывает),
-        // используем запасной метод
-        if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-            window.location.href = url;
-        }
+        // Магия для PWA: создаем скрытую ссылку и эмулируем клик
+        // Это заставляет систему Android правильно обработать "Deep Link"
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     function setTab(t) { 
@@ -236,11 +265,11 @@
         if (savedFavorites.includes(word)) {
             savedFavorites = savedFavorites.filter(v => v !== word);
             btn.classList.remove('active');
-            btn.innerText = '☆';
+            btn.innerText = '☆ В избранное';
         } else {
             savedFavorites.push(word);
             btn.classList.add('active');
-            btn.innerText = '★';
+            btn.innerText = '★ В избранном';
         }
         localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
         if (currentUser) await db.collection('users').doc(currentUser.uid).set({ favs: savedFavorites }, { merge: true });
@@ -249,7 +278,7 @@
 
     async function toggleAuth() {
         if (currentUser) auth.signOut();
-        else await auth.signInWithPopup(provider).catch(e => alert(e.message));
+        else await auth.signInWithPopup(provider).catch(e => alert("Ошибка входа: " + e.message));
     }
 
     window.onload = () => { updateStatusDefault(); filterWords(); };
