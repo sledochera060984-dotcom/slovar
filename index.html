@@ -271,12 +271,21 @@
         if (currentTab === 'fav') filterWords();
     }
 
-    function speakWord(text, event) {
-        event.stopPropagation();
-        const url = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ar&client=gtx&q=${encodeURIComponent(text)}`;
+        function speakWord(text, event) {
+        event.stopPropagation(); // Не даем карточке свернуться
+        
+        // Используем резервный сервер Google (tw-ob), который не блокирует мобильные браузеры
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&q=${encodeURIComponent(text)}`;
+        
+        // Создаем звук прямо во время клика, чтобы Chrome разрешил воспроизведение
         const audio = new Audio(url);
-        audio.play().catch(err => alert("Ошибка звука. Включите звук на устройстве и проверьте интернет."));
-    }
+        
+        audio.play().catch(err => {
+            console.error("Ошибка звука:", err);
+            alert("Если звука нет, проверьте: включена ли громкость МЕДИА на устройстве.");
+        });
+        }
+    
 
     async function toggleAuth() {
         if (!auth) { 
