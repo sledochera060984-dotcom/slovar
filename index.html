@@ -19,67 +19,82 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        :root { --main-color: #27ae60; --bg-color: #f4f4f9; }
+        :root { --main-color: #27ae60; --bg-color: #f4f4f9; --text-color: #2c3e50; }
         body { 
             font-family: -apple-system, system-ui, sans-serif; 
             background-color: var(--bg-color); 
             margin: 0; 
             padding: env(safe-area-inset-top) 10px 10px 10px; 
             -webkit-tap-highlight-color: transparent;
+            color: var(--text-color);
         }
         .container { background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 600px; margin: 0 auto; }
         
-        .status-box { text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; font-weight: bold; }
-        .status-ok { background: #e8f8f5; color: #1e8449; border: 1px solid #a3e4d7; }
-        .status-warn { background: #fef9e7; color: #9c640c; border: 1px solid #f7dc6f; }
-        
+        /* Авторизация и статусы */
+        .header-status { text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; font-weight: bold; border: 1px solid #ddd; }
+        .status-ok { background: #e8f8f5; color: #1e8449; border-color: #a3e4d7; }
         .google-btn { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 15px; font-weight: bold; color: #444; display: flex; align-items: center; justify-content: center; gap: 10px; }
         
+        /* Вкладки */
         .tabs { display: flex; margin-bottom: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--main-color); background: white; }
         .tab { flex: 1; padding: 12px 5px; text-align: center; background: white; color: var(--main-color); border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
         .tab.active { background: var(--main-color); color: white; }
         
+        /* Инпуты */
         .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
         textarea, input[type="text"] { 
             width: 100%; padding: 15px; border: 2px solid #eee; border-radius: 12px; 
             font-size: 16px; box-sizing: border-box; outline: none; font-family: inherit;
         }
-        textarea { height: 120px; resize: none; border-color: #d5dbdb; }
+        textarea { height: 100px; resize: none; border-color: #d5dbdb; }
         
+        /* Предпросмотр перевода */
+        #translationPreview { 
+            display: none; background: #fdfefe; border: 2px dashed var(--main-color); 
+            padding: 15px; border-radius: 12px; margin-bottom: 20px; animation: fadeIn 0.3s ease;
+        }
+        .preview-label { font-size: 11px; color: var(--main-color); text-transform: uppercase; font-weight: bold; margin-bottom: 5px; }
+        .preview-text { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #333; }
+        
+        /* Список элементов */
         .word-list { list-style: none; padding: 0; margin: 0; }
         .word-item { border-bottom: 1px solid #f0f0f0; padding: 14px 0; }
         .word-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
-        /* Стили для словаря */
+        /* Универсальные стили текста */
         .arabic { font-size: 24px; font-weight: bold; color: var(--main-color); direction: rtl; }
         .russian { font-size: 16px; color: #333; flex: 1; padding-right: 15px; }
         
-        /* Стили для режима Переводчика (Русский первым) */
-        .mode-translator .russian { font-weight: bold; font-size: 18px; color: #2c3e50; }
-        .mode-translator .arabic-hint { color: #bdc3c7; font-size: 14px; margin-top: 4px; display: block; text-align: right; }
+        /* Стили для сохраненных переводов (Русский сверху) */
+        .saved-trans .russian { font-weight: bold; font-size: 18px; color: #2c3e50; display: block; margin-bottom: 4px; }
+        .saved-trans .arabic-hint { color: #bdc3c7; font-size: 14px; direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
-        .details { display: none; padding-top: 15px; font-size: 15px; color: #444; line-height: 1.6; border-top: 1px dashed #eee; margin-top: 12px; }
+        /* Детали при клике */
+        .details { display: none; padding-top: 15px; border-top: 1px dashed #eee; margin-top: 12px; }
         .expanded .details { display: block; }
-        .expanded .arabic-main { font-size: 28px; font-weight: bold; color: var(--main-color); direction: rtl; margin-bottom: 15px; display: block; }
+        .expanded .arabic-full { font-size: 28px; font-weight: bold; color: var(--main-color); direction: rtl; display: block; margin-bottom: 15px; line-height: 1.4; }
         
-        .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        /* Кнопки */
+        .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
         .btn { 
             flex: 1; min-width: 80px; padding: 12px 8px; border-radius: 10px; border: 1px solid #ddd; 
             background: #fdfdfd; cursor: pointer; font-size: 13px; font-weight: bold; color: #555; 
             display: flex; align-items: center; justify-content: center; gap: 6px;
         }
-        .btn-main { background: var(--main-color); color: white; border: none; }
+        .btn-primary { background: var(--main-color); color: white; border: none; }
         .btn-speak { color: #2980b9; border-color: #a9cce3; background: #ebf5fb; }
         .btn-fav.active { background: #fff9e6; border-color: #f1c40f; color: #d35400; }
         .btn-delete { color: #e74c3c; border-color: #fadbd8; background: #fdf2f2; }
 
-        .loader { display: none; text-align: center; padding: 10px; color: var(--main-color); font-weight: bold; }
+        .loader { display: none; text-align: center; padding: 10px; color: var(--main-color); font-weight: bold; font-size: 14px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="statusBox" class="status-box status-warn">⏳ Загрузка Arabus Pro...</div>
+    <div id="statusBox" class="header-status status-ok">Загрузка...</div>
     
     <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -89,28 +104,39 @@
         <button id="tabTrans" class="tab" onclick="setTab('trans')">📝 Переводчик</button>
     </div>
 
-    <!-- Раздел Словаря -->
+    <!-- Словарь и Избранное -->
     <div id="searchSection">
         <input type="text" id="searchInput" placeholder="Поиск (араб / рус / корень)..." oninput="handleSearch()" autocomplete="off">
     </div>
 
-    <!-- Раздел Переводчика -->
+    <!-- Переводчик -->
     <div id="translatorSection" style="display:none;">
         <div class="input-group">
-            <textarea id="arInput" placeholder="Вставьте арабский текст из интернета здесь..."></textarea>
-            <div id="translateLoader" class="loader">✨ ИИ переводит...</div>
-            <button class="btn btn-main" onclick="processTranslation()">Перевести и сохранить</button>
+            <textarea id="arInput" placeholder="Вставьте арабский текст для перевода..."></textarea>
+            <div id="translateLoader" class="loader">✨ ИИ подбирает перевод...</div>
+            <button class="btn btn-primary" id="btnTranslate" onclick="requestTranslation()">Перевести</button>
         </div>
-        <div style="font-size: 12px; color: #888; margin-bottom: 10px;">Ваши сохраненные фразы (Русский -> Арабский):</div>
+
+        <!-- Окно предпросмотра (появляется после перевода) -->
+        <div id="translationPreview">
+            <div class="preview-label">Результат перевода:</div>
+            <div id="previewResult" class="preview-text"></div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveTranslation()">💾 Сохранить в блокнот</button>
+                <button class="btn" onclick="clearPreview()">Отмена</button>
+            </div>
+        </div>
+
+        <div style="font-size: 12px; color: #888; margin-bottom: 10px; font-weight: bold;">Ваши записи (Русский -> Арабский):</div>
     </div>
     
     <div id="list" class="word-list"></div>
 </div>
 
-<script src="base.js?v=6000"></script>
+<script src="base.js?v=7000"></script>
 
 <script>
-    const apiKey = ""; // API ключ предоставляется средой выполнения
+    const apiKey = ""; // Ключ API предоставляется средой
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-pro-final';
     
     let dictionaryData = (typeof dictBase !== 'undefined') ? dictBase : [];
@@ -118,6 +144,7 @@
     let favorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let myTranslations = []; 
     let activeTab = 'dict';
+    let currentPreview = null;
 
     // Firebase Init
     const firebaseConfig = {
@@ -134,101 +161,111 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Слушатель авторизации
+    // Мониторинг входа
     auth.onAuthStateChanged(async (u) => {
         user = u;
         const btn = document.getElementById('authBtn');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
-            updateStatus(`✅ Синхронизация: ${user.email}`, 'status-ok');
-            syncData();
+            document.getElementById('statusBox').innerText = `✅ Синхронизация: ${user.email}`;
+            startSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
-            updateStatus(`📚 База: ${dictionaryData.length} слов. Оффлайн.`, "status-ok");
+            document.getElementById('statusBox').innerText = `📚 База: ${dictionaryData.length} слов`;
         }
     });
 
-    async function syncData() {
+    async function startSync() {
         if (!user) return;
         
-        // Избранное
-        const favDoc = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites').get();
-        if (favDoc.exists) {
-            favorites = favDoc.data().list || [];
+        // Синхронизация избранного
+        const favRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites');
+        const favSnap = await favRef.get();
+        if (favSnap.exists) {
+            favorites = favSnap.data().list || [];
             localStorage.setItem('arabus_favs', JSON.stringify(favorites));
         }
 
-        // Подписка на личные переводы
+        // Подписка на личные фразы
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('my_translations')
           .onSnapshot(snap => {
-              myTranslations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-              if (activeTab === 'trans') renderList();
-          });
+              myTranslations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              if (activeTab === 'trans' || activeTab === 'fav') renderList();
+          }, err => console.log("Firestore error:", err));
           
         renderList();
     }
 
-    function updateStatus(text, className) {
-        const box = document.getElementById('statusBox');
-        box.className = `status-box ${className}`;
-        box.innerText = text;
-    }
+    // --- ЛОГИКА ПЕРЕВОДА (GEMINI) ---
+    async function requestTranslation() {
+        const input = document.getElementById('arInput').value.trim();
+        if (!input) return;
 
-    // --- ЛОГИКА ПЕРЕВОДА ---
-    async function callGeminiTranslate(text) {
-        const prompt = `Переведи арабский текст на русский язык максимально точно и красиво. Выдай ТОЛЬКО текст перевода: "${text}"`;
-        let delay = 1000;
-        for (let i = 0; i < 5; i++) {
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
-                const json = await res.json();
-                return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Ошибка перевода";
-            } catch (e) {
-                if (i === 4) return "Ошибка связи с ИИ";
-                await new Promise(r => setTimeout(r, delay));
-                delay *= 2;
+        const loader = document.getElementById('translateLoader');
+        const btn = document.getElementById('btnTranslate');
+        const preview = document.getElementById('translationPreview');
+
+        loader.style.display = 'block';
+        btn.disabled = true;
+        preview.style.display = 'none';
+
+        try {
+            const prompt = `Translate this Arabic text to Russian language accurately and naturally. Provide ONLY the translated text without any explanations or extra characters: "${input}"`;
+            
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            });
+
+            const result = await response.json();
+            const translatedText = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+            if (translatedText) {
+                currentPreview = { ar: input, ru: translatedText };
+                document.getElementById('previewResult').innerText = translatedText;
+                preview.style.display = 'block';
+            } else {
+                alert("Не удалось получить перевод. Попробуйте другую фразу.");
             }
+        } catch (e) {
+            alert("Ошибка сети. Попробуйте еще раз.");
+        } finally {
+            loader.style.display = 'none';
+            btn.disabled = false;
         }
     }
 
-    async function processTranslation() {
-        const input = document.getElementById('arInput');
-        const text = input.value.trim();
-        if (!text) return;
-        if (!user) { alert("Войдите в систему для сохранения!"); return; }
+    async function saveTranslation() {
+        if (!user) { alert("Войдите через Google, чтобы сохранять фразы в облако!"); return; }
+        if (!currentPreview) return;
 
-        document.getElementById('translateLoader').style.display = 'block';
         try {
-            const translation = await callGeminiTranslate(text);
-            
-            // Сохранение в Firebase
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('my_translations').add({
-                ar: text,
-                ru: translation,
+                ar: currentPreview.ar,
+                ru: currentPreview.ru,
                 created: Date.now()
             });
-            
-            input.value = "";
-            alert("Фраза сохранена в блокнот!");
+            clearPreview();
+            document.getElementById('arInput').value = "";
         } catch (e) {
-            alert("Не удалось сохранить. Проверьте интернет.");
-        } finally {
-            document.getElementById('translateLoader').style.display = 'none';
+            alert("Ошибка сохранения.");
         }
     }
 
-    async function removeTranslation(id, e) {
+    function clearPreview() {
+        document.getElementById('translationPreview').style.display = 'none';
+        currentPreview = null;
+    }
+
+    async function deleteItem(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить эту запись?")) {
+        if (confirm("Удалить этот перевод навсегда?")) {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('my_translations').doc(id).delete();
         }
     }
 
-    // --- ОТРИСОВКА ---
+    // --- ОТРИСОВКА СПИСКА ---
     function handleSearch() {
         renderList(document.getElementById('searchInput').value.toLowerCase().trim());
     }
@@ -238,21 +275,21 @@
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // Режим ПЕРЕВОДЧИКА: Русский сверху
+            // ОТОБРАЖЕНИЕ ПЕРЕВОДЧИКА: РУССКИЙ СВЕРХУ
             const sorted = myTranslations.sort((a,b) => b.created - a.created);
             sorted.forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'word-item mode-translator';
+                el.className = 'word-item saved-trans';
                 el.innerHTML = `
                     <div class="word-header" onclick="this.parentElement.classList.toggle('expanded')">
                         <div class="russian">${item.ru}</div>
-                        <span class="arabic-hint">${item.ar.substring(0, 15)}...</span>
+                        <div class="arabic-hint">${item.ar}</div>
                     </div>
                     <div class="details">
-                        <span class="arabic-main">${item.ar}</span>
+                        <span class="arabic-full">${item.ar}</span>
                         <div class="btn-row">
                             <button class="btn btn-speak" onclick="speak('${item.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-delete" onclick="removeTranslation('${item.id}', event)">🗑 Удалить</button>
+                            <button class="btn btn-delete" onclick="deleteItem('${item.id}', event)">🗑 Удалить</button>
                         </div>
                     </div>`;
                 list.appendChild(el);
@@ -260,7 +297,7 @@
             return;
         }
 
-        // Режим СЛОВАРЯ
+        // ОТОБРАЖЕНИЕ СЛОВАРЯ И ИЗБРАННОГО
         const normQuery = query.replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا");
         let filtered = dictionaryData.filter(w => {
             if (activeTab === 'fav' && !favorites.includes(w.ar)) return false;
@@ -269,9 +306,7 @@
             return w.ru.toLowerCase().includes(query) || arClean.includes(normQuery);
         });
 
-        if (query) {
-            filtered.sort((a, b) => a.ru.length - b.ru.length);
-        }
+        if (query) filtered.sort((a, b) => a.ru.length - b.ru.length);
 
         filtered.slice(0, 50).forEach(w => {
             const isFav = favorites.includes(w.ar);
@@ -298,7 +333,8 @@
     function setTab(t) {
         activeTab = t;
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('active');
+        const tabMap = { dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' };
+        document.getElementById(tabMap[t]).classList.add('active');
         
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
         document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
@@ -334,7 +370,7 @@
         else await auth.signInWithPopup(provider);
     }
 
-    window.onload = () => { setTab('dict'); };
+    window.onload = () => { renderList(); };
 </script>
 </body>
 </html>
