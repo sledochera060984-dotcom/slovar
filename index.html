@@ -8,7 +8,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#27ae60">
     
-    <!-- Подключаем манифест для работы без адресной строки -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2907/2907253.png">
     
@@ -46,16 +45,18 @@
         .expanded .details { display: block; }
         .expanded .russian { white-space: normal; font-weight: bold; color: #2c3e50; }
         
-        .btn-row { display: flex; gap: 10px; margin-top: 15px; }
-        .btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; font-size: 14px; font-weight: bold; color: #555; }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+        .btn { flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f9f9f9; cursor: pointer; font-size: 13px; font-weight: bold; color: #555; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        
         .btn-speak { color: #2980b9; border-color: #a9cce3; background: #ebf5fb; }
+        .btn-translate { color: #8e44ad; border-color: #d2b4de; background: #f5eef8; }
         .btn-fav.active { background: #fef9e7; border-color: #f1c40f; color: #d35400; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="statusBox" class="status-box status-warn">⏳ Загрузка...</div>
+    <div id="statusBox" class="status-box status-warn">⏳ Загрузка базы...</div>
     
     <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -69,7 +70,7 @@
     <div id="list" class="word-list"></div>
 </div>
 
-<script src="base.js?v=2000"></script>
+<script src="base.js?v=2005"></script>
 
 <script>
     let data = [];
@@ -165,8 +166,7 @@
                 const ruStrA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruStrB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 if (ruStrA.startsWith(queryInput) && !ruStrB.startsWith(queryInput)) return -1;
-                if (ruStrB.startsWith(queryInput) && !ruStrA.startsWith(queryInput)) return 1;
-
+                
                 return a.ru.length - b.ru.length;
             });
         }
@@ -184,6 +184,7 @@
                     <div style="white-space: pre-wrap; margin-bottom:10px;">${w.ru}</div>
                     <div class="btn-row">
                         <button class="btn btn-speak" onclick="speakWord('${w.ar}', event)">🔊 Слушать</button>
+                        <button class="btn btn-translate" onclick="openTranslate('${w.ar}', event)">🌍 Google</button>
                         <button class="btn btn-fav ${isFav ? 'active' : ''}" onclick="toggleFav('${w.ar}', this, event)">
                             ${isFav ? '★' : '☆'}
                         </button>
@@ -196,12 +197,9 @@
     function speakWord(text, event) {
         event.stopPropagation();
         const cleanText = text.replace(/[^\u0621-\u064A\s]/g, '');
-        
-        // Попытка 1: Облако
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&q=${encodeURIComponent(cleanText)}`;
         const audio = new Audio(url);
         audio.play().catch(() => {
-            // Попытка 2: Системный голос
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const msg = new SpeechSynthesisUtterance(cleanText);
@@ -209,6 +207,15 @@
                 window.speechSynthesis.speak(msg);
             }
         });
+    }
+
+    // --- ФУНКЦИЯ GOOGLE ПЕРЕВОДЧИКА ---
+    function openTranslate(text, event) {
+        event.stopPropagation();
+        const cleanText = text.replace(/[^\u0621-\u064A\s]/g, '');
+        // Формируем ссылку на Google Translate (арабский -> русский)
+        const url = `https://translate.google.com/?sl=ar&tl=ru&text=${encodeURIComponent(cleanText)}&op=translate`;
+        window.open(url, '_blank');
     }
 
     function setTab(t) { 
@@ -241,20 +248,11 @@
 
     window.onload = () => { updateStatusDefault(); filterWords(); };
 
-    // Регистрация офлайна и PWA
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-            reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                installingWorker.onstatechange = () => {
-                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log('Доступна новая версия, перезапустите приложение.');
-                    }
-                };
-            };
-        });
+        navigator.serviceWorker.register('sw.js');
     }
 </script>
 </body>
 </html>
+
 
