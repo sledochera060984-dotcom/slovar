@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#27ae60">
     <title>Арабский Словарь Pro</title>
     
-    <!-- Firebase (Подключаем, но используем только если есть ключи) -->
+    <!-- Firebase (Подключаем библиотеки) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -68,8 +68,8 @@
     <div id="list" class="word-list"></div>
 </div>
 
-<!-- ПОДКЛЮЧЕНИЕ БАЗЫ -->
-<script src="base.js?version=777"></script>
+<!-- ПОДКЛЮЧЕНИЕ БАЗЫ (Добавлен version чтобы сбить кеш, если он есть) -->
+<script src="base.js?v=888"></script>
 
 <script>
     // --- 1. ЗАГРУЗКА БАЗЫ С ЗАЩИТОЙ ОТ СБОЕВ ---
@@ -95,52 +95,57 @@
     let savedFavorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let currentTab = 'all';
 
-    // --- 3. FIREBASE СИНХРОНИЗАЦИЯ (БЕЗОПАСНАЯ) ---
-    // ВСТАВЬ СВОИ ДАННЫЕ СЮДА, чтобы заработало облако
-    const firebaseConfig = { 
-        apiKey: "ТВОЙ_КЛЮЧ", 
-        authDomain: "ТВОЙ_ДОМЕН",
-        projectId: "ТВОЙ_ID"
+    // --- 3. FIREBASE СИНХРОНИЗАЦИЯ (Твои Ключи) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
+      authDomain: "arabus-dict-96c12.firebaseapp.com",
+      projectId: "arabus-dict-96c12",
+      storageBucket: "arabus-dict-96c12.firebasestorage.app",
+      messagingSenderId: "814248156149",
+      appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
     };
 
     let auth = null;
     let db = null;
     let provider = null;
 
-    // Проверяем, вставил ли ты ключи
-    if (firebaseConfig.apiKey !== "ТВОЙ_КЛЮЧ") {
-        try {
-            firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            db = firebase.firestore();
-            provider = new firebase.auth.GoogleAuthProvider();
+    try {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        provider = new firebase.auth.GoogleAuthProvider();
 
-            auth.onAuthStateChanged(async (user) => {
-                currentUser = user;
-                const authBtn = document.getElementById('authBtn');
+        auth.onAuthStateChanged(async (user) => {
+            currentUser = user;
+            const authBtn = document.getElementById('authBtn');
+            
+            if (user) {
+                authBtn.innerText = `Выйти (${user.displayName || user.email.split('@')[0]})`;
+                updateStatus(`✅ Синхронизация активна: ${user.email}`, 'status-ok');
                 
-                if (user) {
-                    authBtn.innerText = `Выйти (${user.displayName || user.email.split('@')[0]})`;
-                    updateStatus(`✅ Синхронизация активна: ${user.email}`, 'status-ok');
-                    
-                    // Скачиваем избранное с облака
-                    try {
-                        const doc = await db.collection('users').doc(user.uid).get();
-                        if (doc.exists) { 
-                            savedFavorites = doc.data().favs || []; 
-                            localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
-                            filterWords(); 
-                        }
-                    } catch(e) { console.error("Ошибка загрузки с облака:", e); }
-                } else {
-                    authBtn.innerText = "🌐 Войти для синхронизации";
-                    updateStatusDefault();
-                }
-            });
-        } catch(e) { 
-            console.error("Firebase ошибка:", e); 
-            updateStatusDefault();
-        }
+                // Скачиваем избранное с облака
+                try {
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists) { 
+                        const cloudFavs = doc.data().favs || []; 
+                        // Объединяем локальные и облачные (чтобы ничего не потерять)
+                        savedFavorites = [...new Set([...savedFavorites, ...cloudFavs])];
+                        localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
+                        
+                        // Отправляем объединенный список обратно в облако
+                        await db.collection('users').doc(user.uid).set({ favs: savedFavorites }, { merge: true });
+                        
+                        filterWords(); 
+                    }
+                } catch(e) { console.error("Ошибка загрузки с облака:", e); }
+            } else {
+                authBtn.innerText = "🌐 Войти для синхронизации";
+                updateStatusDefault();
+            }
+        });
+    } catch(e) { 
+        console.error("Firebase ошибка:", e); 
+        updateStatusDefault();
     }
 
     // --- 4. ИНТЕРФЕЙС И ПОИСК ---
@@ -170,7 +175,7 @@
         const list = document.getElementById('list');
         list.innerHTML = "";
 
-        // Если пустой запрос во вкладке "Словарь" - ничего не выводим (экономим память)
+        // Если пустой запрос во вкладке "Словарь" - ничего не выводим
         if (!queryInput && currentTab === 'all' && !isTestMode) {
             list.innerHTML = `<div style="text-align:center; padding: 20px; color:#888;">Начните вводить слово для поиска...</div>`;
             return;
@@ -193,15 +198,11 @@
                 const normA = normalize(a.ar);
                 const normB = normalize(b.ar);
                 
-                // 1. Точное совпадение слова
                 if (normA === normQuery && normB !== normQuery) return -1;
                 if (normB === normQuery && normA !== normQuery) return 1;
-                
-                // 2. Слово начинается с этого запроса
                 if (normA.startsWith(normQuery) && !normB.startsWith(normQuery)) return -1;
                 if (normB.startsWith(normQuery) && !normA.startsWith(normQuery)) return 1;
                 
-                // 3. Более короткий перевод выше
                 return a.ru.length - b.ru.length;
             });
         }
@@ -211,7 +212,6 @@
             return;
         }
 
-        // Отрисовка (не более 50 слов за раз, чтобы не тормозило)
         filtered.slice(0, 50).forEach(w => {
             const isFav = savedFavorites.includes(w.ar);
             const shortRu = w.short_ru ? w.short_ru : w.ru.split(';')[0].split('\n')[0];
@@ -248,7 +248,7 @@
     }
 
     async function toggleFav(word, btnElement, event) {
-        event.stopPropagation(); // Чтобы карточка не сворачивалась
+        event.stopPropagation();
         
         if (savedFavorites.includes(word)) {
             savedFavorites = savedFavorites.filter(v => v !== word);
@@ -260,23 +260,19 @@
             btnElement.innerText = '★ В избранном';
         }
         
-        // Сохраняем локально
         localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
         
-        // Сохраняем в облако (если авторизован)
         if (currentUser && db) {
             try {
                 await db.collection('users').doc(currentUser.uid).set({ favs: savedFavorites }, { merge: true });
             } catch(e) { console.error("Ошибка сохранения в облако:", e); }
         }
         
-        // Если мы во вкладке "Избранное", сразу обновляем список
         if (currentTab === 'fav') filterWords();
     }
 
     function speakWord(text, event) {
         event.stopPropagation();
-        // Используем надежный сервер API для озвучки
         const url = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ar&client=gtx&q=${encodeURIComponent(text)}`;
         const audio = new Audio(url);
         audio.play().catch(err => alert("Ошибка звука. Включите звук на устройстве и проверьте интернет."));
@@ -284,7 +280,7 @@
 
     async function toggleAuth() {
         if (!auth) { 
-            alert("Функция облака пока отключена. Чтобы включить, нужно вставить ключи Firebase в код."); 
+            alert("Firebase не инициализирован. Проверьте ключи."); 
             return; 
         }
         if (currentUser) {
@@ -292,7 +288,10 @@
         } else {
             try {
                 await auth.signInWithPopup(provider);
-            } catch (e) { alert("Ошибка входа: " + e.message); }
+            } catch (e) { 
+                console.error("Auth error:", e);
+                alert("Ошибка входа: " + e.message + "\n\nНе забудьте добавить свой домен GitHub в настройки Authorized domains в Firebase!"); 
+            }
         }
     }
 
@@ -301,16 +300,9 @@
         updateStatusDefault();
         filterWords();
     };
-
-    // ОФЛАЙН КЕШ ВРЕМЕННО ОТКЛЮЧЕН для удобства разработки
-    // Если захочешь вернуть офлайн, раскомментируй код ниже:
-    /*
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error:', err));
-    }
-    */
 </script>
 </body>
 </html>
+
 
 
