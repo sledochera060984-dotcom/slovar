@@ -26,7 +26,6 @@
             margin: 0; 
             padding: env(safe-area-inset-top) 10px 10px 10px; 
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
         }
         .container { background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 600px; margin: 0 auto; }
         
@@ -34,28 +33,24 @@
         .status-ok { background: #e8f8f5; color: #1e8449; border: 1px solid #a3e4d7; }
         .status-warn { background: #fef9e7; color: #9c640c; border: 1px solid #f7dc6f; }
         
-        .google-btn { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 15px; font-weight: bold; color: #444; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
-        .google-btn:active { background: #f9f9f9; }
+        .google-btn { width: 100%; padding: 14px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #ddd; background: white; cursor: pointer; font-size: 15px; font-weight: bold; color: #444; display: flex; align-items: center; justify-content: center; gap: 10px; }
         
         .tabs { display: flex; margin-bottom: 15px; border-radius: 10px; overflow: hidden; border: 1px solid var(--main-color); background: white; }
-        .tab { flex: 1; padding: 12px; text-align: center; background: white; color: var(--main-color); border: none; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.2s; }
+        .tab { flex: 1; padding: 12px; text-align: center; background: white; color: var(--main-color); border: none; cursor: pointer; font-size: 15px; font-weight: 600; }
         .tab.active { background: var(--main-color); color: white; }
         
-        .search-wrapper { position: relative; width: 100%; }
         input[type="text"] { 
             width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #eee; border-radius: 12px; 
-            font-size: 16px; box-sizing: border-box; outline: none; transition: border-color 0.2s;
-            user-select: text;
+            font-size: 16px; box-sizing: border-box; outline: none;
         }
-        input[type="text"]:focus { border-color: var(--main-color); }
         
         .word-list { list-style: none; padding: 0; margin: 0; }
-        .word-item { border-bottom: 1px solid #f0f0f0; padding: 14px 0; transition: background 0.2s; }
+        .word-item { border-bottom: 1px solid #f0f0f0; padding: 14px 0; }
         .word-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .arabic { font-size: 26px; font-weight: bold; color: var(--main-color); direction: rtl; font-family: "Amiri", serif; }
+        .arabic { font-size: 26px; font-weight: bold; color: var(--main-color); direction: rtl; }
         .russian { font-size: 16px; color: #333; flex: 1; padding-right: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
-        .details { display: none; padding-top: 15px; font-size: 15px; color: #444; line-height: 1.6; border-top: 1px dashed #eee; margin-top: 12px; user-select: text; }
+        .details { display: none; padding-top: 15px; font-size: 15px; color: #444; line-height: 1.6; border-top: 1px dashed #eee; margin-top: 12px; }
         .expanded .details { display: block; }
         .expanded .russian { white-space: normal; font-weight: 700; color: #000; }
         
@@ -63,9 +58,8 @@
         .btn { 
             flex: 1; min-width: 80px; padding: 12px 8px; border-radius: 10px; border: 1px solid #ddd; 
             background: #fdfdfd; cursor: pointer; font-size: 13px; font-weight: bold; color: #555; 
-            display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
         }
-        .btn:active { transform: scale(0.98); }
         .btn-speak { color: #2980b9; border-color: #a9cce3; background: #ebf5fb; }
         .btn-translate { color: #8e44ad; border-color: #d2b4de; background: #f5eef8; }
         .btn-fav.active { background: #fff9e6; border-color: #f1c40f; color: #d35400; }
@@ -74,7 +68,7 @@
 <body>
 
 <div class="container">
-    <div id="statusBox" class="status-box status-warn">⏳ Загрузка Arabus Pro...</div>
+    <div id="statusBox" class="status-box status-warn">⏳ Загрузка...</div>
     
     <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -83,34 +77,27 @@
         <button id="tabFav" class="tab" onclick="setTab('fav')">Избранное</button>
     </div>
 
-    <div class="search-wrapper">
-        <input type="text" id="searchInput" placeholder="Поиск (араб / рус / корень)..." oninput="filterWords()" autocomplete="off">
-    </div>
+    <input type="text" id="searchInput" placeholder="Поиск (араб / рус / корень)..." oninput="filterWords()" autocomplete="off">
     
     <div id="list" class="word-list"></div>
 </div>
 
-<script src="base.js?v=3000"></script>
+<script src="base.js?v=4000"></script>
 
 <script>
     let data = [];
     let isTestMode = false;
-
-    // Резервные слова
-    const testDictionary = [{ ar: "رَجُلٌ", ru: "мужчина", root: "رجل" }];
-
-    if (typeof dictBase !== 'undefined' && Array.isArray(dictBase) && dictBase.length > 0) {
-        data = dictBase;
-    } else {
-        data = testDictionary;
-        isTestMode = true;
-    }
-
     let currentUser = null;
     let savedFavorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let currentTab = 'all';
 
-    // Firebase Config
+    if (typeof dictBase !== 'undefined' && Array.isArray(dictBase) && dictBase.length > 0) {
+        data = dictBase;
+    } else {
+        data = [{ ar: "رَجُلٌ", ru: "мужчина", root: "رجل" }];
+        isTestMode = true;
+    }
+
     const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
@@ -140,7 +127,7 @@
                     await db.collection('users').doc(user.uid).set({ favs: savedFavorites }, { merge: true });
                     filterWords(); 
                 }
-            } catch(e) { console.error("Cloud load error", e); }
+            } catch(e) { console.error(e); }
         } else {
             authBtn.innerText = "🌐 Войти через Google";
             updateStatusDefault();
@@ -154,12 +141,12 @@
     }
 
     function updateStatusDefault() {
-        if (isTestMode) updateStatus("⚠️ База не найдена. Проверьте интернет.", "status-warn");
+        if (isTestMode) updateStatus("⚠️ База не найдена", "status-warn");
         else updateStatus(`✅ База загружена: ${data.length} слов`, "status-ok");
     }
 
     function normalize(text) { 
-        return text ? text.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "и").trim() : ""; 
+        return text ? text.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").trim() : ""; 
     }
 
     function filterWords() {
@@ -169,7 +156,7 @@
         list.innerHTML = "";
 
         if (!queryInput && currentTab === 'all' && !isTestMode) {
-            list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#aaa; font-size: 14px;">Введите арабское слово или русский перевод...</div>`;
+            list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#aaa; font-size: 14px;">Введите слово...</div>`;
             return;
         }
 
@@ -186,11 +173,6 @@
                 if (normA === normQuery && normB !== normQuery) return -1;
                 if (normB === normQuery && normA !== normQuery) return 1;
                 if (normA.startsWith(normQuery) && !normB.startsWith(normQuery)) return -1;
-                
-                const ruStrA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                const ruStrB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                if (ruStrA.startsWith(queryInput) && !ruStrB.startsWith(queryInput)) return -1;
-
                 return a.ru.length - b.ru.length;
             });
         }
@@ -210,7 +192,7 @@
                         <button class="btn btn-speak" onclick="speakWord('${w.ar}', event)">🔊 Слушать</button>
                         <button class="btn btn-translate" onclick="openTranslate('${w.ar}', event)">🌍 Google</button>
                         <button class="btn btn-fav ${isFav ? 'active' : ''}" onclick="toggleFav('${w.ar}', this, event)">
-                            ${isFav ? '★ В избранном' : '☆ В избранное'}
+                            ${isFav ? '★' : '☆'}
                         </button>
                     </div>
                 </div>`;
@@ -233,24 +215,20 @@
         });
     }
 
-    // --- УЛУЧШЕННАЯ ФУНКЦИЯ ПЕРЕВОДА ДЛЯ PWA ---
+    // --- ИСПРАВЛЕННАЯ ФУНКЦИЯ ПЕРЕВОДА ДЛЯ PWA ---
     function openTranslate(text, event) {
         event.stopPropagation();
-        // Чистим слово от огласовок для Google Translate (так он работает точнее в режиме поиска)
+        
+        // Удаляем огласовки для лучшего поиска
         const cleanText = text.replace(/[\u064B-\u0652]/g, "");
         
-        // Универсальная ссылка, которая лучше всего работает с Intents на Android
-        const url = `https://translate.google.com/?sl=ar&tl=ru&text=${encodeURIComponent(cleanText)}&op=translate`;
+        // Используем мобильный субдомен Google Переводчика. 
+        // В PWA он с меньшей вероятностью просто "откроет приложение пустым".
+        const url = `https://translate.google.com/m?sl=ar&tl=ru&q=${encodeURIComponent(cleanText)}`;
         
-        // Магия для PWA: создаем скрытую ссылку и эмулируем клик
-        // Это заставляет систему Android правильно обработать "Deep Link"
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // В режиме PWA используем прямую смену локации окна, 
+        // так как браузеры часто блокируют window.open()
+        window.location.href = url;
     }
 
     function setTab(t) { 
@@ -265,11 +243,11 @@
         if (savedFavorites.includes(word)) {
             savedFavorites = savedFavorites.filter(v => v !== word);
             btn.classList.remove('active');
-            btn.innerText = '☆ В избранное';
+            btn.innerText = '☆';
         } else {
             savedFavorites.push(word);
             btn.classList.add('active');
-            btn.innerText = '★ В избранном';
+            btn.innerText = '★';
         }
         localStorage.setItem('arabus_favs', JSON.stringify(savedFavorites));
         if (currentUser) await db.collection('users').doc(currentUser.uid).set({ favs: savedFavorites }, { merge: true });
@@ -278,7 +256,7 @@
 
     async function toggleAuth() {
         if (currentUser) auth.signOut();
-        else await auth.signInWithPopup(provider).catch(e => alert("Ошибка входа: " + e.message));
+        else await auth.signInWithPopup(provider).catch(e => alert("Ошибка: " + e.message));
     }
 
     window.onload = () => { updateStatusDefault(); filterWords(); };
