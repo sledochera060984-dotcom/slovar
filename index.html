@@ -3,215 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#27ae60">
-    <title>Арабский Словарь v3</title>
+    <title>Арабский Словарь Pro</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 15px; -webkit-tap-highlight-color: transparent; }
-        .container { max-width: 100%; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        h1 { text-align: center; color: #2c3e50; font-size: 22px; margin-top: 0; margin-bottom: 5px; }
-        .user-info { text-align: center; font-size: 12px; color: #777; margin-bottom: 15px; }
-        .auth-bar { display: flex; justify-content: center; margin-bottom: 15px; }
-        .google-btn { background: white; border: 1px solid #ddd; padding: 8px 15px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        body { font-family: -apple-system, sans-serif; background-color: #f4f4f9; margin: 0; padding: 10px; }
+        .container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .user-info { text-align: center; font-size: 11px; color: #888; margin-bottom: 10px; }
         .tabs { display: flex; margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #27ae60; }
-        .tab { flex: 1; padding: 10px; text-align: center; background: white; color: #27ae60; border: none; font-size: 14px; cursor: pointer; }
+        .tab { flex: 1; padding: 10px; text-align: center; background: white; color: #27ae60; border: none; cursor: pointer; }
         .tab.active { background: #27ae60; color: white; font-weight: bold; }
-        input[type="text"] { width: 100%; padding: 14px; margin-bottom: 20px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; box-sizing: border-box; outline: none; }
-        .word-list { list-style-type: none; padding: 0; margin: 0; }
-        .word-item { border-bottom: 1px solid #f0f0f0; }
-        .word-header { padding: 15px 0; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .arabic-word { font-size: 24px; font-weight: bold; color: #27ae60; direction: rtl; }
-        .short-translation { font-size: 16px; color: #555; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px; }
-        .word-details { display: none; padding: 0 0 15px 0; border-top: 1px dashed #eee; padding-top: 15px; }
-        .word-item.expanded .word-details { display: block; }
-        .word-item.expanded .short-translation { white-space: normal; font-weight: bold; color: #2c3e50; }
-        .actions { display: flex; gap: 10px; margin-top: 10px; }
-        .action-btn { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #ddd; background: white; font-size: 14px; font-weight: bold; cursor: pointer; }
-        .fav-btn.active { color: #f39c12; border-color: #f39c12; background: #fffdf5; }
-        .settings-panel { display: none; text-align: center; padding: 20px 0; }
-        .db-status { font-weight: bold; color: #27ae60; margin-bottom: 20px; }
+        input[type="text"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .word-list { list-style: none; padding: 0; }
+        .word-item { border-bottom: 1px solid #eee; padding: 10px 0; }
+        .word-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .arabic { font-size: 22px; font-weight: bold; color: #27ae60; direction: rtl; }
+        .russian { font-size: 15px; color: #444; flex: 1; padding-right: 10px; }
+        .details { display: none; padding-top: 10px; font-size: 14px; color: #333; line-height: 1.4; border-top: 1px dashed #eee; margin-top: 5px; }
+        .expanded .details { display: block; }
+        .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+        .btn { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+        .btn.active { background: #fffdf0; border-color: #f39c12; color: #f39c12; }
+        .google-btn { width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ddd; background: white; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>📖 Словарь</h1>
-    <div id="userInfo" class="user-info">Подключение...</div>
-    <div class="auth-bar">
-        <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
-    </div>
+    <div id="userInfo" class="user-info">Загрузка...</div>
+    <button id="authBtn" class="google-btn" onclick="toggleAuth()">Войти через Google</button>
 
     <div class="tabs">
         <button id="tabAll" class="tab active" onclick="setTab('all')">Словарь</button>
         <button id="tabFav" class="tab" onclick="setTab('fav')">Избранное</button>
-        <button id="tabSettings" class="tab" onclick="setTab('settings')">⚙️ Инфо</button>
     </div>
 
-    <div id="mainContent">
-        <input type="text" id="searchInput" placeholder="Поиск..." onkeyup="filterWords()">
-        <ul id="dictionaryList" class="word-list"></ul>
-    </div>
-
-    <div id="settingsPanel" class="settings-panel">
-        <div id="dbStatus" class="db-status">⏳ Подключение базы...</div>
-        <button class="action-btn" style="color: red; border-color: red;" onclick="clearFavorites()">🗑 Очистить избранное</button>
-    </div>
+    <input type="text" id="searchInput" placeholder="Поиск (араб / рус)..." oninput="filterWords()">
+    <div id="list" class="word-list"></div>
 </div>
 
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
-        authDomain: "arabus-dict-96c12.firebaseapp.com",
-        projectId: "arabus-dict-96c12",
-        storageBucket: "arabus-dict-96c12.firebasestorage.app",
-        messagingSenderId: "814248156149",
-        appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
-    };
+<script src="base.js"></script>
 
+<script>
+    // --- FIREBASE CONFIG (ВСТАВЬ СВОЙ!) ---
+    const firebaseConfig = { 
+        apiKey: "ТВОЙ_КЛЮЧ",
+        authDomain: "ТВОЙ_ДОМЕН",
+        projectId: "ТВОЙ_ID",
+        storageBucket: "...",
+        messagingSenderId: "...",
+        appId: "..."
+    };
+    
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
     let currentUser = null;
-    let savedFavorites = [];
-    let dictionaryData = [];
+    let savedFavorites = JSON.parse(localStorage.getItem('favs')) || [];
     let currentTab = 'all';
+    let data = (typeof dictBase !== 'undefined') ? dictBase : [];
 
-    async function loadDatabase() {
-        const statusEl = document.getElementById('dbStatus');
-        try {
-            // Добавляем случайное число к ссылке, чтобы обмануть кэш браузера
-            const response = await fetch('base.js?v=' + Math.random());
-            const text = await response.text();
-            const jsonStr = text.replace(/^const dictBase\s*=\s*/, '').replace(/;$/, '').trim();
-            dictionaryData = JSON.parse(jsonStr);
-            statusEl.innerHTML = `✅ База: <b>${dictionaryData.length} слов</b>`;
-            filterWords();
-        } catch (e) {
-            statusEl.innerHTML = "❌ Ошибка загрузки базы";
-        }
-    }
-
-    auth.onAuthStateChanged(async (user) => {
-        const authBtn = document.getElementById('authBtn');
-        const userInfo = document.getElementById('userInfo');
-        if (user) {
-            currentUser = user;
-            authBtn.innerHTML = "Выйти (" + user.displayName.split(' ')[0] + ")";
-            userInfo.innerHTML = "Облако АКТИВНО: " + user.email;
-            await loadFavoritesFromCloud();
-        } else {
-            currentUser = null;
-            authBtn.innerHTML = "🌐 Войти через Google";
-            userInfo.innerHTML = "Локальный режим (без облака)";
-            savedFavorites = JSON.parse(localStorage.getItem('arabic_favorites')) || [];
-            filterWords();
-        }
-    });
-
-    async function toggleAuth() {
-        if (currentUser) { auth.signOut(); } 
-        else { await auth.signInWithPopup(provider); }
-    }
-
-    async function loadFavoritesFromCloud() {
-        if (!currentUser) return;
-        const doc = await db.collection('users').doc(currentUser.uid).get();
-        if (doc.exists) { savedFavorites = doc.data().favorites || []; }
-        filterWords();
-    }
-
-    async function saveFavorites() {
-        localStorage.setItem('arabic_favorites', JSON.stringify(savedFavorites));
-        if (currentUser) { await db.collection('users').doc(currentUser.uid).set({ favorites: savedFavorites }); }
-    }
-
-    async function toggleFavorite(wordAr, event) {
-        event.stopPropagation();
-        if (savedFavorites.includes(wordAr)) { savedFavorites = savedFavorites.filter(w => w !== wordAr); } 
-        else { savedFavorites.push(wordAr); }
-        filterWords();
-        await saveFavorites();
-    }
-
-    // --- НОВАЯ СИСТЕМНАЯ ОЗВУЧКА ---
-    function speakWord(text, event) {
-        event.stopPropagation();
-        window.speechSynthesis.cancel(); // Остановить, если уже говорит
-
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ar-SA'; 
-        utterance.rate = 0.8; 
-
-        // Если системный голос не сработал (редко на Android), пробуем Google
-        utterance.onerror = () => {
-            const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&tl=ar&client=tw-ob&q=${encodeURIComponent(text)}`);
-            audio.play();
-        };
-
-        window.speechSynthesis.speak(utterance);
-    }
-
-    function setTab(tabName) {
-        currentTab = tabName;
-        document.getElementById('tabAll').className = tabName === 'all' ? 'tab active' : 'tab';
-        document.getElementById('tabFav').className = tabName === 'fav' ? 'tab active' : 'tab';
-        document.getElementById('tabSettings').className = tabName === 'settings' ? 'tab active' : 'tab';
-        document.getElementById('mainContent').style.display = tabName === 'settings' ? 'none' : 'block';
-        document.getElementById('settingsPanel').style.display = tabName === 'settings' ? 'block' : 'none';
-        filterWords();
-    }
-
-    function renderWords(words) {
-        const listElement = document.getElementById('dictionaryList');
-        listElement.innerHTML = "";
-        words.slice(0, 50).forEach(word => {
-            const isFav = savedFavorites.includes(word.ar);
-            const li = document.createElement('li');
-            li.className = 'word-item';
-            li.innerHTML = `
-                <div class="word-header" onclick="this.parentElement.classList.toggle('expanded')">
-                    <div class="short-translation">${word.short_ru || word.ru}</div>
-                    <div class="arabic-word">${word.ar}</div>
-                </div>
-                <div class="word-details">
-                    <div style="font-size:15px; margin-bottom:10px;">${word.ru}</div>
-                    <div class="actions">
-                        <button class="action-btn" onclick="speakWord('${word.ar}', event)">🔊 Слушать</button>
-                        <button class="action-btn fav-btn ${isFav ? 'active' : ''}" onclick="toggleFavorite('${word.ar}', event)">
-                            ${isFav ? '★ Удалить' : '☆ В избранное'}
-                        </button>
-                    </div>
-                </div>`;
-            listElement.appendChild(li);
-        });
-    }
+    // --- УМНЫЙ ПОИСК И СОРТИРОВКА ---
+    function normalize(t) { return t ? t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").trim() : ""; }
 
     function filterWords() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
-        let filtered = dictionaryData.filter(word => {
-            if (currentTab === 'fav' && !savedFavorites.includes(word.ar)) return false;
+        const normQuery = normalize(query);
+        const list = document.getElementById('list');
+        list.innerHTML = "";
+
+        if (!query && currentTab === 'all') return;
+
+        let filtered = data.filter(w => {
+            if (currentTab === 'fav' && !savedFavorites.includes(w.ar)) return false;
             if (!query) return true;
-            return word.ru.toLowerCase().includes(query) || word.ar.includes(query);
+            return w.ru.toLowerCase().includes(query) || normalize(w.ar).includes(normQuery);
         });
-        renderWords(filtered);
+
+        // СОРТИРОВКА: точные совпадения выше всего
+        filtered.sort((a, b) => {
+            const normA = normalize(a.ar);
+            const normB = normalize(b.ar);
+            
+            // Если запрос совпадает с арабским словом полностью
+            if (normA === normQuery && normB !== normQuery) return -1;
+            if (normB === normQuery && normA !== normQuery) return 1;
+            
+            // Если запрос — начало арабского слова
+            if (normA.startsWith(normQuery) && !normB.startsWith(normQuery)) return -1;
+            if (normB.startsWith(normQuery) && !normA.startsWith(normQuery)) return 1;
+
+            return a.ru.length - b.ru.length; // Короткие переводы выше
+        });
+
+        filtered.slice(0, 50).forEach(w => {
+            const isFav = savedFavorites.includes(w.ar);
+            const item = document.createElement('div');
+            item.className = 'word-item';
+            item.innerHTML = `
+                <div class="word-header" onclick="this.parentElement.classList.toggle('expanded')">
+                    <div class="russian">${w.short_ru || w.ru.split(';')[0]}</div>
+                    <div class="arabic">${w.ar}</div>
+                </div>
+                <div class="details">
+                    <div>${w.ru}</div>
+                    <div class="btn-row">
+                        <button class="btn" onclick="speak('${w.ar}')">🔊 Слушать</button>
+                        <button class="btn ${isFav?'active':''}" onclick="toggleFav('${w.ar}', this)">${isFav?'★':'☆'} Избранное</button>
+                    </div>
+                </div>`;
+            list.appendChild(item);
+        });
     }
 
-    function clearFavorites() {
-        if(confirm("Очистить всё избранное?")) {
-            savedFavorites = [];
-            saveFavorites();
-            filterWords();
+    // --- ОСТАЛЬНАЯ ЛОГИКА ---
+    function setTab(t) { currentTab = t; document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active')); event.target.classList.add('active'); filterWords(); }
+
+    async function toggleFav(word, btn) {
+        if (savedFavorites.includes(word)) savedFavorites = savedFavorites.filter(v => v !== word);
+        else savedFavorites.push(word);
+        btn.classList.toggle('active');
+        btn.innerText = savedFavorites.includes(word) ? '★ Избранное' : '☆ Избранное';
+        localStorage.setItem('favs', JSON.stringify(savedFavorites));
+        if (currentUser) await db.collection('users').doc(currentUser.uid).set({favs: savedFavorites});
+    }
+
+    function speak(t) {
+        const audio = new Audio(`https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=ar&client=gtx&q=${encodeURIComponent(t)}`);
+        audio.play();
+    }
+
+    async function toggleAuth() {
+        if (currentUser) auth.signOut();
+        else await auth.signInWithPopup(provider);
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+        currentUser = user;
+        document.getElementById('authBtn').innerText = user ? `Выйти (${user.displayName.split(' ')[0]})` : "Войти через Google";
+        document.getElementById('userInfo').innerText = user ? `Облако АКТИВНО: ${user.email}` : "Войдите для синхронизации";
+        if (user) {
+            const doc = await db.collection('users').doc(user.uid).get();
+            if (doc.exists) { savedFavorites = doc.data().favs || []; filterWords(); }
         }
-    }
+    });
 
-    window.onload = loadDatabase;
+    // Регистрация офлайна
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
 </script>
 </body>
 </html>
