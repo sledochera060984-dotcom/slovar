@@ -70,7 +70,7 @@
     <div id="list" class="word-list"></div>
 </div>
 
-<script src="base.js?v=2005"></script>
+<script src="base.js?v=2010"></script>
 
 <script>
     let data = [];
@@ -162,11 +162,9 @@
                 if (normA === normQuery && normB !== normQuery) return -1;
                 if (normB === normQuery && normA !== normQuery) return 1;
                 if (normA.startsWith(normQuery) && !normB.startsWith(normQuery)) return -1;
-                
                 const ruStrA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruStrB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 if (ruStrA.startsWith(queryInput) && !ruStrB.startsWith(queryInput)) return -1;
-                
                 return a.ru.length - b.ru.length;
             });
         }
@@ -209,13 +207,21 @@
         });
     }
 
-    // --- ФУНКЦИЯ GOOGLE ПЕРЕВОДЧИКА ---
+    // --- ОБНОВЛЕННАЯ ФУНКЦИЯ ПЕРЕВОДА ---
     function openTranslate(text, event) {
         event.stopPropagation();
-        const cleanText = text.replace(/[^\u0621-\u064A\s]/g, '');
-        // Формируем ссылку на Google Translate (арабский -> русский)
-        const url = `https://translate.google.com/?sl=ar&tl=ru&text=${encodeURIComponent(cleanText)}&op=translate`;
-        window.open(url, '_blank');
+        // Используем максимально простую ссылку, которую поймет и мобильный Google
+        // Мы НЕ чистим огласовки здесь, так как Google отлично понимает их
+        const url = `https://translate.google.com/?sl=ar&tl=ru&text=${encodeURIComponent(text)}`;
+        
+        // Пытаемся открыть в новой вкладке
+        const newWindow = window.open(url, '_blank');
+        
+        // Если браузер заблокировал всплывающее окно (в PWA такое бывает),
+        // используем запасной метод
+        if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+            window.location.href = url;
+        }
     }
 
     function setTab(t) { 
