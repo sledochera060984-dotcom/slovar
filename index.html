@@ -13,7 +13,7 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Загрузка словаря напрямую (без кэш-барьеров) -->
+    <!-- База данных -->
     <script src="base.js"></script>
     
     <!-- Firebase SDK -->
@@ -81,12 +81,12 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Поиск (Словарь) -->
+    <!-- Словарь -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, الباب)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Ручной Блокнот -->
+    <!-- Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
         <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
@@ -100,10 +100,12 @@
 <div id="toast">Сообщение</div>
 
 <script>
-    // 1. Убиваем старые кэши браузера (PWA), которые могли мешать загрузке новых слов
+    // 1. АКТИВАЦИЯ ОФЛАЙН-РЕЖИМА (Service Worker)
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            for(let registration of registrations) { registration.unregister(); }
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Офлайн-режим активирован!'))
+                .catch(err => console.log('Ошибка офлайн-режима:', err));
         });
     }
 
@@ -120,7 +122,7 @@
         setTimeout(() => t.style.display = 'none', 3000);
     }
 
-    // Firebase Init
+    // Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
@@ -135,7 +137,11 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Ждем загрузку тяжелой базы словаря
+    // 2. АКТИВАЦИЯ ОФЛАЙН-БАЗЫ FIREBASE (для блокнота)
+    db.enablePersistence().catch(function(err) {
+        console.log("Офлайн хранилище Firebase недоступно", err);
+    });
+
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
@@ -146,7 +152,6 @@
         }
     }, 100);
 
-    // Слушатель Авторизации
     auth.onAuthStateChanged(async (u) => {
         user = u;
         const btn = document.getElementById('authBtn');
@@ -159,21 +164,18 @@
         renderUI();
     });
 
-    // 2. LIVE СИНХРОНИЗАЦИЯ (Автоматическое обновление на всех устройствах)
     function startLiveSync() {
         if (!user) return;
         
-        // Авто-обновление Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
                   localFavs = doc.data().list || [];
                   localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-                  renderUI(); // Экран обновится сам, без "перетягивания"
+                  renderUI();
               }
           });
 
-        // Авто-обновление Блокнота
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -181,7 +183,6 @@
           });
     }
 
-    // 3. БУДИЛЬНИК ДЛЯ ТЕЛЕФОНА (восстанавливает связь, если свернул браузер)
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
             if (user) { db.enableNetwork().catch(() => {}); }
@@ -189,19 +190,18 @@
         }
     });
 
-    // --- БЛОКНОТ (РУЧНОЙ ВВОД) ---
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
-        if (!user) { showMsg("Войдите в аккаунт для сохранения!"); return; }
+        if (!user) { showMsg("Войдите в аккаунт!"); return; }
         
         try {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: Date.now() });
             document.getElementById('manualAr').value = "";
             document.getElementById('manualRu').value = "";
             showMsg("Фраза сохранена!");
-        } catch (e) { showMsg("Ошибка сохранения."); }
+        } catch (e) { showMsg("Сохранено локально (нет сети)."); }
     }
 
     async function removeNote(id, e) {
@@ -212,13 +212,11 @@
         }
     }
 
-    // --- УМНЫЙ ПОИСК ---
     function doSearch() { renderUI(); }
 
     function normalize(t) { 
         if (!t) return "";
         let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
-        // Авто-удаление артикля "Аль" при поиске
         if (res.length > 3 && res.startsWith("ال")) res = res.substring(2);
         return res;
     }
@@ -229,7 +227,6 @@
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // Отрисовка Блокнота
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
@@ -270,11 +267,9 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
-                // Приоритет 1: Арабское слово совпадает
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
-                // Приоритет 2: Русский перевод начинается с введенного слова ("Дверь")
                 const startsRuA = ruA.startsWith(q);
                 const startsRuB = ruB.startsWith(q);
                 if (startsRuA && !startsRuB) return -1;
@@ -322,15 +317,15 @@
         if (localFavs.includes(ar)) localFavs = localFavs.filter(v => v !== ar);
         else localFavs.push(ar);
         
-        // Оптимистичное обновление UI
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         btn.classList.toggle('active');
         btn.innerText = localFavs.includes(ar) ? '★ В избранном' : '☆ В избранное';
         showMsg("Избранное обновлено");
         
-        // Отправка в облако (сработает авто-обновление у всех)
         if (user) {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs });
+            try {
+                await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs });
+            } catch(e) {}
         }
     }
 
