@@ -13,8 +13,8 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Загрузка базы -->
-    <script src="base.js?v=fix_const_1"></script>
+    <!-- Загрузка словаря напрямую (без кэш-барьеров) -->
+    <script src="base.js"></script>
     
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -25,7 +25,7 @@
         :root { --primary: #27ae60; --bg: #f8fafc; --text: #1e293b; --gray: #64748b; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 60px; }
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 40px; }
         .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; }
         
         .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
@@ -45,12 +45,10 @@
         .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
         
-        /* Словарь */
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; }
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         
-        /* Блокнот: Русский сверху */
         .note-header { display: flex; flex-direction: column; }
         .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
         .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -65,7 +63,6 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
-        /* Всплывающее сообщение */
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeIn 0.3s; white-space: nowrap;}
 
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -103,22 +100,27 @@
 <div id="toast">Сообщение</div>
 
 <script>
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v16-pro';
+    // 1. Убиваем старые кэши браузера (PWA), которые могли мешать загрузке новых слов
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) { registration.unregister(); }
+        });
+    }
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v17-live';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let myNotes = []; 
     let activeTab = 'dict';
 
-    // Уведомления вместо alert()
     function showMsg(text) {
         const t = document.getElementById('toast');
-        t.innerText = text;
-        t.style.display = 'block';
+        t.innerText = text; t.style.display = 'block';
         setTimeout(() => t.style.display = 'none', 3000);
     }
 
-    // Firebase
+    // Firebase Init
     const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
@@ -133,7 +135,7 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Исправленная проверка базы (ищет переменную dictBase корректно)
+    // Ждем загрузку тяжелой базы словаря
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
@@ -144,25 +146,34 @@
         }
     }, 100);
 
+    // Слушатель Авторизации
     auth.onAuthStateChanged(async (u) => {
         user = u;
         const btn = document.getElementById('authBtn');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
-            syncCloud();
+            startLiveSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
         }
         renderUI();
     });
 
-    async function syncCloud() {
+    // 2. LIVE СИНХРОНИЗАЦИЯ (Автоматическое обновление на всех устройствах)
+    function startLiveSync() {
         if (!user) return;
-        const fSnap = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').get();
-        if (fSnap.exists) {
-            localFavs = fSnap.data().list || [];
-            localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        }
+        
+        // Авто-обновление Избранного
+        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
+          .onSnapshot(doc => {
+              if (doc.exists) {
+                  localFavs = doc.data().list || [];
+                  localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+                  renderUI(); // Экран обновится сам, без "перетягивания"
+              }
+          });
+
+        // Авто-обновление Блокнота
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -170,7 +181,15 @@
           });
     }
 
-    // --- БЛОКНОТ ---
+    // 3. БУДИЛЬНИК ДЛЯ ТЕЛЕФОНА (восстанавливает связь, если свернул браузер)
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            if (user) { db.enableNetwork().catch(() => {}); }
+            renderUI();
+        }
+    });
+
+    // --- БЛОКНОТ (РУЧНОЙ ВВОД) ---
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
@@ -187,33 +206,30 @@
 
     async function removeNote(id, e) {
         e.stopPropagation();
-        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
-        showMsg("Удалено");
+        if (confirm("Удалить запись из блокнота?")) {
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+            showMsg("Удалено");
+        }
     }
 
     // --- УМНЫЙ ПОИСК ---
-    function doSearch() { renderUI(document.getElementById('queryInput').value.toLowerCase().trim()); }
+    function doSearch() { renderUI(); }
 
     function normalize(t) { 
         if (!t) return "";
-        let res = t.toLowerCase()
-            .replace(/[\u064B-\u0652]/g, "") // удаляем харакаты
-            .replace(/[أإآ]/g, "ا")           // нормализуем алиф
-            .trim();
-        
-        // Отсекаем артикль 'Алиф-Лям'
-        if (res.length > 3 && res.startsWith("ال")) {
-            res = res.substring(2);
-        }
+        let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
+        // Авто-удаление артикля "Аль" при поиске
+        if (res.length > 3 && res.startsWith("ال")) res = res.substring(2);
         return res;
     }
 
-    function renderUI(q = "") {
+    function renderUI() {
         const list = document.getElementById('list');
+        const q = document.getElementById('queryInput').value.toLowerCase().trim();
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // БЛОКНОТ: Русский сверху
+            // Отрисовка Блокнота
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
@@ -254,11 +270,11 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
-                // 1. Точное совпадение арабского
+                // Приоритет 1: Арабское слово совпадает
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
-                // 2. Начало на русском (для "Дверь" и др.)
+                // Приоритет 2: Русский перевод начинается с введенного слова ("Дверь")
                 const startsRuA = ruA.startsWith(q);
                 const startsRuB = ruB.startsWith(q);
                 if (startsRuA && !startsRuB) return -1;
@@ -305,12 +321,17 @@
         e.stopPropagation();
         if (localFavs.includes(ar)) localFavs = localFavs.filter(v => v !== ar);
         else localFavs.push(ar);
+        
+        // Оптимистичное обновление UI
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         btn.classList.toggle('active');
         btn.innerText = localFavs.includes(ar) ? '★ В избранном' : '☆ В избранное';
         showMsg("Избранное обновлено");
-        if (user) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs });
-        if (activeTab === 'fav') renderUI();
+        
+        // Отправка в облако (сработает авто-обновление у всех)
+        if (user) {
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs });
+        }
     }
 
     function speak(t, e) {
@@ -324,5 +345,6 @@
 </script>
 </body>
 </html>
+
 
 
