@@ -59,7 +59,7 @@
         .ai-content { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
 
         /* Списки */
-        .list { list-style: none; padding: 0; margin: 0; }
+        .list { list-style: none; padding: 0; margin: 0; min-height: 50px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; }
         .item-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
@@ -96,7 +96,7 @@
 <body>
 
 <div class="card">
-    <div id="status" class="status-bar">⏳ Загрузка базы...</div>
+    <div id="status" class="status-bar">⏳ Загрузка базы данных...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -106,40 +106,42 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Переводчик</button>
     </div>
 
-    <!-- Поиск -->
+    <!-- Раздел поиска -->
     <div id="searchSection">
         <input type="text" id="query" placeholder="Поиск (араб / рус / корень)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Переводчик -->
+    <!-- Раздел переводчика -->
     <div id="transSection" style="display:none;">
         <textarea id="aiInput" placeholder="Вставьте арабский текст..."></textarea>
         <div id="aiLoading" class="loader">✨ ИИ переводит...</div>
         <button class="btn btn-green" style="margin-top: 10px; width: 100%;" id="btnRunAi" onclick="runAiTranslate()">Перевести</button>
 
         <div id="aiBox">
-            <div class="ai-label">Результат:</div>
+            <div class="ai-label">Результат перевода:</div>
             <div id="aiResult" class="ai-content"></div>
             <div class="actions">
-                <button class="btn btn-green" onclick="saveNote()">💾 Сохранить</button>
+                <button class="btn btn-green" onclick="saveNote()">💾 Сохранить в блокнот</button>
                 <button class="btn" onclick="closeAi()">Отмена</button>
             </div>
         </div>
 
-        <div style="font-size: 12px; color: var(--gray); margin: 20px 0 10px 0; font-weight: 800;">ВАШИ ЗАПИСИ (Русский сверху):</div>
+        <div style="font-size: 12px; color: var(--gray); margin: 20px 0 10px 0; font-weight: 800;">ВАШ БЛОКНОТ (Русский сверху):</div>
     </div>
     
     <div id="list" class="list"></div>
 </div>
 
-<!-- База данных -->
+<!-- Загружаем базу. ВАЖНО: base.js должен объявлять var dictBase -->
 <script src="base.js?v=9999"></script>
 
 <script>
     const apiKey = ""; 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v6-final';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v7-final';
     
-    let dictBase = (typeof dictBase !== 'undefined') ? dictBase : [];
+    // Безопасно инициализируем доступ к данным из внешнего файла
+    let myFullData = [];
+    
     let user = null;
     let favorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let myNotes = []; 
@@ -161,14 +163,16 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Мгновенная проверка базы
-    function checkBase() {
+    // Проверка базы при старте
+    function checkAndInitBase() {
         const status = document.getElementById('status');
-        if (dictBase.length > 0) {
-            status.innerText = `📚 База: ${dictBase.length} слов`;
+        // Используем window.dictBase чтобы избежать конфликтов с локальным let
+        if (window.dictBase && Array.isArray(window.dictBase)) {
+            myFullData = window.dictBase;
+            status.innerText = `📚 База: ${myFullData.length} слов`;
             status.className = "status-bar status-active";
         } else {
-            status.innerText = "⚠️ База не найдена!";
+            status.innerText = "⚠️ Ошибка: База не загружена";
             status.className = "status-bar";
         }
     }
@@ -184,7 +188,7 @@
             startSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
-            checkBase();
+            checkAndInitBase();
         }
         updateView();
     });
@@ -192,14 +196,14 @@
     async function startSync() {
         if (!user) return;
         
-        // Sync Favorites
+        // Синхронизация избранного
         const fDoc = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites').get();
         if (fDoc.exists) {
             favorites = fDoc.data().list || [];
             localStorage.setItem('arabus_favs', JSON.stringify(favorites));
         }
 
-        // Live notes (Rule 2)
+        // Подписка на личные фразы
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               myNotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -207,7 +211,7 @@
           });
     }
 
-    // --- AI LOGIC ---
+    // --- ЛОГИКА ИИ ---
     async function runAiTranslate() {
         const text = document.getElementById('aiInput').value.trim();
         if (!text) return;
@@ -228,7 +232,7 @@
                 box.style.display = 'block';
             }
         } catch (e) {
-            alert("ИИ перегружен. Повторите через минуту.");
+            alert("ИИ перегружен или недоступен.");
         } finally {
             loader.style.display = 'none';
             btn.disabled = false;
@@ -237,16 +241,16 @@
 
     async function callGemini(text) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const payload = { contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Дай ТОЛЬКО перевод: "${text}"` }] }] };
+        const payload = { contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Дай ТОЛЬКО перевод без лишних слов: "${text}"` }] }] };
 
-        for (let i = 0, d = 1000; i < 3; i++, d *= 2) {
+        for (let i = 0; i < 3; i++) {
             try {
                 const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'} });
                 const json = await res.json();
                 return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             } catch (e) {
                 if (i === 2) throw e;
-                await new Promise(r => setTimeout(r, d));
+                await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
             }
         }
     }
@@ -272,12 +276,12 @@
 
     async function deleteNote(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить?")) {
+        if (confirm("Удалить запись?")) {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
         }
     }
 
-    // --- SEARCH & UI ---
+    // --- ПОИСК И ОТОБРАЖЕНИЕ ---
     function doSearch() {
         updateView(document.getElementById('query').value.toLowerCase().trim());
     }
@@ -298,7 +302,7 @@
                 el.innerHTML = `
                     <div class="note-header" onclick="this.parentElement.classList.toggle('expanded')">
                         <div class="note-ru">${n.ru}</div>
-                        <div class="note-ar-hint">${n.ar.substring(0, 30)}...</div>
+                        <div class="note-ar-hint">${n.ar.substring(0, 40)}...</div>
                     </div>
                     <div class="details">
                         <span class="ar-full">${n.ar}</span>
@@ -314,7 +318,7 @@
 
         // СЛОВАРЬ И ИЗБРАННОЕ
         const nQ = normalize(q);
-        let filtered = dictBase.filter(w => {
+        let filtered = myFullData.filter(w => {
             if (activeTab === 'fav' && !favorites.includes(w.ar)) return false;
             if (!q) return activeTab === 'fav';
             return w.ru.toLowerCase().includes(q) || normalize(w.ar).includes(nQ);
@@ -322,10 +326,16 @@
 
         if (q) {
             filtered.sort((a, b) => {
+                // Умная сортировка: совпадение в начале слова приоритетнее
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                if (ruA.startsWith(q) && !ruB.startsWith(q)) return -1;
-                if (ruB.startsWith(q) && !ruA.startsWith(q)) return 1;
+                
+                const startsA = ruA.startsWith(q);
+                const startsB = ruB.startsWith(q);
+                
+                if (startsA && !startsB) return -1;
+                if (startsB && !startsA) return 1;
+                
                 return a.ru.length - b.ru.length;
             });
         }
@@ -386,13 +396,10 @@
         else await auth.signInWithPopup(provider);
     }
 
-    // Точка входа
     window.onload = () => { 
-        checkBase();
+        checkAndInitBase();
         switchTab('dict'); 
     };
 </script>
 </body>
 </html>
-
-
