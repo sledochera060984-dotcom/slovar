@@ -13,6 +13,7 @@
     
     <title>Arabus Pro</title>
     
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -21,45 +22,72 @@
         :root { --primary: #27ae60; --bg: #f8fafc; --text: #1e293b; --gray: #64748b; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            background-color: var(--bg); 
+            margin: 0; 
+            padding: env(safe-area-inset-top) 12px 12px 12px; 
+            color: var(--text);
+        }
+
         .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 85vh; }
         
-        .status-bar { text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; font-weight: 700; border: 1px solid #e2e8f0; background: #fff; }
-        .status-active { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+        /* Индикаторы статуса */
+        .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
+        .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+        .status-wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
         .status-error { background: #fff1f2; color: #e11d48; border-color: #fecdd3; }
         
         .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
+        /* Вкладки */
         .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
         .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--gray); }
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
-        input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; }
+        /* Поля ввода */
+        input[type="text"], textarea { 
+            width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; 
+            font-size: 16px; outline: none; transition: 0.2s; background: #fff;
+        }
         input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
-        textarea { height: 100px; resize: none; }
+        textarea { height: 110px; resize: none; }
 
-        #aiBox { display: none; background: #fffbeb; border: 2px dashed #f59e0b; padding: 16px; border-radius: 16px; margin-bottom: 20px; animation: fadeIn 0.3s ease; }
-        .ai-label { font-size: 11px; color: #b45309; text-transform: uppercase; font-weight: 800; margin-bottom: 4px; }
-        .ai-content { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
+        /* Окно ИИ */
+        #aiBox { 
+            display: none; background: #fffbeb; border: 2px dashed #f59e0b; 
+            padding: 16px; border-radius: 16px; margin-bottom: 20px; animation: fadeIn 0.3s ease;
+        }
+        .ai-label { font-size: 11px; color: #b45309; text-transform: uppercase; font-weight: 800; margin-bottom: 6px; }
+        .ai-content { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 14px; line-height: 1.4; }
 
-        .list { list-style: none; padding: 0; margin: 0; }
+        /* Списки */
+        .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; }
-        .item-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .item-clickable { cursor: pointer; }
         
+        /* Словарь: Арабский справа */
+        .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; }
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         
-        /* Notebook Style: Russian Top */
-        .note-header { display: flex; flex-direction: column; cursor: pointer; }
+        /* Блокнот: Русский заголовок сверху */
+        .note-header { display: flex; flex-direction: column; }
         .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
-        .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; }
+        .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+        /* Раскрытие */
         .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; }
         .expanded .details { display: block; }
-        .ar-full { font-size: 30px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
+        .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
 
+        /* Кнопки */
         .actions { display: flex; gap: 8px; margin-top: 12px; }
-        .btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn { 
+            flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; 
+            background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; 
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
         .btn-green { background: var(--primary); color: white; border: none; }
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
@@ -71,7 +99,7 @@
 <body>
 
 <div class="card">
-    <div id="status" class="status-bar">⏳ Загрузка базы...</div>
+    <div id="status" class="status-bar status-wait">⏳ Подготовка системы...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -81,42 +109,46 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Переводчик</button>
     </div>
 
+    <!-- Раздел словаря -->
     <div id="searchSection">
-        <input type="text" id="query" placeholder="Поиск (араб / рус / корень)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск слова или корня..." oninput="triggerSearch()" autocomplete="off">
     </div>
 
-    <div id="transSection" style="display:none;">
+    <!-- Раздел переводчика -->
+    <div id="translatorSection" style="display:none;">
         <textarea id="aiInput" placeholder="Вставьте арабскую фразу..."></textarea>
-        <div id="aiLoading" class="loader">✨ ИИ подбирает перевод...</div>
-        <button class="btn btn-green" style="margin-top: 10px; width: 100%;" id="btnRunAi" onclick="runAiTranslate()">Перевести</button>
+        <div id="aiLoading" class="loader">✨ ИИ переводит вашу фразу...</div>
+        <button class="btn btn-green" style="margin-top: 10px; width: 100%;" id="btnRunAi" onclick="startAiTranslate()">Перевести</button>
 
         <div id="aiBox">
             <div class="ai-label">Результат перевода:</div>
             <div id="aiResult" class="ai-content"></div>
             <div class="actions">
-                <button class="btn btn-green" onclick="saveNote()">💾 Сохранить</button>
-                <button class="btn" onclick="closeAi()">Отмена</button>
+                <button class="btn btn-green" onclick="saveToCloud()">💾 Сохранить в блокнот</button>
+                <button class="btn" onclick="hideAi()">Отмена</button>
             </div>
         </div>
-        <div style="font-size: 11px; color: var(--gray); margin: 20px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои записи (Русский первым):</div>
+        <div style="font-size: 11px; color: var(--gray); margin: 20px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мой Блокнот (Русский первым):</div>
     </div>
     
     <div id="list" class="list"></div>
 </div>
 
-<script src="base.js?v=9999"></script>
+<!-- База данных (base.js должен объявлять var dictBase) -->
+<script src="base.js?v=final_fix_101"></script>
 
 <script>
-    const apiKey = ""; 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v8-final';
+    const apiKey = ""; // Ключ предоставляется средой
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v10-fixed';
     
     let user = null;
-    let favorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
-    let myNotes = []; 
+    let localFavorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
+    let cloudNotes = []; 
     let activeTab = 'dict';
-    let lastAiResult = null;
+    let currentAiResult = null;
 
-    const fbConfig = {
+    // Firebase
+    const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
       projectId: "arabus-dict-96c12",
@@ -125,124 +157,165 @@
       appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
     };
 
-    firebase.initializeApp(fbConfig);
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Инициализация принудительно, даже если база не пришла вовремя
-    function initApp() {
-        const status = document.getElementById('status');
+    // МОНИТОРИНГ ЗАГРУЗКИ БАЗЫ
+    const databaseWatcher = setInterval(() => {
+        const statusEl = document.getElementById('status');
         if (window.dictBase && Array.isArray(window.dictBase)) {
-            status.innerText = `📚 База: ${window.dictBase.length} слов`;
-            status.className = "status-bar status-active";
-        } else {
-            status.innerText = "⚠️ База не загружена. Проверьте интернет.";
-            status.className = "status-bar status-error";
-            // Создаем пустую базу чтобы код не падал
-            window.dictBase = [{ ar: "Ошибка", ru: "База данных не найдена в base.js" }];
+            statusEl.innerText = `📚 База готова: ${window.dictBase.length} слов`;
+            statusEl.className = "status-bar status-ready";
+            clearInterval(databaseWatcher);
+            renderUI();
         }
-        updateView();
-    }
+    }, 800);
 
-    // Ждем базу максимум 3 секунды
-    let attempts = 0;
-    const baseWait = setInterval(() => {
-        attempts++;
-        if (window.dictBase || attempts > 6) {
-            clearInterval(baseWait);
-            initApp();
+    // Тайм-аут на случай ошибки
+    setTimeout(() => {
+        if (!window.dictBase) {
+            document.getElementById('status').innerText = "⚠️ База грузится медленно. Ждем...";
+            document.getElementById('status').className = "status-bar status-wait";
         }
-    }, 500);
+    }, 5000);
 
     auth.onAuthStateChanged(async (u) => {
         user = u;
         const btn = document.getElementById('authBtn');
-        const status = document.getElementById('status');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
-            status.innerText = `✅ Облако: ${user.email}`;
-            status.className = "status-bar status-active";
-            syncCloud();
+            document.getElementById('status').innerText = `✅ Облако активно: ${user.email}`;
+            document.getElementById('status').className = "status-bar status-ready";
+            syncData();
         } else {
             btn.innerText = "🌐 Войти через Google";
         }
-        updateView();
+        renderUI();
     });
 
-    async function syncCloud() {
+    async function syncData() {
         if (!user) return;
-        const fSnap = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').get();
-        if (fSnap.exists) {
-            favorites = fSnap.data().list || [];
-            localStorage.setItem('arabus_favs', JSON.stringify(favorites));
+        
+        // Синхронизация Избранного
+        const favSnap = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').get();
+        if (favSnap.exists) {
+            localFavorites = favSnap.data().list || [];
+            localStorage.setItem('arabus_favs', JSON.stringify(localFavorites));
         }
+
+        // Подписка на Блокнот
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
-              myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              if (activeTab === 'trans') updateView();
+              cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              if (activeTab === 'trans') renderUI();
           });
     }
 
-    async function runAiTranslate() {
+    // --- ЛОГИКА ИИ ---
+    async function startAiTranslate() {
         const text = document.getElementById('aiInput').value.trim();
         if (!text) return;
+
         const loader = document.getElementById('aiLoading');
         const box = document.getElementById('aiBox');
         const btn = document.getElementById('btnRunAi');
+
         loader.style.display = 'block';
         btn.disabled = true;
         box.style.display = 'none';
+
         try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const res = await fetch(url, { method: 'POST', body: JSON.stringify({ contents: [{ parts: [{ text: `Переведи на русский. Дай ТОЛЬКО перевод: "${text}"` }] }] }) });
-            const json = await res.json();
-            const result = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (result) {
-                lastAiResult = { ar: text, ru: result };
-                document.getElementById('aiResult').innerText = result;
+            const translated = await callGemini(text);
+            if (translated) {
+                currentAiResult = { ar: text, ru: translated };
+                document.getElementById('aiResult').innerText = translated;
                 box.style.display = 'block';
+            } else {
+                alert("ИИ временно не отвечает. Попробуйте еще раз.");
             }
-        } catch (e) { alert("Ошибка ИИ. Попробуйте еще раз."); }
-        finally { loader.style.display = 'none'; btn.disabled = false; }
+        } catch (e) {
+            alert("Ошибка связи с ИИ. Проверьте интернет.");
+        } finally {
+            loader.style.display = 'none';
+            btn.disabled = false;
+        }
     }
 
-    async function saveNote() {
-        if (!user || !lastAiResult) return;
-        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar: lastAiResult.ar, ru: lastAiResult.ru, ts: Date.now() });
-        closeAi();
-        document.getElementById('aiInput').value = "";
+    async function callGemini(text) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Выдай ТОЛЬКО перевод без лишних слов: "${text}"` }] }]
+        };
+
+        for (let i = 0, d = 1000; i < 3; i++, d *= 2) {
+            try {
+                const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'} });
+                const json = await res.json();
+                // Безопасное извлечение текста
+                return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            } catch (e) {
+                if (i === 2) throw e;
+                await new Promise(r => setTimeout(r, d));
+            }
+        }
     }
 
-    function closeAi() { document.getElementById('aiBox').style.display = 'none'; lastAiResult = null; }
+    async function saveToCloud() {
+        if (!user) { alert("Войдите в систему для сохранения!"); return; }
+        if (!currentAiResult) return;
+        try {
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({
+                ar: currentAiResult.ar,
+                ru: currentAiResult.ru,
+                ts: Date.now()
+            });
+            hideAi();
+            document.getElementById('aiInput').value = "";
+        } catch (e) { alert("Ошибка сохранения."); }
+    }
 
-    async function deleteNote(id, e) {
+    function hideAi() {
+        document.getElementById('aiBox').style.display = 'none';
+        currentAiResult = null;
+    }
+
+    async function removeNote(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить?")) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+        if (confirm("Удалить из блокнота?")) {
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+        }
     }
 
-    function doSearch() { updateView(document.getElementById('query').value.toLowerCase().trim()); }
+    // --- ПОИСК И ОТОБРАЖЕНИЕ ---
+    function triggerSearch() {
+        renderUI(document.getElementById('queryInput').value.toLowerCase().trim());
+    }
 
-    function normalize(t) { return t ? t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim() : ""; }
+    function normalize(t) {
+        return t ? t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim() : "";
+    }
 
-    function updateView(q = "") {
+    function renderUI(q = "") {
         const list = document.getElementById('list');
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
+            // БЛОКНОТ: Русский заголовок первым (Твое пожелание)
+            cloudNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
-                el.className = 'item';
+                el.className = 'item item-clickable';
                 el.innerHTML = `
                     <div class="note-header" onclick="this.parentElement.classList.toggle('expanded')">
                         <div class="note-ru">${n.ru}</div>
-                        <div class="note-ar-hint">${n.ar.substring(0, 40)}...</div>
+                        <div class="note-ar-hint">${n.ar.substring(0, 50)}...</div>
                     </div>
                     <div class="details">
                         <span class="ar-full">${n.ar}</span>
                         <div class="actions">
-                            <button class="btn" onclick="speak('${n.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-red" onclick="deleteNote('${n.id}', event)">🗑 Удалить</button>
+                            <button class="btn" onclick="speakText('${n.ar}', event)">🔊 Слушать</button>
+                            <button class="btn btn-red" onclick="removeNote('${n.id}', event)">🗑 Удалить</button>
                         </div>
                     </div>`;
                 list.appendChild(el);
@@ -250,39 +323,47 @@
             return;
         }
 
+        // СЛОВАРЬ И ИЗБРАННОЕ
         if (!window.dictBase) return;
+
         const nQ = normalize(q);
         let filtered = window.dictBase.filter(w => {
-            if (activeTab === 'fav' && !favorites.includes(w.ar)) return false;
+            if (activeTab === 'fav' && !localFavorites.includes(w.ar)) return false;
             if (!q) return activeTab === 'fav';
             return w.ru.toLowerCase().includes(q) || normalize(w.ar).includes(nQ);
         });
 
         if (q) {
             filtered.sort((a, b) => {
+                // ПРИОРИТЕТ: Совпадение в НАЧАЛЕ слова (чтобы Дверь была сверху)
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                if (ruA.startsWith(q) && !ruB.startsWith(q)) return -1;
-                if (ruB.startsWith(q) && !ruA.startsWith(q)) return 1;
+                
+                const startA = ruA.startsWith(q);
+                const startB = ruB.startsWith(q);
+                
+                if (startA && !startB) return -1;
+                if (startB && !startA) return 1;
+                
                 return a.ru.length - b.ru.length;
             });
         }
 
         filtered.slice(0, 50).forEach(w => {
-            const active = favorites.includes(w.ar);
+            const isFav = localFavorites.includes(w.ar);
             const el = document.createElement('div');
-            el.className = 'item';
+            el.className = 'item item-clickable';
             el.innerHTML = `
-                <div class="item-row" onclick="this.parentElement.classList.toggle('expanded')">
+                <div class="dict-row" onclick="this.parentElement.classList.toggle('expanded')">
                     <div class="dict-ru">${w.short_ru || w.ru.split(';')[0]}</div>
                     <div class="dict-ar">${w.ar}</div>
                 </div>
                 <div class="details">
-                    <div style="white-space: pre-wrap; margin-bottom:12px;">${w.ru}</div>
+                    <div style="white-space: pre-wrap; margin-bottom:12px; color:#444;">${w.ru}</div>
                     <div class="actions">
-                        <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                        <button class="btn btn-star ${active ? 'active' : ''}" onclick="toggleStar('${w.ar}', this, event)">
-                            ${active ? '★ Избранное' : '☆ В избранное'}
+                        <button class="btn" onclick="speakText('${w.ar}', event)">🔊 Слушать</button>
+                        <button class="btn btn-star ${isFav ? 'active' : ''}" onclick="toggleFavorite('${w.ar}', this, event)">
+                            ${isFav ? '★ В избранном' : '☆ В избранное'}
                         </button>
                     </div>
                 </div>`;
@@ -293,33 +374,45 @@
     function switchTab(t) {
         activeTab = t;
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
+        const tabIds = { dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' };
+        document.getElementById(tabIds[t]).classList.add('active');
+        
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
-        document.getElementById('transSection').style.display = t === 'trans' ? 'block' : 'none';
-        closeAi();
-        updateView();
+        document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
+        
+        hideAi();
+        renderUI();
     }
 
-    async function toggleStar(ar, btn, e) {
+    async function toggleFavorite(ar, btn, e) {
         e.stopPropagation();
-        if (favorites.includes(ar)) favorites = favorites.filter(v => v !== ar);
-        else favorites.push(ar);
-        localStorage.setItem('arabus_favs', JSON.stringify(favorites));
+        if (localFavorites.includes(ar)) localFavorites = localFavorites.filter(v => v !== ar);
+        else localFavorites.push(ar);
+        
+        localStorage.setItem('arabus_favs', JSON.stringify(localFavorites));
         btn.classList.toggle('active');
-        btn.innerText = favorites.includes(ar) ? '★ Избранное' : '☆ В избранное';
-        if (user) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: favorites });
-        if (activeTab === 'fav') updateView();
+        btn.innerText = localFavorites.includes(ar) ? '★ В избранном' : '☆ В избранное';
+        
+        if (user) {
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavorites });
+        }
+        if (activeTab === 'fav') renderUI();
     }
 
-    function speak(t, e) {
+    function speakText(t, e) {
         e.stopPropagation();
         window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
+        const u = new SpeechSynthesisUtterance(t);
+        u.lang = 'ar-SA';
+        window.speechSynthesis.speak(u);
     }
 
-    async function toggleAuth() { if (user) auth.signOut(); else await auth.signInWithPopup(provider); }
+    async function toggleAuth() {
+        if (user) auth.signOut();
+        else await auth.signInWithPopup(provider);
+    }
 
-    window.onload = () => { if (window.dictBase) initApp(); };
+    window.onload = () => { switchTab('dict'); };
 </script>
 </body>
 </html>
