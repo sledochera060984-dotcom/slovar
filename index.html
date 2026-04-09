@@ -13,10 +13,10 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Сначала грузим базу -->
-    <script src="base.js?v=fixed_final"></script>
+    <!-- Загрузка базы -->
+    <script src="base.js?v=fix_const_1"></script>
     
-    <!-- Firebase SDK (Compat) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -25,8 +25,8 @@
         :root { --primary: #27ae60; --bg: #f8fafc; --text: #1e293b; --gray: #64748b; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); }
-        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 85vh; }
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 60px; }
+        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; }
         
         .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
         .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
@@ -35,7 +35,7 @@
         .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
         .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
-        .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--gray); }
+        .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s;}
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
         input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
@@ -45,7 +45,7 @@
         .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
         
-        /* Словарь: Арабский справа */
+        /* Словарь */
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; }
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
@@ -65,13 +65,16 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        /* Всплывающее сообщение */
+        #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeIn 0.3s; white-space: nowrap;}
+
+        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div id="status" class="status-bar status-wait">⏳ Ожидание базы (8.5 МБ)...</div>
+    <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -81,14 +84,15 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
+    <!-- Поиск (Словарь) -->
     <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (напр: дверь или الباب)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, الباب)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Блокнот -->
+    <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
-        <input type="text" id="manualAr" placeholder="Текст на арабском...">
-        <textarea id="manualRu" placeholder="Перевод на русский..."></textarea>
+        <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
+        <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
         <button class="btn btn-green" style="width: 100%; margin-bottom: 15px;" onclick="saveManualNote()">💾 Сохранить в блокнот</button>
         <div style="font-size: 11px; color: var(--gray); margin: 10px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои Сохраненные Записи:</div>
     </div>
@@ -96,13 +100,23 @@
     <div id="list" class="list"></div>
 </div>
 
+<div id="toast">Сообщение</div>
+
 <script>
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-pro-final-v1';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v16-pro';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let myNotes = []; 
     let activeTab = 'dict';
+
+    // Уведомления вместо alert()
+    function showMsg(text) {
+        const t = document.getElementById('toast');
+        t.innerText = text;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
 
     // Firebase
     const firebaseConfig = {
@@ -119,16 +133,16 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // ГИПЕР-АКТИВНАЯ ПРОВЕРКА БАЗЫ
+    // Исправленная проверка базы (ищет переменную dictBase корректно)
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
-        if (window.dictBase && Array.isArray(window.dictBase)) {
-            s.innerText = `✅ База готова: ${window.dictBase.length} слов`;
+        if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
+            s.innerText = `✅ База готова: ${dictBase.length} слов`;
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             renderUI();
         }
-    }, 100); // Проверяем 10 раз в секунду
+    }, 100);
 
     auth.onAuthStateChanged(async (u) => {
         user = u;
@@ -144,13 +158,11 @@
 
     async function syncCloud() {
         if (!user) return;
-        // Favs
         const fSnap = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').get();
         if (fSnap.exists) {
             localFavs = fSnap.data().list || [];
             localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         }
-        // Notes
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -158,22 +170,25 @@
           });
     }
 
+    // --- БЛОКНОТ ---
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
-        if (!ar || !ru) return;
-        if (!user) { alert("Войдите в аккаунт для сохранения!"); return; }
+        if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
+        if (!user) { showMsg("Войдите в аккаунт для сохранения!"); return; }
         
         try {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: Date.now() });
             document.getElementById('manualAr').value = "";
             document.getElementById('manualRu').value = "";
-        } catch (e) { alert("Ошибка сохранения в облако."); }
+            showMsg("Фраза сохранена!");
+        } catch (e) { showMsg("Ошибка сохранения."); }
     }
 
     async function removeNote(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить запись из блокнота?")) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+        await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+        showMsg("Удалено");
     }
 
     // --- УМНЫЙ ПОИСК ---
@@ -182,10 +197,11 @@
     function normalize(t) { 
         if (!t) return "";
         let res = t.toLowerCase()
-            .replace(/[\u064B-\u0652]/g, "") // харакаты
-            .replace(/[أإآ]/g, "ا")           // алиф
+            .replace(/[\u064B-\u0652]/g, "") // удаляем харакаты
+            .replace(/[أإآ]/g, "ا")           // нормализуем алиф
             .trim();
-        // Отсекаем артикль 'Алиф-Лям', если он есть в начале
+        
+        // Отсекаем артикль 'Алиф-Лям'
         if (res.length > 3 && res.startsWith("ال")) {
             res = res.substring(2);
         }
@@ -197,7 +213,7 @@
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // БЛОКНОТ: Русский заголовок ВЕРХУ
+            // БЛОКНОТ: Русский сверху
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
@@ -205,7 +221,7 @@
                     <div onclick="this.classList.toggle('expanded')">
                         <div class="note-header">
                             <div class="note-ru">${n.ru}</div>
-                            <div class="note-ar-hint">${n.ar}</div>
+                            <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                         </div>
                         <div class="details">
                             <span class="ar-full">${n.ar}</span>
@@ -220,10 +236,10 @@
             return;
         }
 
-        if (!window.dictBase) return;
+        if (typeof dictBase === 'undefined') return;
         const nQ = normalize(q); 
         
-        let filtered = window.dictBase.filter(w => {
+        let filtered = dictBase.filter(w => {
             if (activeTab === 'fav' && !localFavs.includes(w.ar)) return false;
             if (!q) return activeTab === 'fav';
             const nWordAr = normalize(w.ar);
@@ -242,7 +258,7 @@
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
-                // 2. Начало на русском (Приоритет для "Дверь")
+                // 2. Начало на русском (для "Дверь" и др.)
                 const startsRuA = ruA.startsWith(q);
                 const startsRuB = ruB.startsWith(q);
                 if (startsRuA && !startsRuB) return -1;
@@ -292,6 +308,7 @@
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         btn.classList.toggle('active');
         btn.innerText = localFavs.includes(ar) ? '★ В избранном' : '☆ В избранное';
+        showMsg("Избранное обновлено");
         if (user) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs });
         if (activeTab === 'fav') renderUI();
     }
@@ -303,7 +320,7 @@
 
     async function toggleAuth() { if (user) auth.signOut(); else await auth.signInWithPopup(provider); }
 
-    window.onload = () => { if (window.dictBase) renderUI(); };
+    window.onload = () => { if (typeof dictBase !== 'undefined') renderUI(); };
 </script>
 </body>
 </html>
