@@ -13,7 +13,7 @@
     
     <title>Arabus Pro</title>
     
-    <!-- База данных -->
+    <!-- Загрузка базы -->
     <script src="base.js"></script>
     
     <!-- Firebase SDK -->
@@ -45,10 +45,12 @@
         .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
         
+        /* Словарь */
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
-        .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; }
+        .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; font-weight: 600;}
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         
+        /* Блокнот: Русский сверху */
         .note-header { display: flex; flex-direction: column; }
         .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
         .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -63,9 +65,16 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
-        #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeIn 0.3s; white-space: nowrap;}
+        /* Всплывающее сообщение */
+        #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
 
-        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        /* Модальное окно для Избранного */
+        #favModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+        .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
+        .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
 </head>
 <body>
@@ -81,12 +90,12 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Словарь -->
+    <!-- Поиск (Словарь) -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, الباب)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Блокнот -->
+    <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
         <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
@@ -97,24 +106,36 @@
     <div id="list" class="list"></div>
 </div>
 
+<!-- Модальное окно добавления в Избранное -->
+<div id="favModal">
+    <div class="modal-card">
+        <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
+        <div id="favModalAr" class="modal-ar"></div>
+        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш точный перевод:</label>
+        <input type="text" id="favModalRu" style="margin-top:8px; margin-bottom:20px; font-weight: bold; color: #1e293b;">
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="confirmFavModal()">💾 Сохранить</button>
+            <button class="btn" onclick="closeFavModal()">Отмена</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast">Сообщение</div>
 
 <script>
-    // 1. АКТИВАЦИЯ ОФЛАЙН-РЕЖИМА (Service Worker)
+    // Офлайн режим
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Офлайн-режим активирован!'))
-                .catch(err => console.log('Ошибка офлайн-режима:', err));
-        });
+        window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v17-live';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v18-customfav';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
+    let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; // Свои переводы для избранного
     let myNotes = []; 
     let activeTab = 'dict';
+    let currentRenderedWords = []; // Для привязки кнопок
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -137,11 +158,9 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // 2. АКТИВАЦИЯ ОФЛАЙН-БАЗЫ FIREBASE (для блокнота)
-    db.enablePersistence().catch(function(err) {
-        console.log("Офлайн хранилище Firebase недоступно", err);
-    });
+    db.enablePersistence().catch(function(err) { console.log("Офлайн недоступен", err); });
 
+    // Проверка базы
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
@@ -167,11 +186,14 @@
     function startLiveSync() {
         if (!user) return;
         
+        // Синхронизация Избранного (список + кастомные переводы)
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
                   localFavs = doc.data().list || [];
+                  favCustom = doc.data().custom || {};
                   localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+                  localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
                   renderUI();
               }
           });
@@ -190,28 +212,76 @@
         }
     });
 
+    // --- ИЗБРАННОЕ С КАСТОМНЫМ ПЕРЕВОДОМ ---
+    function handleFavClick(idx, e) {
+        e.stopPropagation();
+        const w = currentRenderedWords[idx];
+        
+        if (localFavs.includes(w.ar)) {
+            // Удаляем из избранного
+            localFavs = localFavs.filter(v => v !== w.ar);
+            delete favCustom[w.ar];
+            saveFavsToCloud();
+            renderUI();
+        } else {
+            // Открываем модальное окно для добавления своего перевода
+            window.wordToAdd = w.ar;
+            document.getElementById('favModalAr').innerText = w.ar;
+            document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
+            document.getElementById('favModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('favModalRu').focus(), 100);
+        }
+    }
+
+    function confirmFavModal() {
+        const ar = window.wordToAdd;
+        const ru = document.getElementById('favModalRu').value.trim();
+        if (!ar || !ru) { showMsg("Заполните перевод!"); return; }
+
+        if (!localFavs.includes(ar)) localFavs.push(ar);
+        favCustom[ar] = ru; // Сохраняем индивидуальный перевод
+        
+        saveFavsToCloud();
+        closeFavModal();
+        renderUI();
+    }
+
+    function closeFavModal() {
+        document.getElementById('favModal').style.display = 'none';
+        window.wordToAdd = null;
+    }
+
+    async function saveFavsToCloud() {
+        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+        showMsg("Избранное обновлено");
+        if (user) {
+            try {
+                await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom });
+            } catch(e) {}
+        }
+    }
+
+    // --- БЛОКНОТ (РУЧНОЙ) ---
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
         if (!user) { showMsg("Войдите в аккаунт!"); return; }
-        
         try {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: Date.now() });
-            document.getElementById('manualAr').value = "";
-            document.getElementById('manualRu').value = "";
-            showMsg("Фраза сохранена!");
-        } catch (e) { showMsg("Сохранено локально (нет сети)."); }
+            document.getElementById('manualAr').value = ""; document.getElementById('manualRu').value = ""; showMsg("Фраза сохранена!");
+        } catch (e) { showMsg("Сохранено локально."); }
     }
 
     async function removeNote(id, e) {
         e.stopPropagation();
         if (confirm("Удалить запись из блокнота?")) {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
-            showMsg("Удалено");
+            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete(); showMsg("Удалено");
         }
     }
 
+    // --- ПОИСК И UI ---
     function doSearch() { renderUI(); }
 
     function normalize(t) { 
@@ -279,21 +349,28 @@
             });
         }
 
-        filtered.slice(0, 50).forEach(w => {
+        // Сохраняем глобально для привязки кнопок по индексу
+        currentRenderedWords = filtered.slice(0, 50);
+
+        currentRenderedWords.forEach((w, idx) => {
             const active = localFavs.includes(w.ar);
+            // ПОДМЕНА ПЕРЕВОДА: Если слово в избранном и есть кастомный перевод, показываем его!
+            const displayRu = (active && favCustom[w.ar]) ? favCustom[w.ar] : (w.short_ru || w.ru.split(';')[0]);
+
             const el = document.createElement('div');
             el.className = 'item';
             el.innerHTML = `
                 <div onclick="this.classList.toggle('expanded')">
                     <div class="dict-row">
-                        <div class="dict-ru">${w.short_ru || w.ru.split(';')[0]}</div>
+                        <div class="dict-ru" style="${active && favCustom[w.ar] ? 'color: var(--primary);' : ''}">${displayRu}</div>
                         <div class="dict-ar">${w.ar}</div>
                     </div>
                     <div class="details">
-                        <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px;">${w.ru}</div>
+                        <!-- Выпадающий список (оригинальный перевод Баранова) остается без изменений! -->
+                        <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
                         <div class="actions">
                             <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-star ${active ? 'active' : ''}" onclick="toggleFavorite('${w.ar}', this, event)">
+                            <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
                                 ${active ? '★ В избранном' : '☆ В избранное'}
                             </button>
                         </div>
@@ -312,23 +389,6 @@
         renderUI();
     }
 
-    async function toggleFavorite(ar, btn, e) {
-        e.stopPropagation();
-        if (localFavs.includes(ar)) localFavs = localFavs.filter(v => v !== ar);
-        else localFavs.push(ar);
-        
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        btn.classList.toggle('active');
-        btn.innerText = localFavs.includes(ar) ? '★ В избранном' : '☆ В избранное';
-        showMsg("Избранное обновлено");
-        
-        if (user) {
-            try {
-                await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs });
-            } catch(e) {}
-        }
-    }
-
     function speak(t, e) {
         e.stopPropagation(); window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
@@ -340,6 +400,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
