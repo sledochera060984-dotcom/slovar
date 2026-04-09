@@ -13,8 +13,8 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Подключаем базу -->
-    <script src="base.js?v=final_rev_stable"></script>
+    <!-- Сначала грузим базу -->
+    <script src="base.js?v=fixed_final"></script>
     
     <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -26,9 +26,9 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); }
-        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; }
+        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 85vh; }
         
-        .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.2s; }
+        .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
         .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
         .status-wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
         
@@ -38,14 +38,14 @@
         .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--gray); }
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
-        input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 8px; }
+        input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
         input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
         textarea { height: 80px; resize: none; }
 
-        .list { list-style: none; padding: 0; margin: 0; }
+        .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
         
-        /* Словарь */
+        /* Словарь: Арабский справа */
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; }
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
@@ -71,7 +71,7 @@
 <body>
 
 <div class="card">
-    <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
+    <div id="status" class="status-bar status-wait">⏳ Ожидание базы (8.5 МБ)...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -82,14 +82,14 @@
     </div>
 
     <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (дверь, الباب, باب)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск (напр: дверь или الباب)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Вкладка Блокнот (ручной ввод) -->
+    <!-- Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском...">
         <textarea id="manualRu" placeholder="Перевод на русский..."></textarea>
-        <button class="btn btn-green" style="width: 100%; margin-bottom: 15px;" onclick="saveManualNote()">💾 Сохранить фразу</button>
+        <button class="btn btn-green" style="width: 100%; margin-bottom: 15px;" onclick="saveManualNote()">💾 Сохранить в блокнот</button>
         <div style="font-size: 11px; color: var(--gray); margin: 10px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои Сохраненные Записи:</div>
     </div>
     
@@ -97,7 +97,7 @@
 </div>
 
 <script>
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v15-pro';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-pro-final-v1';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -119,16 +119,16 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Проверка базы данных
+    // ГИПЕР-АКТИВНАЯ ПРОВЕРКА БАЗЫ
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (window.dictBase && Array.isArray(window.dictBase)) {
-            s.innerText = `📚 База: ${window.dictBase.length} слов`;
+            s.innerText = `✅ База готова: ${window.dictBase.length} слов`;
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             renderUI();
         }
-    }, 200);
+    }, 100); // Проверяем 10 раз в секунду
 
     auth.onAuthStateChanged(async (u) => {
         user = u;
@@ -162,32 +162,31 @@
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) return;
-        if (!user) { alert("Войдите в аккаунт!"); return; }
+        if (!user) { alert("Войдите в аккаунт для сохранения!"); return; }
         
         try {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: Date.now() });
             document.getElementById('manualAr').value = "";
             document.getElementById('manualRu').value = "";
-        } catch (e) { alert("Ошибка сохранения."); }
+        } catch (e) { alert("Ошибка сохранения в облако."); }
     }
 
     async function removeNote(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить?")) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+        if (confirm("Удалить запись из блокнота?")) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
     }
 
-    // --- ПОИСК И UI ---
+    // --- УМНЫЙ ПОИСК ---
     function doSearch() { renderUI(document.getElementById('queryInput').value.toLowerCase().trim()); }
 
-    // Умная нормализация: убирает харакаты, унифицирует алиф и отсекает артикль ال
     function normalize(t) { 
         if (!t) return "";
         let res = t.toLowerCase()
-            .replace(/[\u064B-\u0652]/g, "") // убираем харакаты
+            .replace(/[\u064B-\u0652]/g, "") // харакаты
             .replace(/[أإآ]/g, "ا")           // алиф
             .trim();
-        // Если слово начинается на ال, убираем его для поиска
-        if (res.startsWith("ال")) {
+        // Отсекаем артикль 'Алиф-Лям', если он есть в начале
+        if (res.length > 3 && res.startsWith("ال")) {
             res = res.substring(2);
         }
         return res;
@@ -198,7 +197,7 @@
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // БЛОКНОТ: Русский сверху
+            // БЛОКНОТ: Русский заголовок ВЕРХУ
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
@@ -222,12 +221,12 @@
         }
 
         if (!window.dictBase) return;
-        const nQ = normalize(q); // Нормализованный запрос (без ال)
+        const nQ = normalize(q); 
         
         let filtered = window.dictBase.filter(w => {
             if (activeTab === 'fav' && !localFavs.includes(w.ar)) return false;
             if (!q) return activeTab === 'fav';
-            const nWordAr = normalize(w.ar); // Нормализованное слово из базы
+            const nWordAr = normalize(w.ar);
             const nWordRu = w.ru.toLowerCase();
             return nWordRu.includes(q) || nWordAr.includes(nQ);
         });
@@ -239,11 +238,11 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
-                // 1. Точное совпадение арабского (без ال)
+                // 1. Точное совпадение арабского
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
-                // 2. Начало на русском
+                // 2. Начало на русском (Приоритет для "Дверь")
                 const startsRuA = ruA.startsWith(q);
                 const startsRuB = ruB.startsWith(q);
                 if (startsRuA && !startsRuB) return -1;
