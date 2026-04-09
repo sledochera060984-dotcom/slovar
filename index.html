@@ -61,13 +61,13 @@
         .word-item { border-bottom: 1px solid #f0f0f0; padding: 14px 0; }
         .word-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
-        /* Оформление текста */
+        /* Оформление текста словаря */
         .arabic { font-size: 24px; font-weight: bold; color: var(--main-color); direction: rtl; }
         .russian { font-size: 16px; color: #333; flex: 1; padding-right: 15px; }
         
-        /* Специальный стиль для Переводчика: Русский сверху */
-        .mode-trans .russian { font-weight: bold; font-size: 18px; color: #2c3e50; }
-        .mode-trans .arabic-hint { color: #bdc3c7; font-size: 14px; direction: rtl; text-align: right; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Стиль Переводчика: Русский сверху */
+        .item-trans .russian { font-weight: bold; font-size: 18px; color: #2c3e50; }
+        .item-trans .arabic-hint { color: #bdc3c7; font-size: 14px; direction: rtl; text-align: right; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
         /* Детали */
         .details { display: none; padding-top: 15px; border-top: 1px dashed #eee; margin-top: 12px; }
@@ -94,7 +94,7 @@
 <body>
 
 <div class="container">
-    <div id="statusBox" class="header-status">Загрузка...</div>
+    <div id="statusBox" class="header-status">Загрузка Arabus Pro...</div>
     
     <button id="authBtn" class="google-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -104,47 +104,47 @@
         <button id="tabTrans" class="tab" onclick="setTab('trans')">📝 Переводчик</button>
     </div>
 
-    <!-- Раздел Словаря и Избранного -->
+    <!-- Словарь -->
     <div id="searchSection">
-        <input type="text" id="searchInput" placeholder="Поиск (араб / рус / корень)..." oninput="handleSearch()" autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Поиск слова или корня..." oninput="handleSearch()" autocomplete="off">
     </div>
 
-    <!-- Раздел Переводчика -->
+    <!-- Переводчик -->
     <div id="translatorSection" style="display:none;">
         <div class="input-group">
-            <textarea id="arInput" placeholder="Вставьте арабский текст..."></textarea>
-            <div id="translateLoader" class="loader">✨ ИИ переводит...</div>
-            <button class="btn btn-primary" id="btnAction" onclick="requestTranslate()">Перевести</button>
+            <textarea id="arInput" placeholder="Вставьте арабский текст здесь..."></textarea>
+            <div id="translateLoader" class="loader">✨ ИИ подбирает перевод...</div>
+            <button class="btn btn-primary" id="btnTranslate" onclick="performTranslation()">Перевести</button>
         </div>
 
-        <!-- Окно предпросмотра -->
+        <!-- Окно результата -->
         <div id="translationPreview">
-            <div class="preview-label">Предпросмотр перевода:</div>
+            <div class="preview-label">Перевод готов:</div>
             <div id="previewText" class="preview-text"></div>
             <div class="btn-row">
-                <button class="btn btn-primary" onclick="saveToCloud()">💾 Сохранить в блокнот</button>
-                <button class="btn" onclick="cancelPreview()">Отмена</button>
+                <button class="btn btn-primary" onclick="confirmAndSave()">💾 Сохранить в список</button>
+                <button class="btn" onclick="closePreview()">Отмена</button>
             </div>
         </div>
 
-        <div style="font-size: 12px; color: #7f8c8d; margin-bottom: 10px; font-weight: bold;">Ваши записи (Русский сверху):</div>
+        <div style="font-size: 12px; color: #95a5a6; margin-bottom: 10px; font-weight: bold;">Ваши записи (Русский сверху):</div>
     </div>
     
     <div id="list" class="word-list"></div>
 </div>
 
-<script src="base.js?v=8000"></script>
+<script src="base.js?v=9000"></script>
 
 <script>
-    const apiKey = ""; // Ключ предоставляется средой
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-pro-app';
+    const apiKey = ""; // API Key предоставляется средой
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v2';
     
-    let dictData = (typeof dictBase !== 'undefined') ? dictBase : [];
-    let user = null;
-    let favorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
-    let customItems = []; 
+    let dictBase = (typeof dictBase !== 'undefined') ? dictBase : [];
+    let currentUser = null;
+    let favList = JSON.parse(localStorage.getItem('arabus_favs')) || [];
+    let cloudItems = []; 
     let activeTab = 'dict';
-    let tempItem = null;
+    let lastTranslated = null;
 
     // Firebase Init
     const firebaseConfig = {
@@ -161,135 +161,137 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // Слушатель Auth
-    auth.onAuthStateChanged(async (u) => {
-        user = u;
+    // Авторизация
+    auth.onAuthStateChanged(async (user) => {
+        currentUser = user;
         const btn = document.getElementById('authBtn');
+        const status = document.getElementById('statusBox');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
-            document.getElementById('statusBox').innerText = `✅ Облако активно: ${user.email}`;
-            document.getElementById('statusBox').className = "header-status status-ok";
-            syncAllData();
+            status.innerText = `✅ Синхронизация: ${user.email}`;
+            status.className = "header-status status-ok";
+            setupRealtimeSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
-            document.getElementById('statusBox').innerText = `📚 База: ${dictData.length} слов`;
-            document.getElementById('statusBox').className = "header-status";
+            status.innerText = `📚 База: ${dictBase.length} слов`;
+            status.className = "header-status";
         }
     });
 
-    async function syncAllData() {
-        if (!user) return;
+    async function setupRealtimeSync() {
+        if (!currentUser) return;
         
-        // Синхронизация избранного
-        const favRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites');
-        const favSnap = await favRef.get();
+        // Подгрузка Избранного (Rule 2: Fetch all)
+        const favSnap = await db.collection('artifacts').doc(appId).collection('users').doc(currentUser.uid).collection('data').doc('favs').get();
         if (favSnap.exists) {
-            favorites = favSnap.data().list || [];
-            localStorage.setItem('arabus_favs', JSON.stringify(favorites));
+            favList = favSnap.data().list || [];
+            localStorage.setItem('arabus_favs', JSON.stringify(favList));
         }
 
-        // Подписка на личные переводы (Fetch all)
-        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('my_translations')
+        // Подписка на личные переводы
+        db.collection('artifacts').doc(appId).collection('users').doc(currentUser.uid).collection('translations')
           .onSnapshot(snap => {
-              customItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              if (activeTab === 'trans') renderItems();
+              cloudItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              if (activeTab === 'trans') renderUI();
           }, err => console.log("Firestore error:", err));
           
-        renderItems();
+        renderUI();
     }
 
-    // --- ЛОГИКА ПЕРЕВОДА ---
-    async function requestTranslate() {
-        const arText = document.getElementById('arInput').value.trim();
-        if (!arText) return;
+    // --- ЛОГИКА ПЕРЕВОДА (GEMINI API) ---
+    async function performTranslation() {
+        const text = document.getElementById('arInput').value.trim();
+        if (!text) return;
 
         const loader = document.getElementById('translateLoader');
         const preview = document.getElementById('translationPreview');
-        const btn = document.getElementById('btnAction');
+        const btn = document.getElementById('btnTranslate');
 
         loader.style.display = 'block';
         btn.disabled = true;
         preview.style.display = 'none';
 
         try {
-            const translated = await fetchWithRetry(arText);
-            if (translated) {
-                tempItem = { ar: arText, ru: translated };
-                document.getElementById('previewText').innerText = translated;
+            const result = await translateWithRetry(text);
+            if (result) {
+                lastTranslated = { ar: text, ru: result };
+                document.getElementById('previewText').innerText = result;
                 preview.style.display = 'block';
             } else {
-                alert("Ошибка перевода. Попробуйте еще раз.");
+                throw new Error("Пустой ответ");
             }
         } catch (e) {
-            alert("Не удалось получить перевод. Проверьте интернет.");
+            alert("Не удалось получить перевод. Проверьте интернет или попробуйте другую фразу.");
         } finally {
             loader.style.display = 'none';
             btn.disabled = false;
         }
     }
 
-    async function fetchWithRetry(text) {
+    // Экспоненциальный бэкафф для API (Mandatory Rule)
+    async function translateWithRetry(text) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const payload = { 
-            contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Дай ТОЛЬКО перевод: "${text}"` }] }] 
-        };
+        const body = { contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Выдай только сам перевод, без пояснений: "${text}"` }] }] };
 
         for (let i = 0, delay = 1000; i < 5; i++, delay *= 2) {
             try {
-                const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'} });
+                const res = await fetch(url, { method: 'POST', body: JSON.stringify(body), headers: {'Content-Type': 'application/json'} });
                 const json = await res.json();
-                return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                const translated = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                if (translated) return translated;
             } catch (e) {
                 if (i === 4) throw e;
                 await new Promise(r => setTimeout(r, delay));
             }
         }
+        return null;
     }
 
-    async function saveToCloud() {
-        if (!user) { alert("Войдите в аккаунт для сохранения!"); return; }
-        if (!tempItem) return;
+    async function confirmAndSave() {
+        if (!currentUser) { alert("Сначала войдите в аккаунт!"); return; }
+        if (!lastTranslated) return;
 
         try {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('my_translations').add({
-                ar: tempItem.ar,
-                ru: tempItem.ru,
-                time: Date.now()
+            // Rule 1: Correct path
+            await db.collection('artifacts').doc(appId).collection('users').doc(currentUser.uid).collection('translations').add({
+                ar: lastTranslated.ar,
+                ru: lastTranslated.ru,
+                created: Date.now()
             });
-            cancelPreview();
+            closePreview();
             document.getElementById('arInput').value = "";
         } catch (e) {
-            alert("Ошибка сохранения в облако.");
+            alert("Ошибка сохранения.");
         }
     }
 
-    function cancelPreview() {
+    function closePreview() {
         document.getElementById('translationPreview').style.display = 'none';
-        tempItem = null;
+        lastTranslated = null;
     }
 
-    async function deleteTranslation(id, e) {
+    async function removeItem(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить этот перевод навсегда?")) {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('my_translations').doc(id).delete();
+        if (confirm("Удалить эту запись?")) {
+            await db.collection('artifacts').doc(appId).collection('users').doc(currentUser.uid).collection('translations').doc(id).delete();
         }
     }
 
     // --- ОТРИСОВКА СПИСКА ---
     function handleSearch() {
-        renderItems(document.getElementById('searchInput').value.toLowerCase().trim());
+        renderUI(document.getElementById('searchInput').value.toLowerCase().trim());
     }
 
-    function renderItems(query = "") {
+    function renderUI(query = "") {
         const list = document.getElementById('list');
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // Режим Переводчика: РУССКИЙ СВЕРХУ
-            const sorted = customItems.sort((a,b) => b.time - a.time);
+            // ПЕРЕВОДЧИК: РУССКИЙ СВЕРХУ (КАК ВЫ ПРОСИЛИ)
+            const sorted = cloudItems.sort((a,b) => b.created - a.created);
             sorted.forEach(item => {
                 const el = document.createElement('div');
-                el.className = 'word-item mode-trans';
+                el.className = 'word-item item-trans';
                 el.innerHTML = `
                     <div class="word-header" onclick="this.parentElement.classList.toggle('expanded')">
                         <div class="russian">${item.ru}</div>
@@ -298,8 +300,8 @@
                     <div class="details">
                         <span class="arabic-full">${item.ar}</span>
                         <div class="btn-row">
-                            <button class="btn btn-speak" onclick="speak('${item.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-delete" onclick="deleteTranslation('${item.id}', event)">🗑 Удалить</button>
+                            <button class="btn btn-speak" onclick="speakText('${item.ar}', event)">🔊 Слушать</button>
+                            <button class="btn btn-delete" onclick="removeItem('${item.id}', event)">🗑 Удалить</button>
                         </div>
                     </div>`;
                 list.appendChild(el);
@@ -307,10 +309,10 @@
             return;
         }
 
-        // Режим Словаря и Избранного
+        // СЛОВАРЬ И ИЗБРАННОЕ
         const normQuery = query.replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا");
-        let filtered = dictData.filter(w => {
-            if (activeTab === 'fav' && !favorites.includes(w.ar)) return false;
+        let filtered = dictBase.filter(w => {
+            if (activeTab === 'fav' && !favList.includes(w.ar)) return false;
             if (!query) return activeTab === 'fav';
             const arClean = w.ar.replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا");
             return w.ru.toLowerCase().includes(query) || arClean.includes(normQuery);
@@ -319,7 +321,7 @@
         if (query) filtered.sort((a, b) => a.ru.length - b.ru.length);
 
         filtered.slice(0, 50).forEach(w => {
-            const isFav = favorites.includes(w.ar);
+            const isFav = favList.includes(w.ar);
             const el = document.createElement('div');
             el.className = 'word-item';
             el.innerHTML = `
@@ -330,8 +332,8 @@
                 <div class="details">
                     <div style="white-space: pre-wrap; margin-bottom:12px;">${w.ru}</div>
                     <div class="btn-row">
-                        <button class="btn btn-speak" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                        <button class="btn btn-fav ${isFav ? 'active' : ''}" onclick="toggleFavorite('${w.ar}', this, event)">
+                        <button class="btn btn-speak" onclick="speakText('${w.ar}', event)">🔊 Слушать</button>
+                        <button class="btn btn-fav ${isFav ? 'active' : ''}" onclick="toggleFav('${w.ar}', this, event)">
                             ${isFav ? '★ Избранное' : '☆ В избранное'}
                         </button>
                     </div>
@@ -343,32 +345,32 @@
     function setTab(t) {
         activeTab = t;
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        const tabMap = { dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' };
-        document.getElementById(tabMap[t]).classList.add('active');
+        const tabIds = { dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' };
+        document.getElementById(tabIds[t]).classList.add('active');
         
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
         document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
         
-        cancelPreview();
-        renderItems();
+        closePreview();
+        renderUI();
     }
 
-    async function toggleFavorite(ar, btn, e) {
+    async function toggleFav(ar, btn, e) {
         e.stopPropagation();
-        if (favorites.includes(ar)) favorites = favorites.filter(v => v !== ar);
-        else favorites.push(ar);
+        if (favList.includes(ar)) favList = favList.filter(v => v !== ar);
+        else favList.push(ar);
         
-        localStorage.setItem('arabus_favs', JSON.stringify(favorites));
+        localStorage.setItem('arabus_favs', JSON.stringify(favList));
         btn.classList.toggle('active');
-        btn.innerText = favorites.includes(ar) ? '★ Избранное' : '☆ В избранное';
+        btn.innerText = favList.includes(ar) ? '★ Избранное' : '☆ В избранное';
         
-        if (user) {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites').set({ list: favorites });
+        if (currentUser) {
+            await db.collection('artifacts').doc(appId).collection('users').doc(currentUser.uid).collection('data').doc('favs').set({ list: favList });
         }
-        if (activeTab === 'fav') renderItems();
+        if (activeTab === 'fav') renderUI();
     }
 
-    function speak(text, e) {
+    function speakText(text, e) {
         e.stopPropagation();
         window.speechSynthesis.cancel();
         const utt = new SpeechSynthesisUtterance(text);
@@ -377,7 +379,7 @@
     }
 
     async function toggleAuth() {
-        if (user) auth.signOut();
+        if (currentUser) auth.signOut();
         else await auth.signInWithPopup(provider);
     }
 
@@ -385,4 +387,5 @@
 </script>
 </body>
 </html>
+
 
