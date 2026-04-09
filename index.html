@@ -13,7 +13,7 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -28,31 +28,29 @@
             margin: 0; 
             padding: env(safe-area-inset-top) 12px 12px 12px; 
             color: var(--text);
-            line-height: 1.5;
         }
 
         .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; }
         
-        /* Auth & Status */
-        .status-bar { text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; font-weight: 600; border: 1px solid #e2e8f0; background: #fff; }
+        /* Статусы */
+        .status-bar { text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 12px; font-size: 13px; font-weight: 700; border: 1px solid #e2e8f0; background: #fff; }
         .status-active { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
         .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        /* Navigation */
+        /* Вкладки */
         .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
-        .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s; }
+        .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); }
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
-        /* Inputs */
-        .input-wrap { position: relative; margin-bottom: 16px; }
+        /* Поля ввода */
         input[type="text"], textarea { 
             width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; 
             font-size: 16px; outline: none; transition: 0.2s; background: #fff;
         }
-        input[type="text"]:focus, textarea:focus { border-color: var(--primary); background: #fff; }
+        input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
         textarea { height: 110px; resize: none; }
 
-        /* AI Preview Area */
+        /* Окно предпросмотра ИИ */
         #aiBox { 
             display: none; background: #fffbeb; border: 2px dashed #f59e0b; 
             padding: 16px; border-radius: 16px; margin-bottom: 20px; animation: fadeIn 0.3s ease;
@@ -60,26 +58,26 @@
         .ai-label { font-size: 11px; color: #b45309; text-transform: uppercase; font-weight: 800; margin-bottom: 4px; }
         .ai-content { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
 
-        /* Word List */
+        /* Списки */
         .list { list-style: none; padding: 0; margin: 0; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; }
         .item-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         
-        /* Dictionary View: Arabic Right, Russian Left */
+        /* Словарь: Арабский справа */
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; }
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         
-        /* Personal Notes View: Russian Title Top */
+        /* Блокнот: Русский сверху */
         .note-header { display: flex; flex-direction: column; cursor: pointer; }
         .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
         .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; }
 
-        /* Expanded State */
+        /* Раскрытая карточка */
         .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; }
         .expanded .details { display: block; }
         .ar-full { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
 
-        /* Buttons */
+        /* Кнопки действий */
         .actions { display: flex; gap: 8px; margin-top: 12px; }
         .btn { 
             flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; 
@@ -98,7 +96,7 @@
 <body>
 
 <div class="card">
-    <div id="status" class="status-bar">Загрузка базы данных...</div>
+    <div id="status" class="status-bar">⏳ Загрузка базы...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
@@ -108,51 +106,48 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Переводчик</button>
     </div>
 
-    <!-- Dict Search -->
+    <!-- Поиск -->
     <div id="searchSection">
-        <div class="input-wrap">
-            <input type="text" id="query" placeholder="Поиск (араб / рус / корень)..." oninput="doSearch()" autocomplete="off">
-        </div>
+        <input type="text" id="query" placeholder="Поиск (араб / рус / корень)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Translator -->
+    <!-- Переводчик -->
     <div id="transSection" style="display:none;">
-        <div class="input-group">
-            <textarea id="aiInput" placeholder="Вставьте арабский текст для перевода..."></textarea>
-            <div id="aiLoading" class="loader">✨ ИИ анализирует текст...</div>
-            <button class="btn btn-green" style="margin-top: 10px; width: 100%;" id="btnRunAi" onclick="runAiTranslate()">Перевести</button>
-        </div>
+        <textarea id="aiInput" placeholder="Вставьте арабский текст..."></textarea>
+        <div id="aiLoading" class="loader">✨ ИИ переводит...</div>
+        <button class="btn btn-green" style="margin-top: 10px; width: 100%;" id="btnRunAi" onclick="runAiTranslate()">Перевести</button>
 
         <div id="aiBox">
-            <div class="ai-label">Предложенный перевод:</div>
+            <div class="ai-label">Результат:</div>
             <div id="aiResult" class="ai-content"></div>
             <div class="actions">
-                <button class="btn btn-green" onclick="saveNote()">💾 Сохранить фразу</button>
+                <button class="btn btn-green" onclick="saveNote()">💾 Сохранить</button>
                 <button class="btn" onclick="closeAi()">Отмена</button>
             </div>
         </div>
 
-        <div style="font-size: 12px; color: var(--gray); margin: 15px 0 10px 0; font-weight: 700;">ВАШ БЛОКНОТ (Русский -> Арабский):</div>
+        <div style="font-size: 12px; color: var(--gray); margin: 20px 0 10px 0; font-weight: 800;">ВАШИ ЗАПИСИ (Русский сверху):</div>
     </div>
     
     <div id="list" class="list"></div>
 </div>
 
+<!-- База данных -->
 <script src="base.js?v=9999"></script>
 
 <script>
-    const apiKey = ""; // API ключ от среды
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v5-pro';
+    const apiKey = ""; 
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v6-final';
     
     let dictBase = (typeof dictBase !== 'undefined') ? dictBase : [];
     let user = null;
-    let favs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
-    let notes = []; 
+    let favorites = JSON.parse(localStorage.getItem('arabus_favs')) || [];
+    let myNotes = []; 
     let activeTab = 'dict';
-    let currentAiData = null;
+    let lastAiData = null;
 
     // Firebase
-    const config = {
+    const firebaseConfig = {
       apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
       authDomain: "arabus-dict-96c12.firebaseapp.com",
       projectId: "arabus-dict-96c12",
@@ -161,10 +156,22 @@
       appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
     };
 
-    firebase.initializeApp(config);
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
+
+    // Мгновенная проверка базы
+    function checkBase() {
+        const status = document.getElementById('status');
+        if (dictBase.length > 0) {
+            status.innerText = `📚 База: ${dictBase.length} слов`;
+            status.className = "status-bar status-active";
+        } else {
+            status.innerText = "⚠️ База не найдена!";
+            status.className = "status-bar";
+        }
+    }
 
     auth.onAuthStateChanged(async (u) => {
         user = u;
@@ -172,36 +179,35 @@
         const status = document.getElementById('status');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
-            status.innerText = `✅ Облако активно: ${user.email}`;
+            status.innerText = `✅ Синхронизация: ${user.email}`;
             status.className = "status-bar status-active";
-            initSync();
+            startSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
-            status.innerText = `📚 Словарь: ${dictBase.length} слов`;
-            status.className = "status-bar";
+            checkBase();
         }
-        updateUI();
+        updateView();
     });
 
-    async function initSync() {
+    async function startSync() {
         if (!user) return;
         
         // Sync Favorites
-        const fDoc = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').get();
+        const fDoc = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites').get();
         if (fDoc.exists) {
-            favs = fDoc.data().list || [];
-            localStorage.setItem('arabus_favs', JSON.stringify(favs));
+            favorites = fDoc.data().list || [];
+            localStorage.setItem('arabus_favs', JSON.stringify(favorites));
         }
 
-        // Live notes
+        // Live notes (Rule 2)
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
-              notes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-              if (activeTab === 'trans') updateUI();
+              myNotes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+              if (activeTab === 'trans') updateView();
           });
     }
 
-    // --- AI TRANSLATOR ---
+    // --- AI LOGIC ---
     async function runAiTranslate() {
         const text = document.getElementById('aiInput').value.trim();
         if (!text) return;
@@ -215,33 +221,31 @@
         box.style.display = 'none';
 
         try {
-            const translated = await fetchAi(text);
+            const translated = await callGemini(text);
             if (translated) {
-                currentAiData = { ar: text, ru: translated };
+                lastAiData = { ar: text, ru: translated };
                 document.getElementById('aiResult').innerText = translated;
                 box.style.display = 'block';
-            } else {
-                alert("ИИ временно недоступен. Попробуйте еще раз.");
             }
         } catch (e) {
-            alert("Ошибка сети. Проверьте интернет.");
+            alert("ИИ перегружен. Повторите через минуту.");
         } finally {
             loader.style.display = 'none';
             btn.disabled = false;
         }
     }
 
-    async function fetchAi(text) {
+    async function callGemini(text) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-        const body = { contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Выдай только сам перевод, без лишних слов: "${text}"` }] }] };
+        const payload = { contents: [{ parts: [{ text: `Переведи этот арабский текст на русский. Дай ТОЛЬКО перевод: "${text}"` }] }] };
 
         for (let i = 0, d = 1000; i < 3; i++, d *= 2) {
             try {
-                const res = await fetch(url, { method: 'POST', body: JSON.stringify(body), headers: {'Content-Type': 'application/json'} });
+                const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload), headers: {'Content-Type': 'application/json'} });
                 const json = await res.json();
                 return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             } catch (e) {
-                if (i === 2) return null;
+                if (i === 2) throw e;
                 await new Promise(r => setTimeout(r, d));
             }
         }
@@ -249,59 +253,58 @@
 
     async function saveNote() {
         if (!user) { alert("Войдите в аккаунт!"); return; }
-        if (!currentAiData) return;
-
+        if (!lastAiData) return;
         try {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({
-                ar: currentAiData.ar,
-                ru: currentAiData.ru,
-                ts: Date.now()
+                ar: lastAiData.ar,
+                ru: lastAiData.ru,
+                time: Date.now()
             });
             closeAi();
             document.getElementById('aiInput').value = "";
-        } catch (e) { alert("Сбой сохранения."); }
+        } catch (e) { alert("Ошибка сохранения."); }
     }
 
     function closeAi() {
         document.getElementById('aiBox').style.display = 'none';
-        currentAiData = null;
+        lastAiData = null;
     }
 
-    async function removeNote(id, e) {
+    async function deleteNote(id, e) {
         e.stopPropagation();
-        if (confirm("Удалить фразу?")) {
+        if (confirm("Удалить?")) {
             await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
         }
     }
 
     // --- SEARCH & UI ---
     function doSearch() {
-        updateUI(document.getElementById('query').value.toLowerCase().trim());
+        updateView(document.getElementById('query').value.toLowerCase().trim());
     }
 
     function normalize(t) {
         return t ? t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim() : "";
     }
 
-    function updateUI(q = "") {
+    function updateView(q = "") {
         const list = document.getElementById('list');
         list.innerHTML = "";
         
         if (activeTab === 'trans') {
-            // NOTES: Russian Title TOP
-            notes.sort((a,b) => b.ts - a.ts).forEach(n => {
+            // БЛОКНОТ: Русский заголовок СВЕРХУ
+            myNotes.sort((a,b) => b.time - a.time).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
                 el.innerHTML = `
                     <div class="note-header" onclick="this.parentElement.classList.toggle('expanded')">
                         <div class="note-ru">${n.ru}</div>
-                        <div class="note-ar-hint">${n.ar}</div>
+                        <div class="note-ar-hint">${n.ar.substring(0, 30)}...</div>
                     </div>
                     <div class="details">
                         <span class="ar-full">${n.ar}</span>
                         <div class="actions">
                             <button class="btn" onclick="speak('${n.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-red" onclick="removeNote('${n.id}', event)">🗑 Удалить</button>
+                            <button class="btn btn-red" onclick="deleteNote('${n.id}', event)">🗑 Удалить</button>
                         </div>
                     </div>`;
                 list.appendChild(el);
@@ -309,30 +312,26 @@
             return;
         }
 
-        // DICT & FAVS
+        // СЛОВАРЬ И ИЗБРАННОЕ
         const nQ = normalize(q);
         let filtered = dictBase.filter(w => {
-            if (activeTab === 'fav' && !favs.includes(w.ar)) return false;
+            if (activeTab === 'fav' && !favorites.includes(w.ar)) return false;
             if (!q) return activeTab === 'fav';
-            const arC = normalize(w.ar);
-            return w.ru.toLowerCase().includes(q) || arC.includes(nQ);
+            return w.ru.toLowerCase().includes(q) || normalize(w.ar).includes(nQ);
         });
 
         if (q) {
             filtered.sort((a, b) => {
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                
-                // Exact start match gets top priority
                 if (ruA.startsWith(q) && !ruB.startsWith(q)) return -1;
                 if (ruB.startsWith(q) && !ruA.startsWith(q)) return 1;
-                
                 return a.ru.length - b.ru.length;
             });
         }
 
         filtered.slice(0, 50).forEach(w => {
-            const active = favs.includes(w.ar);
+            const isFav = favorites.includes(w.ar);
             const el = document.createElement('div');
             el.className = 'item';
             el.innerHTML = `
@@ -344,8 +343,8 @@
                     <div style="white-space: pre-wrap; margin-bottom:12px;">${w.ru}</div>
                     <div class="actions">
                         <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                        <button class="btn btn-star ${active ? 'active' : ''}" onclick="toggleStar('${w.ar}', this, event)">
-                            ${active ? '★ Избранное' : '☆ В избранное'}
+                        <button class="btn btn-star ${isFav ? 'active' : ''}" onclick="toggleStar('${w.ar}', this, event)">
+                            ${isFav ? '★ Избранное' : '☆ В избранное'}
                         </button>
                     </div>
                 </div>`;
@@ -356,29 +355,22 @@
     function switchTab(t) {
         activeTab = t;
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        const ids = { dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' };
-        document.getElementById(ids[t]).classList.add('active');
-        
+        document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
         document.getElementById('transSection').style.display = t === 'trans' ? 'block' : 'none';
-        
         closeAi();
-        updateUI();
+        updateView();
     }
 
     async function toggleStar(ar, btn, e) {
         e.stopPropagation();
-        if (favs.includes(ar)) favs = favs.filter(v => v !== ar);
-        else favs.push(ar);
-        
-        localStorage.setItem('arabus_favs', JSON.stringify(favs));
+        if (favorites.includes(ar)) favorites = favorites.filter(v => v !== ar);
+        else favorites.push(ar);
+        localStorage.setItem('arabus_favs', JSON.stringify(favorites));
         btn.classList.toggle('active');
-        btn.innerText = favs.includes(ar) ? '★ Избранное' : '☆ В избранное';
-        
-        if (user) {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: favs });
-        }
-        if (activeTab === 'fav') updateUI();
+        btn.innerText = favorites.includes(ar) ? '★ Избранное' : '☆ В избранное';
+        if (user) await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favorites').set({ list: favorites });
+        if (activeTab === 'fav') updateView();
     }
 
     function speak(t, e) {
@@ -394,7 +386,11 @@
         else await auth.signInWithPopup(provider);
     }
 
-    window.onload = () => { switchTab('dict'); };
+    // Точка входа
+    window.onload = () => { 
+        checkBase();
+        switchTab('dict'); 
+    };
 </script>
 </body>
 </html>
