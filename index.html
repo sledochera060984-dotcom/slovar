@@ -13,11 +13,9 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Загрузка баз -->
     <script src="base.js"></script>
     <script src="verbs.js"></script>
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -90,12 +88,10 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Поиск -->
     <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
         <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
@@ -106,7 +102,6 @@
     <div id="list" class="list"></div>
 </div>
 
-<!-- Модальное окно: Избранное -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -127,7 +122,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v35-verbs-final';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v36-reverse-search';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -135,7 +130,8 @@
     let myNotes = []; 
     let activeTab = 'dict';
     let currentRenderedWords = []; 
-    let normalizedVerbs = {}; 
+    let normalizedVerbs = {}; // Прямая база (Прошедшее -> Настоящее)
+    let reverseVerbsMap = {}; // НОВОЕ: Обратная база (Настоящее -> Прошедшее)
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -174,12 +170,20 @@
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
-            // ИСПРАВЛЕННЫЙ БЛОК: Скрипт собрал базу ПРАВИЛЬНО ("Прошедшее": "Настоящее"). 
-            // Просто счищаем харакаты с ключа для поиска!
+            // Инициализация базы глаголов
             if (typeof verbsBase !== 'undefined') {
                 for (let pastTense in verbsBase) {
                     let presentTense = verbsBase[pastTense];
-                    normalizedVerbs[normalize(pastTense)] = presentTense;
+                    
+                    let normPast = normalize(pastTense);
+                    let normPresent = normalize(presentTense);
+                    
+                    // Сохраняем для отображения (очищенное прошедшее -> с харакатами настоящее)
+                    normalizedVerbs[normPast] = presentTense;
+                    
+                    // НОВОЕ: Сохраняем для ОБРАТНОГО поиска (очищенное настоящее -> очищенное прошедшее)
+                    // Теперь إذا написал "يقول", система поймет, что это "قال"
+                    reverseVerbsMap[normPresent] = normPast;
                 }
             }
 
@@ -337,8 +341,13 @@
         }
 
         if (typeof dictBase === 'undefined') return;
+        
         const nQ = normalize(q); 
         const searchStems = getArabicStems(nQ); 
+        
+        // НОВОЕ: Проверяем, ввел ли пользователь настоящее время (напр. "يقول")
+        // Если да, mappedPastTense станет "قال"
+        let mappedPastTense = reverseVerbsMap[nQ];
         
         let filtered = dictBase.filter(w => {
             const itemKey = w.ar + '::' + w.ru;
@@ -352,6 +361,10 @@
             const nRoot = normalize(w.root || ""); 
             
             if (nWordRu.includes(q)) return true;
+            
+            // НОВОЕ: Обратный поиск - если слово в словаре равно "قال", а мы искали "يقول"
+            if (mappedPastTense && nWordAr === mappedPastTense) return true;
+            
             for (let stem of searchStems) {
                 if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
             }
@@ -365,6 +378,12 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
+                // НОВОЕ: Если нашли точное совпадение по обратному поиску, поднимаем наверх!
+                if (mappedPastTense) {
+                    if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
+                    if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
+                }
+
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
@@ -385,7 +404,6 @@
             const customRu = favCustom[itemKey] || favCustom[w.ar];
             const displayRu = (active && customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
             
-            // ПРОВЕРКА ПО ОЧИЩЕННОЙ БАЗЕ
             let verbInfoHtml = '';
             const cleanAr = normalize(w.ar);
             if (normalizedVerbs[cleanAr]) {
@@ -405,7 +423,6 @@
                         <div class="dict-ar">${w.ar}</div>
                     </div>
                     <div class="details">
-                        <!-- Вывод настоящего времени -->
                         ${verbInfoHtml}
                         
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
