@@ -108,7 +108,7 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Переключатель видов Избранного (Скрыт по умолчанию) -->
+    <!-- Переключатель видов Избранного -->
     <div id="favControls" style="display:none; justify-content: flex-end; margin-bottom: 12px; padding: 0 4px;">
         <button id="favViewBtn" class="btn" style="width: auto; padding: 8px 16px; font-size: 13px; font-weight: 800; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; color: var(--primary);" onclick="toggleFavView()">
             🎴 Режим карточек
@@ -152,7 +152,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v40-stable-sync';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v42-offline-shield';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -161,9 +161,7 @@
     let activeTab = 'dict';
     let currentRenderedWords = []; 
     
-    // Состояние переключателя (по умолчанию 'list')
     let favViewMode = localStorage.getItem('arabus_fav_view') || 'list'; 
-    
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
 
@@ -228,28 +226,40 @@
         renderUI();
     });
 
-    // --- МОЩНАЯ И НАДЕЖНАЯ СИНХРОНИЗАЦИЯ ---
+    // --- МОЩНАЯ ОФФЛАЙН-СИНХРОНИЗАЦИЯ ИЗБРАННОГО ---
+    
+    // Принудительная отправка данных с телефона в облако
+    function pushFavsToCloud() {
+        if (!navigator.onLine || !user) return;
+        
+        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
+          .set({ list: localFavs, custom: favCustom })
+          .then(() => {
+              // Успешно ушло в облако -> снимаем "Оффлайн-щит"
+              localStorage.removeItem('arabus_favs_dirty'); 
+          })
+          .catch(e => console.error("Ошибка синхронизации:", e));
+    }
+
     function startLiveSync() {
         if (!user) return;
         
         // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
+              // ВАЖНО: Если у нас включен "Оффлайн-щит", мы ИГНОРИРУЕМ старые данные с сервера
+              if (localStorage.getItem('arabus_favs_dirty') === 'true') {
+                  pushFavsToCloud(); // Вместо этого принудительно пушим наши новые слова!
+                  return;
+              }
+              
               if (doc.exists) {
-                  // Облако - босс. Берем данные оттуда.
                   localFavs = doc.data().list || [];
                   favCustom = doc.data().custom || {};
-                  
-                  // Обновляем локальное хранилище, чтобы они были доступны оффлайн
                   localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
                   localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
                   renderUI();
-              } else if (localFavs.length > 0) {
-                  // Если в облаке пусто, но у нас есть локальные данные (первый вход) - пушим их в облако
-                  saveFavsToCloud(false);
               }
-          }, err => {
-              console.error("Ошибка синхронизации избранного:", err);
           });
 
         // Синхронизация Блокнота
@@ -257,24 +267,16 @@
           .onSnapshot(snap => {
               myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
               if (activeTab === 'trans') renderUI();
-          }, err => {
-              console.error("Ошибка синхронизации блокнота:", err);
           });
     }
 
-    // Сохранение в облако (Фоновое, без зависаний)
-    function saveFavsToCloud(showNotification = true) {
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        if (showNotification) showMsg("Избранное обновлено");
-        
-        if (user) {
-            // Выстрелил и забыл - Firestore сам разберется с очередью, если нет интернета
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-              .set({ list: localFavs, custom: favCustom })
-              .catch(e => console.error("Ошибка сохранения в облако:", e));
+    // Обработчик: как только появляется интернет, проверяем, есть ли что отправить
+    window.addEventListener('online', () => {
+        if (localStorage.getItem('arabus_favs_dirty') === 'true') {
+            showMsg("Синхронизация оффлайн-данных... 🔄");
+            pushFavsToCloud();
         }
-    }
+    });
 
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
@@ -297,7 +299,7 @@
             saveFavsToCloud(true); 
             renderUI();
         } else {
-            // Добавление (открываем модалку для точного перевода)
+            // Добавление
             window.wordToAddKey = itemKey;
             document.getElementById('favModalAr').innerText = w.ar;
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
@@ -321,6 +323,23 @@
     function closeFavModal() {
         document.getElementById('favModal').style.display = 'none';
         window.wordToAddKey = null;
+    }
+
+    function saveFavsToCloud(showNotification = true) {
+        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+        
+        // Включаем "Оффлайн-щит": у нас есть изменения, которые еще не подтверждены сервером
+        localStorage.setItem('arabus_favs_dirty', 'true'); 
+        
+        if (showNotification) {
+            if (navigator.onLine) showMsg("Избранное обновлено");
+            else showMsg("Сохранено оффлайн 🕒");
+        }
+        
+        if (user && navigator.onLine) {
+            pushFavsToCloud();
+        }
     }
 
     // --- БЛОКНОТ ---
@@ -361,7 +380,6 @@
         return stems;
     }
 
-    // ПЕРЕКЛЮЧЕНИЕ ВИДА ИЗБРАННОГО
     function toggleFavView() {
         favViewMode = favViewMode === 'list' ? 'cards' : 'list';
         localStorage.setItem('arabus_fav_view', favViewMode);
@@ -373,7 +391,6 @@
         const q = document.getElementById('queryInput').value.toLowerCase().trim();
         list.innerHTML = "";
         
-        // Обновляем текст кнопки переключения видов
         const favBtn = document.getElementById('favViewBtn');
         if (favBtn) {
             favBtn.innerHTML = favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка';
@@ -455,7 +472,7 @@
         const renderLimit = activeTab === 'fav' ? (favViewMode === 'cards' ? 200 : 500) : 50;
         currentRenderedWords = filtered.slice(0, renderLimit);
 
-        // --- ОТРИСОВКА КАРТОЧЕК (Только для Избранного в режиме cards) ---
+        // --- ОТРИСОВКА КАРТОЧЕК ---
         if (activeTab === 'fav' && favViewMode === 'cards') {
             if (currentRenderedWords.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#94a3b8; font-weight:600; line-height:1.5;">Здесь пока пусто.<br><br>Нажимайте на <b style="color:#f59e0b;">★</b> в словаре, чтобы создавать карточки для заучивания!</div>`;
@@ -554,7 +571,6 @@
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
         document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
         
-        // Показываем кнопку "Карточки/Список" только во вкладке Избранное
         const controls = document.getElementById('favControls');
         if (controls) {
             controls.style.display = t === 'fav' ? 'flex' : 'none';
@@ -574,6 +590,5 @@
 </script>
 </body>
 </html>
-
 
 
