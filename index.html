@@ -35,7 +35,7 @@
         
         .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
-        .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
+        .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 12px; }
         .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s;}
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
 
@@ -67,7 +67,7 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
-        /* --- ФЛЭШ-КАРТОЧКИ (ИЗБРАННОЕ) --- */
+        /* --- ФЛЭШ-КАРТОЧКИ --- */
         .flashcard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 15px; padding: 10px 0; }
         .flashcard { perspective: 1000px; height: 170px; cursor: pointer; }
         .flashcard-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
@@ -108,6 +108,13 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
+    <!-- Переключатель видов Избранного (Скрыт по умолчанию) -->
+    <div id="favControls" style="display:none; justify-content: flex-end; margin-bottom: 12px; padding: 0 4px;">
+        <button id="favViewBtn" class="btn" style="width: auto; padding: 8px 16px; font-size: 13px; font-weight: 800; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; color: var(--primary);" onclick="toggleFavView()">
+            🎴 Режим карточек
+        </button>
+    </div>
+
     <!-- Поиск -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="doSearch()" autocomplete="off">
@@ -145,7 +152,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v37-flashcards';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v38-list-and-cards';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -153,6 +160,10 @@
     let myNotes = []; 
     let activeTab = 'dict';
     let currentRenderedWords = []; 
+    
+    // Состояние переключателя (по умолчанию 'list')
+    let favViewMode = localStorage.getItem('arabus_fav_view') || 'list'; 
+    
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
 
@@ -178,7 +189,6 @@
 
     db.enablePersistence().catch(function(err) {});
 
-    // ФУНКЦИЯ ОЧИСТКИ ОТ ХАРАКАТОВ
     function normalize(t) { 
         if (!t) return "";
         let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
@@ -247,15 +257,18 @@
 
     // --- ИЗБРАННОЕ ---
     function handleFavClick(idx, e) {
+        e.preventDefault();
         e.stopPropagation();
         const w = currentRenderedWords[idx];
         const itemKey = w.ar + '::' + w.ru; 
         
         if (localFavs.includes(itemKey) || localFavs.includes(w.ar)) {
+            // Удаление
             localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
             delete favCustom[itemKey]; delete favCustom[w.ar];
             saveFavsToCloud(); renderUI();
         } else {
+            // Добавление
             window.wordToAddKey = itemKey;
             document.getElementById('favModalAr').innerText = w.ar;
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
@@ -271,7 +284,10 @@
 
         if (!localFavs.includes(key)) localFavs.push(key);
         favCustom[key] = ru; 
-        saveFavsToCloud(); closeFavModal(); renderUI();
+        saveFavsToCloud(); 
+        closeFavModal(); 
+        showMsg("Слово добавлено в избранное!");
+        renderUI();
     }
 
     function closeFavModal() {
@@ -282,7 +298,6 @@
     async function saveFavsToCloud() {
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        showMsg("Избранное обновлено");
         if (user) {
             try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom }); } 
             catch(e) {}
@@ -327,11 +342,24 @@
         return stems;
     }
 
+    // ПЕРЕКЛЮЧЕНИЕ ВИДА ИЗБРАННОГО
+    function toggleFavView() {
+        favViewMode = favViewMode === 'list' ? 'cards' : 'list';
+        localStorage.setItem('arabus_fav_view', favViewMode);
+        renderUI();
+    }
+
     function renderUI() {
         const list = document.getElementById('list');
         const q = document.getElementById('queryInput').value.toLowerCase().trim();
         list.innerHTML = "";
         
+        // Обновляем текст кнопки переключения видов
+        const favBtn = document.getElementById('favViewBtn');
+        if (favBtn) {
+            favBtn.innerHTML = favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка';
+        }
+
         if (activeTab === 'trans') {
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
@@ -405,12 +433,11 @@
             });
         }
 
-        // Если это избранное, отрисовываем до 200 карточек, для словаря - 50.
-        const renderLimit = activeTab === 'fav' ? 200 : 50;
+        const renderLimit = activeTab === 'fav' ? (favViewMode === 'cards' ? 200 : 500) : 50;
         currentRenderedWords = filtered.slice(0, renderLimit);
 
-        // --- ОТРИСОВКА ИЗБРАННОГО (КАРТОЧКИ) ---
-        if (activeTab === 'fav') {
+        // --- ОТРИСОВКА КАРТОЧЕК (Только для Избранного в режиме cards) ---
+        if (activeTab === 'fav' && favViewMode === 'cards') {
             if (currentRenderedWords.length === 0) {
                 list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#94a3b8; font-weight:600; line-height:1.5;">Здесь пока пусто.<br><br>Нажимайте на <b style="color:#f59e0b;">★</b> в словаре, чтобы создавать карточки для заучивания!</div>`;
                 return;
@@ -428,27 +455,24 @@
                 const cleanAr = normalize(w.ar);
                 if (normalizedVerbs[cleanAr]) {
                     verbInfoHtml = `<div class="fc-verb">${normalizedVerbs[cleanAr]}</div>`;
-                } else if (w.root) {
-                    verbInfoHtml = `<div class="fc-verb" style="color:#64748b; font-size:12px; font-weight:normal; text-transform:uppercase;">Корень: ${w.root}</div>`;
                 }
 
                 const el = document.createElement('div');
                 el.className = 'flashcard';
-                // При клике переворачиваем
                 el.setAttribute('onclick', "this.classList.toggle('flipped')");
                 
                 el.innerHTML = `
                     <div class="flashcard-inner">
                         <div class="flashcard-front">
-                            <button class="fc-star" onclick="event.stopPropagation(); handleFavClick(${idx}, event)">★</button>
+                            <button class="fc-star" onclick="handleFavClick(${idx}, event)">★</button>
                             <div class="fc-ru">${displayRu}</div>
                             <div class="fc-hint">Коснись, чтобы перевернуть</div>
                         </div>
                         <div class="flashcard-back">
-                            <button class="fc-star" onclick="event.stopPropagation(); handleFavClick(${idx}, event)">★</button>
+                            <button class="fc-star" onclick="handleFavClick(${idx}, event)">★</button>
                             <div class="fc-ar">${w.ar}</div>
                             ${verbInfoHtml}
-                            <button class="fc-audio" onclick="event.stopPropagation(); speak('${w.ar}', event)">🔊</button>
+                            <button class="fc-audio" onclick="speak('${w.ar}', event)">🔊</button>
                         </div>
                     </div>
                 `;
@@ -458,7 +482,12 @@
             return;
         }
 
-        // --- ОТРИСОВКА СЛОВАРЯ (ОБЫЧНЫЙ СПИСОК) ---
+        // --- СТАНДАРТНАЯ ОТРИСОВКА СПИСКОМ ---
+        if (activeTab === 'fav' && currentRenderedWords.length === 0) {
+            list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#94a3b8; font-weight:600; line-height:1.5;">Избранное пусто.<br>Нажимайте на звездочки в словаре.</div>`;
+            return;
+        }
+
         currentRenderedWords.forEach((w, idx) => {
             const itemKey = w.ar + '::' + w.ru;
             const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
@@ -502,8 +531,16 @@
         activeTab = t;
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
+        
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
         document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
+        
+        // Показываем кнопку "Карточки/Список" только во вкладке Избранное
+        const controls = document.getElementById('favControls');
+        if (controls) {
+            controls.style.display = t === 'fav' ? 'flex' : 'none';
+        }
+        
         renderUI();
     }
 
