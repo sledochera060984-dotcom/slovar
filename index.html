@@ -1,4 +1,4 @@
-
+```
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -45,12 +45,10 @@
         .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
         
-        /* Словарь */
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; font-weight: 600;}
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         
-        /* Блокнот: Русский сверху */
         .note-header { display: flex; flex-direction: column; }
         .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
         .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -58,6 +56,7 @@
         .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; }
         .expanded .details { display: block; }
         .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
+        .root-badge { font-size: 12px; color: #94a3b8; font-weight: bold; margin-top: 4px; text-transform: uppercase; }
 
         .actions { display: flex; gap: 8px; margin-top: 12px; }
         .btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -65,10 +64,8 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
-        /* Всплывающее сообщение */
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
-
-        /* Модальное окно для Избранного */
+        
         #favModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
         .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
@@ -92,7 +89,7 @@
 
     <!-- Поиск (Словарь) -->
     <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, الباب)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, يقول, كتبت)..." oninput="doSearch()" autocomplete="off">
     </div>
 
     <!-- Ручной Блокнот -->
@@ -106,7 +103,7 @@
     <div id="list" class="list"></div>
 </div>
 
-<!-- Модальное окно добавления в Избранное -->
+<!-- Модальное окно -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -123,19 +120,18 @@
 <div id="toast">Сообщение</div>
 
 <script>
-    // Офлайн режим
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v18-customfav';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v22-roots';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
-    let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; // Свои переводы для избранного
+    let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let myNotes = []; 
     let activeTab = 'dict';
-    let currentRenderedWords = []; // Для привязки кнопок
+    let currentRenderedWords = []; 
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -158,9 +154,8 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    db.enablePersistence().catch(function(err) { console.log("Офлайн недоступен", err); });
+    db.enablePersistence().catch(function(err) {});
 
-    // Проверка базы
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
@@ -186,7 +181,6 @@
     function startLiveSync() {
         if (!user) return;
         
-        // Синхронизация Избранного (список + кастомные переводы)
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
@@ -212,20 +206,18 @@
         }
     });
 
-    // --- ИЗБРАННОЕ С КАСТОМНЫМ ПЕРЕВОДОМ ---
+    // --- УНИКАЛЬНОЕ ИЗБРАННОЕ ---
     function handleFavClick(idx, e) {
         e.stopPropagation();
         const w = currentRenderedWords[idx];
+        const itemKey = w.ar + '::' + w.ru; 
         
-        if (localFavs.includes(w.ar)) {
-            // Удаляем из избранного
-            localFavs = localFavs.filter(v => v !== w.ar);
-            delete favCustom[w.ar];
-            saveFavsToCloud();
-            renderUI();
+        if (localFavs.includes(itemKey) || localFavs.includes(w.ar)) {
+            localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
+            delete favCustom[itemKey]; delete favCustom[w.ar];
+            saveFavsToCloud(); renderUI();
         } else {
-            // Открываем модальное окно для добавления своего перевода
-            window.wordToAdd = w.ar;
+            window.wordToAddKey = itemKey;
             document.getElementById('favModalAr').innerText = w.ar;
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
             document.getElementById('favModal').style.display = 'flex';
@@ -234,21 +226,18 @@
     }
 
     function confirmFavModal() {
-        const ar = window.wordToAdd;
+        const key = window.wordToAddKey;
         const ru = document.getElementById('favModalRu').value.trim();
-        if (!ar || !ru) { showMsg("Заполните перевод!"); return; }
+        if (!key || !ru) { showMsg("Заполните перевод!"); return; }
 
-        if (!localFavs.includes(ar)) localFavs.push(ar);
-        favCustom[ar] = ru; // Сохраняем индивидуальный перевод
-        
-        saveFavsToCloud();
-        closeFavModal();
-        renderUI();
+        if (!localFavs.includes(key)) localFavs.push(key);
+        favCustom[key] = ru; 
+        saveFavsToCloud(); closeFavModal(); renderUI();
     }
 
     function closeFavModal() {
         document.getElementById('favModal').style.display = 'none';
-        window.wordToAdd = null;
+        window.wordToAddKey = null;
     }
 
     async function saveFavsToCloud() {
@@ -256,13 +245,12 @@
         localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
         showMsg("Избранное обновлено");
         if (user) {
-            try {
-                await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom });
-            } catch(e) {}
+            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom }); } 
+            catch(e) {}
         }
     }
 
-    // --- БЛОКНОТ (РУЧНОЙ) ---
+    // --- БЛОКНОТ ---
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
@@ -281,7 +269,7 @@
         }
     }
 
-    // --- ПОИСК И UI ---
+    // --- УМНЫЙ ПОИСК И АНАЛИЗАТОР КОРНЕЙ (STEMMER) ---
     function doSearch() { renderUI(); }
 
     function normalize(t) { 
@@ -289,6 +277,35 @@
         let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
         if (res.length > 3 && res.startsWith("ال")) res = res.substring(2);
         return res;
+    }
+
+    // Алгоритм, который отбрасывает приставки и суффиксы для поиска глаголов
+    function getArabicStems(word) {
+        if (!word) return [];
+        let stems = [word];
+        let w = word;
+        
+        // Убираем приставку будущего времени س
+        if (w.startsWith("س") && w.length > 3) w = w.substring(1);
+        
+        // Приставки настоящего времени (ي, ت, ن, ا) и суффиксы мн.числа/дв.числа
+        if (w.length >= 3 && /^[يتنا]/.test(w)) {
+            let core = w.substring(1);
+            if (core.endsWith("ون") || core.endsWith("ين") || core.endsWith("ان") || core.endsWith("وا") || core.endsWith("ات")) {
+                core = core.substring(0, core.length - 2);
+            }
+            stems.push(core); // Например: يقولون -> قول
+        }
+        
+        // Суффиксы прошедшего времени
+        if (word.endsWith("وا") || word.endsWith("تم") || word.endsWith("نا")) {
+             stems.push(word.substring(0, word.length - 2)); // كتبوا -> كتب
+        }
+        if (word.endsWith("ت")) {
+             stems.push(word.substring(0, word.length - 1)); // كتبت -> كتب
+        }
+
+        return stems;
     }
 
     function renderUI() {
@@ -320,14 +337,31 @@
         }
 
         if (typeof dictBase === 'undefined') return;
+        
         const nQ = normalize(q); 
+        // Получаем список возможных корней, если юзер вбил глагол (например يقول)
+        const searchStems = getArabicStems(nQ); 
         
         let filtered = dictBase.filter(w => {
-            if (activeTab === 'fav' && !localFavs.includes(w.ar)) return false;
+            const itemKey = w.ar + '::' + w.ru;
+            const isFav = localFavs.includes(itemKey) || localFavs.includes(w.ar);
+            
+            if (activeTab === 'fav' && !isFav) return false;
             if (!q) return activeTab === 'fav';
+            
             const nWordAr = normalize(w.ar);
             const nWordRu = w.ru.toLowerCase();
-            return nWordRu.includes(q) || nWordAr.includes(nQ);
+            const nRoot = normalize(w.root || ""); 
+            
+            // Если ищем на русском
+            if (nWordRu.includes(q)) return true;
+            
+            // Если ищем на арабском (проверяем слово и корень по всем формам)
+            for (let stem of searchStems) {
+                if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
+            }
+            
+            return false;
         });
 
         if (q) {
@@ -337,6 +371,7 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
+                // Приоритет прямого совпадения
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
@@ -349,24 +384,29 @@
             });
         }
 
-        // Сохраняем глобально для привязки кнопок по индексу
         currentRenderedWords = filtered.slice(0, 50);
 
         currentRenderedWords.forEach((w, idx) => {
-            const active = localFavs.includes(w.ar);
-            // ПОДМЕНА ПЕРЕВОДА: Если слово в избранном и есть кастомный перевод, показываем его!
-            const displayRu = (active && favCustom[w.ar]) ? favCustom[w.ar] : (w.short_ru || w.ru.split(';')[0]);
+            const itemKey = w.ar + '::' + w.ru;
+            const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
+            const customRu = favCustom[itemKey] || favCustom[w.ar];
+            const displayRu = (active && customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
+            
+            // Если у слова в базе есть корень, показываем его красиво
+            const rootBadge = w.root ? `<div class="root-badge">Корень: <span style="color:var(--primary); font-size:14px;">${w.root}</span></div>` : '';
 
             const el = document.createElement('div');
             el.className = 'item';
             el.innerHTML = `
                 <div onclick="this.classList.toggle('expanded')">
                     <div class="dict-row">
-                        <div class="dict-ru" style="${active && favCustom[w.ar] ? 'color: var(--primary);' : ''}">${displayRu}</div>
-                        <div class="dict-ar">${w.ar}</div>
+                        <div class="dict-ru" style="${active && customRu ? 'color: var(--primary);' : ''}">${displayRu}</div>
+                        <div style="text-align: right;">
+                            <div class="dict-ar">${w.ar}</div>
+                            ${rootBadge}
+                        </div>
                     </div>
                     <div class="details">
-                        <!-- Выпадающий список (оригинальный перевод Баранова) остается без изменений! -->
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
                         <div class="actions">
                             <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
@@ -400,8 +440,5 @@
 </script>
 </body>
 </html>
-
-
-
 
 
