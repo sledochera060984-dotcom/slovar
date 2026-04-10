@@ -70,15 +70,6 @@
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
         .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
 
-        /* НОВОЕ: Встроенное окно спряжений (Bottom Sheet) */
-        #conjOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 8000; opacity: 0; transition: opacity 0.3s; }
-        #conjModal { position: fixed; bottom: 0; left: 0; width: 100%; height: 85vh; background: white; border-radius: 24px 24px 0 0; z-index: 8001; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -10px 25px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow: hidden; }
-        #conjModal.open { transform: translateY(0); }
-        .conj-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
-        .conj-title { font-weight: 800; font-size: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
-        .conj-close { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 700; color: #475569; cursor: pointer; }
-        .conj-iframe { flex: 1; width: 100%; border: none; background: #fff; }
-
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
@@ -96,7 +87,7 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Поиск -->
+    <!-- Поиск (Словарь) -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (напр: дверь, قول, قال)..." oninput="doSearch()" autocomplete="off">
     </div>
@@ -112,7 +103,7 @@
     <div id="list" class="list"></div>
 </div>
 
-<!-- Модальное окно: Избранное -->
+<!-- Модальное окно для Избранного -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -126,16 +117,6 @@
     </div>
 </div>
 
-<!-- Встроенное окно спряжений (Bottom Sheet) -->
-<div id="conjOverlay" onclick="closeConjModal()"></div>
-<div id="conjModal">
-    <div class="conj-header">
-        <div class="conj-title">🔄 Спряжение: <span id="conjWordAr" style="color:var(--primary); font-size: 20px; font-weight: bold; direction: rtl;"></span></div>
-        <button class="conj-close" onclick="closeConjModal()">Закрыть</button>
-    </div>
-    <iframe id="conjFrame" class="conj-iframe" src=""></iframe>
-</div>
-
 <div id="toast">Сообщение</div>
 
 <script>
@@ -143,7 +124,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v26-native-reverso';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v27-stable';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -224,31 +205,13 @@
         }
     });
 
-    // --- ВСТРОЕННЫЕ СПРЯЖЕНИЯ (Iframe Modal) ---
-    function openConjugationModal(word, e) {
+    // --- ОТКРЫТИЕ СПРЯЖЕНИЯ В НОВОЙ ВКЛАДКЕ ---
+    function openConjugationTab(word, e) {
         e.stopPropagation();
-        // Убираем харакаты для корректной ссылки
+        // Убираем харакаты
         const cleanWord = word.replace(/[\u064B-\u0652]/g, "");
         const url = `https://glagol.reverso.net/спряжение-арабский-глагол-${encodeURIComponent(cleanWord)}.html`;
-        
-        document.getElementById('conjWordAr').innerText = cleanWord;
-        document.getElementById('conjFrame').src = url;
-        
-        document.getElementById('conjOverlay').style.display = 'block';
-        // Небольшая задержка для плавности анимации opacity
-        setTimeout(() => {
-            document.getElementById('conjOverlay').style.opacity = '1';
-            document.getElementById('conjModal').classList.add('open');
-        }, 10);
-    }
-
-    function closeConjModal() {
-        document.getElementById('conjModal').classList.remove('open');
-        document.getElementById('conjOverlay').style.opacity = '0';
-        setTimeout(() => {
-            document.getElementById('conjOverlay').style.display = 'none';
-            document.getElementById('conjFrame').src = ""; // Очищаем iframe
-        }, 300);
+        window.open(url, '_blank');
     }
 
     // --- УНИКАЛЬНОЕ ИЗБРАННОЕ ---
@@ -314,7 +277,7 @@
         }
     }
 
-    // --- УМНЫЙ ПОИСК ---
+    // --- ПОИСК ---
     function doSearch() { renderUI(); }
 
     function normalize(t) { 
@@ -416,7 +379,12 @@
             const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
             const customRu = favCustom[itemKey] || favCustom[w.ar];
             const displayRu = (active && customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
-            const rootBadge = w.root ? `<div class="root-badge">Корень: <span style="color:var(--primary); font-size:14px;">${w.root}</span></div>` : '';
+            
+            // Если есть корень, выводим значок
+            let rootBadge = '';
+            if (w.root) {
+                rootBadge = `<div class="root-badge">Корень: <span style="color:var(--primary); font-size:14px;">${w.root}</span></div>`;
+            }
 
             const el = document.createElement('div');
             el.className = 'item';
@@ -434,7 +402,7 @@
                         
                         <div class="actions">
                             <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-blue" onclick="openConjugationModal('${w.ar}', event)">🔄 Спряжение</button>
+                            <button class="btn btn-blue" onclick="openConjugationTab('${w.ar}', event)">🔄 Спряжение</button>
                         </div>
                         <div class="actions">
                             <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
