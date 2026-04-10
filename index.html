@@ -70,6 +70,21 @@
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
         .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
 
+        /* Встроенное меню спряжений */
+        #conjNativeModal { position: fixed; bottom: 0; left: 0; width: 100%; height: 85vh; background: white; border-radius: 24px 24px 0 0; z-index: 9999; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -10px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; }
+        #conjNativeModal.open { transform: translateY(0); }
+        .conj-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+        .conj-title { font-weight: 800; font-size: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+        .conj-close { background: #e2e8f0; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 700; color: #475569; cursor: pointer; }
+        .conj-body { flex: 1; overflow-y: auto; padding: 16px; background: #fff; direction: rtl;}
+        
+        /* Стили перехваченных таблиц */
+        .conj-tense-title { font-size: 16px; font-weight: 800; color: var(--primary); background: #ecfdf5; padding: 10px 15px; border-radius: 10px; margin-top: 15px; margin-bottom: 10px; text-align: center;}
+        .conj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;}
+        .conj-cell { background: #f1f5f9; padding: 12px; border-radius: 12px; font-size: 20px; font-weight: bold; text-align: center; color: #1e293b; }
+        .conj-cell span { font-size: 12px; color: #64748b; font-weight: normal; display: block; margin-bottom: 4px; }
+        .loader { text-align: center; padding: 20px; color: var(--primary); font-weight: bold; }
+
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     </style>
@@ -87,9 +102,8 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Поиск (Словарь) -->
     <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (напр: дверь, قول, قال)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск (напр: باب, يقول, сказал)..." oninput="doSearch()" autocomplete="off">
     </div>
 
     <!-- Ручной Блокнот -->
@@ -103,7 +117,7 @@
     <div id="list" class="list"></div>
 </div>
 
-<!-- Модальное окно для Избранного -->
+<!-- Модальное окно Избранного -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -117,6 +131,18 @@
     </div>
 </div>
 
+<!-- НОВОЕ: Встроенное меню Спряжений (Native) -->
+<div id="conjOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9000;" onclick="closeConj()"></div>
+<div id="conjNativeModal">
+    <div class="conj-header">
+        <div class="conj-title">🔄 Формы: <span id="conjWordTitle" style="color:var(--primary); font-size:20px; direction:rtl;"></span></div>
+        <button class="conj-close" onclick="closeConj()">Закрыть</button>
+    </div>
+    <div class="conj-body" id="conjBody">
+        <div class="loader">Сбор данных...</div>
+    </div>
+</div>
+
 <div id="toast">Сообщение</div>
 
 <script>
@@ -124,7 +150,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v27-stable';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v30-native-verbs';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -205,13 +231,75 @@
         }
     });
 
-    // --- ОТКРЫТИЕ СПРЯЖЕНИЯ В НОВОЙ ВКЛАДКЕ ---
-    function openConjugationTab(word, e) {
+    // --- МАГИЯ: ПЕРЕХВАТ И ОТРИСОВКА СПРЯЖЕНИЙ ВНУТРИ ПРИЛОЖЕНИЯ ---
+    async function openNativeConjugation(word, e) {
         e.stopPropagation();
-        // Убираем харакаты
         const cleanWord = word.replace(/[\u064B-\u0652]/g, "");
-        const url = `https://glagol.reverso.net/спряжение-арабский-глагол-${encodeURIComponent(cleanWord)}.html`;
-        window.open(url, '_blank');
+        document.getElementById('conjWordTitle').innerText = cleanWord;
+        
+        // Показываем окно загрузки
+        document.getElementById('conjOverlay').style.display = 'block';
+        document.getElementById('conjNativeModal').classList.add('open');
+        document.getElementById('conjBody').innerHTML = '<div class="loader">Получение таблиц спряжения...</div>';
+
+        // Формируем ссылку и пропускаем её через CORS прокси для обхода защиты
+        const targetUrl = `https://glagol.reverso.net/спряжение-арабский-глагол-${encodeURIComponent(cleanWord)}.html`;
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+
+        try {
+            const response = await fetch(proxyUrl);
+            const data = await response.json();
+            const htmlText = data.contents;
+
+            // Разбираем полученный HTML код чужого сайта
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+
+            // Ищем блоки таблиц (в Reverso они называются wrap-three-col)
+            const containers = doc.querySelectorAll('.wrap-three-col');
+
+            if (containers.length === 0) {
+                throw new Error("Глагол не найден в базе спряжений");
+            }
+
+            let nativeHtml = '';
+            containers.forEach(container => {
+                // Берем название времени (Прошедшее, Настоящее и тд)
+                const title = container.getAttribute('mobile-title') || "Форма";
+                nativeHtml += `<div class="conj-tense-title">${title}</div><div class="conj-grid">`;
+
+                // Берем сами слова
+                const lists = container.querySelectorAll('ul');
+                lists.forEach(ul => {
+                    const items = ul.querySelectorAll('li');
+                    items.forEach(li => {
+                        const iconText = li.querySelector('i')?.innerText || ""; // Местоимение (он, она)
+                        const verbText = li.innerText.replace(iconText, '').trim(); // Само слово
+                        if (verbText) {
+                            nativeHtml += `<div class="conj-cell"><span>${iconText}</span>${verbText}</div>`;
+                        }
+                    });
+                });
+                nativeHtml += `</div>`;
+            });
+
+            // Рисуем готовые карточки прямо в нашем приложении!
+            document.getElementById('conjBody').innerHTML = nativeHtml;
+
+        } catch (err) {
+            // Если прокси временно не работает, даем кнопку открыть оригинальный сайт
+            document.getElementById('conjBody').innerHTML = `
+                <div style="text-align:center; padding: 30px 10px;">
+                    <p style="color: #64748b; margin-bottom: 20px;">Глагол слишком сложный или база перегружена.</p>
+                    <button class="btn btn-blue" style="width:100%" onclick="window.open('${targetUrl}', '_blank')">🌐 Открыть в браузере</button>
+                </div>
+            `;
+        }
+    }
+
+    function closeConj() {
+        document.getElementById('conjNativeModal').classList.remove('open');
+        setTimeout(() => document.getElementById('conjOverlay').style.display = 'none', 300);
     }
 
     // --- УНИКАЛЬНОЕ ИЗБРАННОЕ ---
@@ -379,11 +467,12 @@
             const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
             const customRu = favCustom[itemKey] || favCustom[w.ar];
             const displayRu = (active && customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
-            
-            // Если есть корень, выводим значок
-            let rootBadge = '';
-            if (w.root) {
-                rootBadge = `<div class="root-badge">Корень: <span style="color:var(--primary); font-size:14px;">${w.root}</span></div>`;
+            const rootBadge = w.root ? `<div class="root-badge">Корень: <span style="color:var(--primary); font-size:14px;">${w.root}</span></div>` : '';
+
+            // Если есть корень или это похоже на глагол (3-4 буквы), добавляем кнопку Спряжения
+            let conjBtn = '';
+            if (w.root || w.ar.replace(/[\u064B-\u0652]/g, "").length <= 5) {
+                conjBtn = `<button class="btn btn-blue" onclick="openNativeConjugation('${w.ar}', event)">🔄 Спряжение</button>`;
             }
 
             const el = document.createElement('div');
@@ -402,7 +491,7 @@
                         
                         <div class="actions">
                             <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-blue" onclick="openConjugationTab('${w.ar}', event)">🔄 Спряжение</button>
+                            ${conjBtn}
                         </div>
                         <div class="actions">
                             <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
@@ -435,6 +524,5 @@
 </script>
 </body>
 </html>
-
 
 
