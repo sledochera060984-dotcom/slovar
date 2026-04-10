@@ -13,9 +13,11 @@
     
     <title>Arabus Pro</title>
     
+    <!-- Загрузка баз -->
     <script src="base.js"></script>
     <script src="verbs.js"></script>
     
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -65,6 +67,24 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
+        /* --- ФЛЭШ-КАРТОЧКИ (ИЗБРАННОЕ) --- */
+        .flashcard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 15px; padding: 10px 0; }
+        .flashcard { perspective: 1000px; height: 170px; cursor: pointer; }
+        .flashcard-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
+        .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+        .flashcard-front, .flashcard-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .flashcard-front { background: white; border: 2px solid #f1f5f9; }
+        .flashcard-back { background: #ecfdf5; border: 2px solid #a7f3d0; transform: rotateY(180deg); }
+        
+        .fc-ru { font-size: 15px; font-weight: 700; color: #1e293b; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+        .fc-ar { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; margin-bottom: 6px; }
+        .fc-verb { font-size: 16px; font-weight: bold; color: #059669; }
+        .fc-hint { font-size: 10px; color: #94a3b8; position: absolute; bottom: 12px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
+        
+        .fc-star { position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; color: #f59e0b; cursor: pointer; padding: 5px; line-height: 1; z-index: 2; }
+        .fc-audio { position: absolute; bottom: 10px; background: #d1fae5; border: none; font-size: 18px; padding: 8px; border-radius: 50%; cursor: pointer; color: #059669; z-index: 2; display: flex; align-items: center; justify-content: center; transition: 0.2s;}
+        .fc-audio:active { transform: scale(0.9); }
+
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
         
         #favModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
@@ -88,10 +108,12 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
+    <!-- Поиск -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="doSearch()" autocomplete="off">
     </div>
 
+    <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
         <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
@@ -102,6 +124,7 @@
     <div id="list" class="list"></div>
 </div>
 
+<!-- Модальное окно: Избранное -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -122,7 +145,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v36-reverse-search';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v37-flashcards';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -130,8 +153,8 @@
     let myNotes = []; 
     let activeTab = 'dict';
     let currentRenderedWords = []; 
-    let normalizedVerbs = {}; // Прямая база (Прошедшее -> Настоящее)
-    let reverseVerbsMap = {}; // НОВОЕ: Обратная база (Настоящее -> Прошедшее)
+    let normalizedVerbs = {}; 
+    let reverseVerbsMap = {}; 
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -170,23 +193,15 @@
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
-            // Инициализация базы глаголов
             if (typeof verbsBase !== 'undefined') {
                 for (let pastTense in verbsBase) {
                     let presentTense = verbsBase[pastTense];
-                    
                     let normPast = normalize(pastTense);
                     let normPresent = normalize(presentTense);
-                    
-                    // Сохраняем для отображения (очищенное прошедшее -> с харакатами настоящее)
                     normalizedVerbs[normPast] = presentTense;
-                    
-                    // НОВОЕ: Сохраняем для ОБРАТНОГО поиска (очищенное настоящее -> очищенное прошедшее)
-                    // Теперь إذا написал "يقول", система поймет, что это "قال"
                     reverseVerbsMap[normPresent] = normPast;
                 }
             }
-
             renderUI();
         }
     }, 100);
@@ -344,9 +359,6 @@
         
         const nQ = normalize(q); 
         const searchStems = getArabicStems(nQ); 
-        
-        // НОВОЕ: Проверяем, ввел ли пользователь настоящее время (напр. "يقول")
-        // Если да, mappedPastTense станет "قال"
         let mappedPastTense = reverseVerbsMap[nQ];
         
         let filtered = dictBase.filter(w => {
@@ -361,8 +373,6 @@
             const nRoot = normalize(w.root || ""); 
             
             if (nWordRu.includes(q)) return true;
-            
-            // НОВОЕ: Обратный поиск - если слово в словаре равно "قال", а мы искали "يقول"
             if (mappedPastTense && nWordAr === mappedPastTense) return true;
             
             for (let stem of searchStems) {
@@ -378,7 +388,6 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
-                // НОВОЕ: Если нашли точное совпадение по обратному поиску, поднимаем наверх!
                 if (mappedPastTense) {
                     if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
                     if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
@@ -396,8 +405,60 @@
             });
         }
 
-        currentRenderedWords = filtered.slice(0, 50);
+        // Если это избранное, отрисовываем до 200 карточек, для словаря - 50.
+        const renderLimit = activeTab === 'fav' ? 200 : 50;
+        currentRenderedWords = filtered.slice(0, renderLimit);
 
+        // --- ОТРИСОВКА ИЗБРАННОГО (КАРТОЧКИ) ---
+        if (activeTab === 'fav') {
+            if (currentRenderedWords.length === 0) {
+                list.innerHTML = `<div style="text-align:center; padding: 40px 20px; color:#94a3b8; font-weight:600; line-height:1.5;">Здесь пока пусто.<br><br>Нажимайте на <b style="color:#f59e0b;">★</b> в словаре, чтобы создавать карточки для заучивания!</div>`;
+                return;
+            }
+            
+            const grid = document.createElement('div');
+            grid.className = 'flashcard-grid';
+            
+            currentRenderedWords.forEach((w, idx) => {
+                const itemKey = w.ar + '::' + w.ru;
+                const customRu = favCustom[itemKey] || favCustom[w.ar];
+                const displayRu = customRu ? customRu : (w.short_ru || w.ru.split(';')[0]);
+                
+                let verbInfoHtml = '';
+                const cleanAr = normalize(w.ar);
+                if (normalizedVerbs[cleanAr]) {
+                    verbInfoHtml = `<div class="fc-verb">${normalizedVerbs[cleanAr]}</div>`;
+                } else if (w.root) {
+                    verbInfoHtml = `<div class="fc-verb" style="color:#64748b; font-size:12px; font-weight:normal; text-transform:uppercase;">Корень: ${w.root}</div>`;
+                }
+
+                const el = document.createElement('div');
+                el.className = 'flashcard';
+                // При клике переворачиваем
+                el.setAttribute('onclick', "this.classList.toggle('flipped')");
+                
+                el.innerHTML = `
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">
+                            <button class="fc-star" onclick="event.stopPropagation(); handleFavClick(${idx}, event)">★</button>
+                            <div class="fc-ru">${displayRu}</div>
+                            <div class="fc-hint">Коснись, чтобы перевернуть</div>
+                        </div>
+                        <div class="flashcard-back">
+                            <button class="fc-star" onclick="event.stopPropagation(); handleFavClick(${idx}, event)">★</button>
+                            <div class="fc-ar">${w.ar}</div>
+                            ${verbInfoHtml}
+                            <button class="fc-audio" onclick="event.stopPropagation(); speak('${w.ar}', event)">🔊</button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(el);
+            });
+            list.appendChild(grid);
+            return;
+        }
+
+        // --- ОТРИСОВКА СЛОВАРЯ (ОБЫЧНЫЙ СПИСОК) ---
         currentRenderedWords.forEach((w, idx) => {
             const itemKey = w.ar + '::' + w.ru;
             const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
@@ -424,9 +485,7 @@
                     </div>
                     <div class="details">
                         ${verbInfoHtml}
-                        
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
-                        
                         <div class="actions">
                             <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
                             <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
