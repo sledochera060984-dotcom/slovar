@@ -152,7 +152,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v38-list-and-cards';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v40-stable-sync';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -228,24 +228,52 @@
         renderUI();
     });
 
+    // --- МОЩНАЯ И НАДЕЖНАЯ СИНХРОНИЗАЦИЯ ---
     function startLiveSync() {
         if (!user) return;
+        
+        // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
+                  // Облако - босс. Берем данные оттуда.
                   localFavs = doc.data().list || [];
                   favCustom = doc.data().custom || {};
+                  
+                  // Обновляем локальное хранилище, чтобы они были доступны оффлайн
                   localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
                   localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
                   renderUI();
+              } else if (localFavs.length > 0) {
+                  // Если в облаке пусто, но у нас есть локальные данные (первый вход) - пушим их в облако
+                  saveFavsToCloud(false);
               }
+          }, err => {
+              console.error("Ошибка синхронизации избранного:", err);
           });
 
+        // Синхронизация Блокнота
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
               if (activeTab === 'trans') renderUI();
+          }, err => {
+              console.error("Ошибка синхронизации блокнота:", err);
           });
+    }
+
+    // Сохранение в облако (Фоновое, без зависаний)
+    function saveFavsToCloud(showNotification = true) {
+        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+        if (showNotification) showMsg("Избранное обновлено");
+        
+        if (user) {
+            // Выстрелил и забыл - Firestore сам разберется с очередью, если нет интернета
+            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
+              .set({ list: localFavs, custom: favCustom })
+              .catch(e => console.error("Ошибка сохранения в облако:", e));
+        }
     }
 
     document.addEventListener("visibilitychange", () => {
@@ -255,7 +283,7 @@
         }
     });
 
-    // --- ИЗБРАННОЕ ---
+    // --- ЛОГИКА ИЗБРАННОГО ---
     function handleFavClick(idx, e) {
         e.preventDefault();
         e.stopPropagation();
@@ -266,9 +294,10 @@
             // Удаление
             localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
             delete favCustom[itemKey]; delete favCustom[w.ar];
-            saveFavsToCloud(); renderUI();
+            saveFavsToCloud(true); 
+            renderUI();
         } else {
-            // Добавление
+            // Добавление (открываем модалку для точного перевода)
             window.wordToAddKey = itemKey;
             document.getElementById('favModalAr').innerText = w.ar;
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
@@ -284,24 +313,14 @@
 
         if (!localFavs.includes(key)) localFavs.push(key);
         favCustom[key] = ru; 
-        saveFavsToCloud(); 
+        saveFavsToCloud(true); 
         closeFavModal(); 
-        showMsg("Слово добавлено в избранное!");
         renderUI();
     }
 
     function closeFavModal() {
         document.getElementById('favModal').style.display = 'none';
         window.wordToAddKey = null;
-    }
-
-    async function saveFavsToCloud() {
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        if (user) {
-            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom }); } 
-            catch(e) {}
-        }
     }
 
     // --- БЛОКНОТ ---
@@ -323,7 +342,7 @@
         }
     }
 
-    // --- ПОИСК ---
+    // --- ПОИСК И ОТРИСОВКА ---
     function doSearch() { renderUI(); }
 
     function getArabicStems(word) {
