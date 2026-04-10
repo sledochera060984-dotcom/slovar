@@ -58,10 +58,11 @@
         .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
         .root-badge { font-size: 12px; color: #94a3b8; font-weight: bold; margin-top: 4px; text-transform: uppercase; }
 
-        .actions { display: flex; gap: 8px; margin-top: 12px; }
+        .actions { display: flex; gap: 8px; margin-top: 8px; }
         .btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-green { background: var(--primary); color: white; border: none; }
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
+        .btn-blue { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
@@ -87,9 +88,9 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Поиск (Словарь) -->
+    <!-- Поиск -->
     <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, يقول, كتبت)..." oninput="doSearch()" autocomplete="off">
+        <input type="text" id="queryInput" placeholder="Поиск (напр: дверь, قول, قال)..." oninput="doSearch()" autocomplete="off">
     </div>
 
     <!-- Ручной Блокнот -->
@@ -124,7 +125,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v22-roots';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v25-reverso';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -180,7 +181,6 @@
 
     function startLiveSync() {
         if (!user) return;
-        
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
@@ -199,12 +199,15 @@
           });
     }
 
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            if (user) { db.enableNetwork().catch(() => {}); }
-            renderUI();
-        }
-    });
+    // --- ИНТЕГРАЦИЯ REVERSO ---
+    function openConjugation(word, e) {
+        e.stopPropagation();
+        // Очищаем слово от харакатов (огласовок) для правильного поиска в Reverso
+        const cleanWord = word.replace(/[\u064B-\u0652]/g, "");
+        const url = `https://glagol.reverso.net/спряжение-арабский-глагол-${encodeURIComponent(cleanWord)}.html`;
+        // Открываем новую вкладку с таблицей спряжений
+        window.open(url, '_blank');
+    }
 
     // --- УНИКАЛЬНОЕ ИЗБРАННОЕ ---
     function handleFavClick(idx, e) {
@@ -269,7 +272,7 @@
         }
     }
 
-    // --- УМНЫЙ ПОИСК И АНАЛИЗАТОР КОРНЕЙ (STEMMER) ---
+    // --- ПОИСК ---
     function doSearch() { renderUI(); }
 
     function normalize(t) { 
@@ -279,32 +282,19 @@
         return res;
     }
 
-    // Алгоритм, который отбрасывает приставки и суффиксы для поиска глаголов
     function getArabicStems(word) {
         if (!word) return [];
-        let stems = [word];
-        let w = word;
-        
-        // Убираем приставку будущего времени س
+        let stems = [word]; let w = word;
         if (w.startsWith("س") && w.length > 3) w = w.substring(1);
-        
-        // Приставки настоящего времени (ي, ت, ن, ا) и суффиксы мн.числа/дв.числа
         if (w.length >= 3 && /^[يتنا]/.test(w)) {
             let core = w.substring(1);
             if (core.endsWith("ون") || core.endsWith("ين") || core.endsWith("ان") || core.endsWith("وا") || core.endsWith("ات")) {
                 core = core.substring(0, core.length - 2);
             }
-            stems.push(core); // Например: يقولون -> قول
+            stems.push(core);
         }
-        
-        // Суффиксы прошедшего времени
-        if (word.endsWith("وا") || word.endsWith("تم") || word.endsWith("نا")) {
-             stems.push(word.substring(0, word.length - 2)); // كتبوا -> كتب
-        }
-        if (word.endsWith("ت")) {
-             stems.push(word.substring(0, word.length - 1)); // كتبت -> كتب
-        }
-
+        if (word.endsWith("وا") || word.endsWith("تم") || word.endsWith("نا")) stems.push(word.substring(0, word.length - 2));
+        if (word.endsWith("ت")) stems.push(word.substring(0, word.length - 1));
         return stems;
     }
 
@@ -337,9 +327,7 @@
         }
 
         if (typeof dictBase === 'undefined') return;
-        
         const nQ = normalize(q); 
-        // Получаем список возможных корней, если юзер вбил глагол (например يقول)
         const searchStems = getArabicStems(nQ); 
         
         let filtered = dictBase.filter(w => {
@@ -353,14 +341,10 @@
             const nWordRu = w.ru.toLowerCase();
             const nRoot = normalize(w.root || ""); 
             
-            // Если ищем на русском
             if (nWordRu.includes(q)) return true;
-            
-            // Если ищем на арабском (проверяем слово и корень по всем формам)
             for (let stem of searchStems) {
                 if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
             }
-            
             return false;
         });
 
@@ -371,7 +355,6 @@
                 const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
                 
-                // Приоритет прямого совпадения
                 if (normAAr === nQ && normBAr !== nQ) return -1;
                 if (normBAr === nQ && normAAr !== nQ) return 1;
 
@@ -391,8 +374,6 @@
             const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
             const customRu = favCustom[itemKey] || favCustom[w.ar];
             const displayRu = (active && customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
-            
-            // Если у слова в базе есть корень, показываем его красиво
             const rootBadge = w.root ? `<div class="root-badge">Корень: <span style="color:var(--primary); font-size:14px;">${w.root}</span></div>` : '';
 
             const el = document.createElement('div');
@@ -408,8 +389,15 @@
                     </div>
                     <div class="details">
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
+                        
+                        <!-- ПЕРВЫЙ РЯД КНОПОК: Слушать + Спряжение -->
                         <div class="actions">
                             <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
+                            <button class="btn btn-blue" onclick="openConjugation('${w.ar}', event)">🔄 Спряжение</button>
+                        </div>
+                        
+                        <!-- ВТОРОЙ РЯД КНОПОК: Избранное -->
+                        <div class="actions">
                             <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
                                 ${active ? '★ В избранном' : '☆ В избранное'}
                             </button>
@@ -440,4 +428,5 @@
 </script>
 </body>
 </html>
+
 
