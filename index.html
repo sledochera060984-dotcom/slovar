@@ -13,9 +13,11 @@
     
     <title>Arabus Pro</title>
     
+    <!-- Загрузка баз -->
     <script src="base.js"></script>
     <script src="verbs.js"></script>
     
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -88,10 +90,12 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
+    <!-- Поиск -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال)..." oninput="doSearch()" autocomplete="off">
     </div>
 
+    <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
         <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
@@ -102,6 +106,7 @@
     <div id="list" class="list"></div>
 </div>
 
+<!-- Модальное окно: Избранное -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -122,7 +127,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v34-verbs-reversed';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v35-verbs-final';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -169,11 +174,11 @@
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
-            // НОВОЕ: Переворачиваем ключи и значения из-за того, что парсер считал RTL
+            // ИСПРАВЛЕННЫЙ БЛОК: Скрипт собрал базу ПРАВИЛЬНО ("Прошедшее": "Настоящее"). 
+            // Просто счищаем харакаты с ключа для поиска!
             if (typeof verbsBase !== 'undefined') {
-                for (let presentTense in verbsBase) {
-                    let pastTense = verbsBase[presentTense];
-                    // Привязываем очищенное прошедшее время (ключ) к настоящему времени (значение)
+                for (let pastTense in verbsBase) {
+                    let presentTense = verbsBase[pastTense];
                     normalizedVerbs[normalize(pastTense)] = presentTense;
                 }
             }
@@ -400,6 +405,7 @@
                         <div class="dict-ar">${w.ar}</div>
                     </div>
                     <div class="details">
+                        <!-- Вывод настоящего времени -->
                         ${verbInfoHtml}
                         
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
