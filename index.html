@@ -13,11 +13,9 @@
     
     <title>Arabus Pro</title>
     
-    <!-- Загрузка баз (основная и глаголы) -->
     <script src="base.js"></script>
     <script src="verbs.js"></script>
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -58,7 +56,6 @@
         .expanded .details { display: block; }
         .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
         
-        /* Стиль для Настоящего времени */
         .verb-conjugation { font-size: 15px; color: #475569; background: #f1f5f9; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
         .verb-conjugation span { font-size: 20px; font-weight: bold; color: var(--primary); direction: rtl; }
 
@@ -91,12 +88,10 @@
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
     </div>
 
-    <!-- Поиск -->
     <div id="searchSection">
         <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال)..." oninput="doSearch()" autocomplete="off">
     </div>
 
-    <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
         <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
         <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
@@ -107,7 +102,6 @@
     <div id="list" class="list"></div>
 </div>
 
-<!-- Модальное окно: Избранное -->
 <div id="favModal">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
@@ -128,7 +122,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v32-verbs';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v34-verbs-reversed';
     
     let user = null;
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
@@ -136,6 +130,7 @@
     let myNotes = []; 
     let activeTab = 'dict';
     let currentRenderedWords = []; 
+    let normalizedVerbs = {}; 
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -159,12 +154,30 @@
 
     db.enablePersistence().catch(function(err) {});
 
+    // ФУНКЦИЯ ОЧИСТКИ ОТ ХАРАКАТОВ
+    function normalize(t) { 
+        if (!t) return "";
+        let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
+        if (res.length > 3 && res.startsWith("ال")) res = res.substring(2);
+        return res;
+    }
+
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
             s.innerText = `✅ База готова: ${dictBase.length} слов`;
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
+            
+            // НОВОЕ: Переворачиваем ключи и значения из-за того, что парсер считал RTL
+            if (typeof verbsBase !== 'undefined') {
+                for (let presentTense in verbsBase) {
+                    let pastTense = verbsBase[presentTense];
+                    // Привязываем очищенное прошедшее время (ключ) к настоящему времени (значение)
+                    normalizedVerbs[normalize(pastTense)] = presentTense;
+                }
+            }
+
             renderUI();
         }
     }, 100);
@@ -274,13 +287,6 @@
     // --- ПОИСК ---
     function doSearch() { renderUI(); }
 
-    function normalize(t) { 
-        if (!t) return "";
-        let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
-        if (res.length > 3 && res.startsWith("ال")) res = res.substring(2);
-        return res;
-    }
-
     function getArabicStems(word) {
         if (!word) return [];
         let stems = [word]; let w = word;
@@ -374,14 +380,14 @@
             const customRu = favCustom[itemKey] || favCustom[w.ar];
             const displayRu = (active && customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
             
-            // ПРОВЕРКА НАЛИЧИЯ ГЛАГОЛА В БАЗЕ VERBS.JS
+            // ПРОВЕРКА ПО ОЧИЩЕННОЙ БАЗЕ
             let verbInfoHtml = '';
             const cleanAr = normalize(w.ar);
-            if (typeof verbsBase !== 'undefined' && verbsBase[cleanAr]) {
+            if (normalizedVerbs[cleanAr]) {
                 verbInfoHtml = `
                 <div class="verb-conjugation">
                     <div>Настоящее время:</div>
-                    <span>${verbsBase[cleanAr]}</span>
+                    <span>${normalizedVerbs[cleanAr]}</span>
                 </div>`;
             }
 
@@ -394,7 +400,6 @@
                         <div class="dict-ar">${w.ar}</div>
                     </div>
                     <div class="details">
-                        <!-- Вывод настоящего времени, если глагол есть в verbs.js -->
                         ${verbInfoHtml}
                         
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
@@ -431,4 +436,6 @@
 </script>
 </body>
 </html>
+
+
 
