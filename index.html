@@ -142,7 +142,7 @@
     
     let user = null;
     
-    // Блокнот теперь загружается из памяти телефона сразу!
+    // НОВОЕ: Блокнот теперь загружается из памяти телефона сразу!
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
@@ -233,7 +233,7 @@
               }
           });
 
-        // Синхронизация Блокнота с сохранением в телефон
+        // НОВОЕ: Синхронизация Блокнота с сохранением в телефон
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -304,7 +304,7 @@
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
 
-        // Сохраняем в память телефона МГНОВЕННО, даже если нет аккаунта
+        // НОВОЕ: Сохраняем в память телефона МГНОВЕННО, даже если нет аккаунта
         const noteId = 'note_' + Date.now();
         const newNote = { id: noteId, ar, ru, ts: Date.now() };
         myNotes.push(newNote);
@@ -510,6 +510,5 @@
 </script>
 </body>
 </html>
-
 
 
