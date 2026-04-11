@@ -9,9 +9,9 @@
     <meta name="theme-color" content="#27ae60">
     
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2907/2907253.png">
     
-    <title>АРАБРУС</title>
+    <title>Arabus Pro</title>
     
     <!-- Загрузка баз -->
     <script src="base.js"></script>
@@ -27,22 +27,12 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 40px; }
-        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; overflow: hidden; position: relative;}
+        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; }
         
-        /* ШАПКА И ЛОГОТИП */
-        .app-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; padding-top: 5px;}
-        .app-header img { width: 42px; height: 42px; border-radius: 10px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2); }
-        .app-header h1 { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; letter-spacing: 0.5px; }
-
         .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
         .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
         .status-wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
         
-        .subscription-bar { font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; color: white; background: var(--gray); padding: 6px 12px; border-radius: 20px; margin-bottom: 15px; opacity: 0; transition: opacity 0.3s; width: max-content; margin-left: auto; margin-right: auto;}
-        .sub-active { background: var(--primary); opacity: 1; }
-        .sub-trial { background: #b45309; opacity: 1; }
-        .sub-freemium { background: #ef4444; opacity: 1; cursor: pointer;}
-
         .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
         .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
@@ -50,28 +40,24 @@
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .tab-subtitle { display: block; font-size: 9px; font-weight: 400; color: inherit; margin-top: 2px; opacity: 0.8; }
 
-        /* ПАПКИ */
-        .folder-chips-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 12px; }
-        .folder-chips-container::-webkit-scrollbar { display: none; }
-        .folder-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; color: var(--gray); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: 0.2s;}
-        .folder-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        /* КНОПКА ПЕРЕКЛЮЧЕНИЯ ВИДА (СПИСОК / КАРТОЧКИ) */
-        .view-toggle-btn { width: 100%; padding: 14px; background: white; border: 1px solid #e2e8f0; border-radius: 14px; color: var(--primary); font-size: 14px; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02);}
-        .view-toggle-btn:active { transform: scale(0.98); }
-
         input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
         input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
-        textarea { height: 120px; resize: none; }
+        textarea { height: 80px; resize: none; }
 
-        /* СПИСОК */
         .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
-        .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; user-select: text; -webkit-user-select: text; }
+        .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
+        
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; font-weight: 600;}
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
+        
+        .note-header { display: flex; flex-direction: column; }
+        .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
+        .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
         .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; }
         .expanded .details { display: block; }
+        .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
         
         .verb-conjugation { font-size: 15px; color: #475569; background: #f1f5f9; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
         .verb-conjugation span { font-size: 20px; font-weight: bold; color: var(--primary); direction: rtl; }
@@ -80,41 +66,13 @@
         .btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-green { background: var(--primary); color: white; border: none; }
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
-        .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #f59e0b; }
-        .btn-block-lock { cursor: not-allowed; border-color: #fee2e2; background: #fef2f2; color: #ef4444; font-weight: 800;}
-        .btn-speak-freemium { color: var(--gray); background: #f1f5f9; border-color: #e2e8f0; cursor: not-allowed;}
-
-        /* СЕТКА КАРТОЧЕК (КАК НА ВАШЕМ СКРИНШОТЕ) */
-        .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 20px; margin-top: 5px;}
-        .g-card { background: white; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 4px 12px rgba(0,0,0,0.03); height: 160px; position: relative; cursor: pointer; perspective: 1000px; }
-        .g-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
-        .g-card.flipped .g-inner { transform: rotateY(180deg); }
-        .g-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; padding: 16px; text-align: center; border-radius: 16px; }
-        .g-front { background: white; }
-        .g-back { background: #f8fafc; transform: rotateY(180deg); justify-content: center; border: 1px solid #e2e8f0;}
-        
-        .g-star { position: absolute; top: 12px; right: 12px; color: #f59e0b; font-size: 18px; z-index: 2; padding: 5px;}
-        .g-ru { font-size: 14px; font-weight: 700; color: #1e293b; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin-top: 12px; line-height: 1.4;}
-        .g-ar { font-size: 26px; font-weight: 800; color: var(--primary); direction: rtl; margin-bottom: 12px; line-height: 1.3;}
-        .g-hint { margin-top: auto; font-size: 9px; color: #94a3b8; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+        .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
 
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
         
         #favModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
         .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
-
-        /* Экран Оплаты */
-        #paymentBlockScreen { display: none; text-align: center; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 100; padding: 40px; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px;}
-        .payment-block-icon { font-size: 64px; margin-bottom: 20px; color: var(--primary);}
-        .payment-block-title { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 10px;}
-        .payment-block-desc { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 20px; }
-        .payment-block-uid { font-size: 11px; background: #f1f5f9; padding: 6px 10px; border-radius: 8px; color: var(--gray); margin-bottom: 20px; word-break: break-all;}
-        .payment-block-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-
-        .note-header { display: flex; flex-direction: column; }
-        .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
-        .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -123,25 +81,20 @@
 <body>
 
 <div class="card">
-    
-    <!-- Шапка с Логотипом -->
-    <div class="app-header">
-        <img src="icon.png" alt="Logo" onerror="this.style.display='none'">
-        <h1>АРАБРУС</h1>
-    </div>
-
-    <div id="subscriptionBar" class="subscription-bar" onclick="showPaymentBlock()">⏳ Проверка...</div>
-
     <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
     <div class="tabs">
-        <button id="tabDict" class="tab active" onclick="switchTab('dict')">📚 Словарь</button>
-        <button id="tabFav" class="tab" onclick="switchTab('fav')">⭐ Избранное</button>
+        <button id="tabDict" class="tab active" onclick="switchTab('dict')">
+            📚 Словарь
+        </button>
+        <button id="tabFav" class="tab" onclick="switchTab('fav')">
+            ⭐ Избранное
+        </button>
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">
             📝 Блокнот
-            <span class="tab-subtitle">для фраз</span>
+            <span class="tab-subtitle">для фраз и предложений</span>
         </button>
     </div>
 
@@ -161,37 +114,16 @@
         <div style="font-size: 11px; color: var(--gray); margin: 10px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои Сохраненные Записи:</div>
     </div>
     
-    <!-- Основной контейнер для списков или сетки -->
     <div id="list" class="list"></div>
-    
-    <!-- Экран Блокировки Оплаты -->
-    <div id="paymentBlockScreen">
-        <div class="payment-block-icon">⭐️</div>
-        <div class="payment-block-title">АРАБРУС ПРЕМИУМ</div>
-        <div class="payment-block-desc">
-            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Папки, Карточки, Блокнот и Озвучку всего за <b>100 руб/месяц</b>.
-        </div>
-        <div class="payment-block-uid" id="paymentUidDisplay">Ваш ID: Неизвестно</div>
-        <div class="payment-block-actions">
-            <a href="mailto:Sledochera060984@gmail.com?subject=Оплата%20АРАБРУС%20ПРЕМИУМ" target="_blank" class="btn btn-green" style="text-decoration: none; font-size: 15px; padding: 14px;">✉️ Написать на почту (100 руб / месяц)</a>
-            <button class="btn" style="padding: 14px;" onclick="switchTab('dict'); hidePaymentBlock();">Назад к словарю</button>
-        </div>
-    </div>
-
 </div>
 
 <!-- Модальное окно: Избранное -->
 <div id="favModal">
     <div class="modal-card">
-        <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">В Избранное</h3>
+        <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
         <div id="favModalAr" class="modal-ar"></div>
-        
-        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Папка (категория):</label>
-        <input type="text" id="favModalFolder" placeholder="Например: Глаголы" style="margin-top:8px; margin-bottom:15px; font-weight: bold; color: #1e293b;">
-        
-        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш перевод:</label>
+        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш точный перевод:</label>
         <input type="text" id="favModalRu" style="margin-top:8px; margin-bottom:20px; font-weight: bold; color: #1e293b;">
-        
         <div style="display:flex; gap:10px;">
             <button class="btn btn-green" onclick="confirmFavModal()">💾 Сохранить</button>
             <button class="btn" onclick="closeFavModal()">Отмена</button>
@@ -206,24 +138,19 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v49-grid-cards';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v39-notebook-fixed';
     
     let user = null;
     
+    // Блокнот теперь загружается из памяти телефона сразу!
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
-    let favFolders = JSON.parse(localStorage.getItem('arabus_favs_folders')) || {}; 
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
     
     let activeTab = 'dict';
-    let activeFolder = 'Все'; 
-    let viewMode = localStorage.getItem('arabus_view_mode') || 'list'; // 'list' или 'grid'
-    
     let currentRenderedWords = []; 
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
-
-    let subscriptionStatus = 'checking'; 
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -247,6 +174,7 @@
 
     db.enablePersistence().catch(function(err) {});
 
+    // ФУНКЦИЯ ОЧИСТКИ ОТ ХАРАКАТОВ
     function normalize(t) { 
         if (!t) return "";
         let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
@@ -261,11 +189,14 @@
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
+            // Инициализация базы глаголов
             if (typeof verbsBase !== 'undefined') {
                 for (let pastTense in verbsBase) {
                     let presentTense = verbsBase[pastTense];
+                    
                     let normPast = normalize(pastTense);
                     let normPresent = normalize(presentTense);
+                    
                     normalizedVerbs[normPast] = presentTense;
                     reverseVerbsMap[normPresent] = normPast;
                 }
@@ -280,167 +211,75 @@
         const btn = document.getElementById('authBtn');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
-            document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
             startLiveSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
-            document.getElementById('paymentUidDisplay').innerText = `Ваш ID: Войдите в Google`;
-            updateSubscriptionBar('freemium'); 
-            renderUI();
         }
+        renderUI();
     });
 
     function startLiveSync() {
         if (!user) return;
         
+        // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
                   localFavs = doc.data().list || [];
                   favCustom = doc.data().custom || {};
-                  favFolders = doc.data().folders || {};
                   localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
                   localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-                  localStorage.setItem('arabus_favs_folders', JSON.stringify(favFolders));
                   renderUI();
               }
           });
 
+        // Синхронизация Блокнота с сохранением в телефон
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              // Оставляем те локальные записи, которые еще не успели уйти в облако
               const localUnsynced = myNotes.filter(n => n.id.toString().startsWith('note_'));
+              
               myNotes = [...cloudNotes, ...localUnsynced];
               localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+              
               if (activeTab === 'trans') renderUI();
           });
-
-        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
-          .onSnapshot(doc => {
-              if (doc.exists) {
-                  const paymentData = doc.data();
-                  const now = Date.now();
-                  
-                  if (paymentData.premiumUntil && now < paymentData.premiumUntil) {
-                      const msLeft = paymentData.premiumUntil - now;
-                      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-                      updateSubscriptionBar('premiumActive', daysLeft);
-                  } else {
-                      checkTrialStatus(paymentData.trialStartedTimestamp);
-                  }
-              } else {
-                  const trialStartedTs = Date.now();
-                  db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
-                    .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs })
-                    .catch(()=>{});
-                  
-                  checkTrialStatus(trialStartedTs);
-              }
-              renderUI();
-          });
     }
 
-    function updateSubscriptionBar(status, daysLeft = 0) {
-        subscriptionStatus = status;
-        const bar = document.getElementById('subscriptionBar');
-        bar.className = 'subscription-bar'; 
-
-        if (status === 'premiumActive') {
-            bar.innerText = `ПРЕМИУМ АКТИВЕН (${daysLeft} ДН.)`; bar.classList.add('sub-active');
-        } else if (status === 'trialActive') {
-            bar.innerText = `Триал: ${daysLeft} дней осталось`; bar.classList.add('sub-trial');
-        } else if (status === 'freemium') {
-            bar.innerText = 'Freemium (Озвучка и Карточки заблокированы)'; bar.classList.add('sub-freemium');
-        } else if (status === 'checking') {
-             bar.innerText = 'Проверка доступа...'; bar.className = 'subscription-bar';
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            if (user) { db.enableNetwork().catch(() => {}); }
+            renderUI();
         }
-    }
+    });
 
-    function checkTrialStatus(startTimestamp) {
-        const diffMs = Date.now() - startTimestamp;
-        const trialMs = 14 * 24 * 60 * 60 * 1000; 
-        
-        if (diffMs < trialMs) {
-            const msLeft = trialMs - diffMs;
-            const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-            updateSubscriptionBar('trialActive', daysLeft);
-        } else {
-            updateSubscriptionBar('freemium');
-        }
-    }
-
-    function speak(t, e) {
-        if(e) e.stopPropagation(); 
-        window.speechSynthesis.cancel();
-        
-        if (subscriptionStatus === 'freemium') {
-            showMsg("Озвучка доступна только в ПРЕМИУМ");
-            showPaymentBlock();
-            return; 
-        }
-
-        const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
-    }
-
-    function showPaymentBlock() { if(subscriptionStatus === 'freemium') document.getElementById('paymentBlockScreen').style.display = 'flex'; }
-    function hidePaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'none'; }
-
-    function selectFolder(f) {
-        activeFolder = f;
-        renderUI();
-    }
-
-    function toggleViewMode() {
-        if (subscriptionStatus === 'freemium' && viewMode === 'list') {
-            showMsg("Режим карточек только в ПРЕМИУМ");
-            showPaymentBlock();
-            return;
-        }
-        viewMode = viewMode === 'list' ? 'grid' : 'list';
-        localStorage.setItem('arabus_view_mode', viewMode);
-        renderUI();
-    }
-
+    // --- ИЗБРАННОЕ ---
     function handleFavClick(idx, e) {
-        if (e) e.stopPropagation();
-        
+        e.stopPropagation();
         const w = currentRenderedWords[idx];
         const itemKey = w.ar + '::' + w.ru; 
-        const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
         
-        if (subscriptionStatus === 'freemium' && !active) {
-            showMsg("Добавление в избранное только в ПРЕМИУМ");
-            showPaymentBlock();
-            return;
-        }
-
-        if (active) {
+        if (localFavs.includes(itemKey) || localFavs.includes(w.ar)) {
             localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
             delete favCustom[itemKey]; delete favCustom[w.ar];
-            delete favFolders[itemKey]; delete favFolders[w.ar]; 
             saveFavsToCloud(); renderUI();
         } else {
             window.wordToAddKey = itemKey;
             document.getElementById('favModalAr').innerText = w.ar;
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
-            document.getElementById('favModalFolder').value = activeFolder !== 'Все' ? activeFolder : 'Общие';
             document.getElementById('favModal').style.display = 'flex';
-            setTimeout(() => document.getElementById('favModalFolder').focus(), 100);
+            setTimeout(() => document.getElementById('favModalRu').focus(), 100);
         }
     }
 
     function confirmFavModal() {
         const key = window.wordToAddKey;
         const ru = document.getElementById('favModalRu').value.trim();
-        let folder = document.getElementById('favModalFolder').value.trim();
-        if (!folder) folder = 'Общие';
-
         if (!key || !ru) { showMsg("Заполните перевод!"); return; }
 
         if (!localFavs.includes(key)) localFavs.push(key);
         favCustom[key] = ru; 
-        favFolders[key] = folder; 
-        
         saveFavsToCloud(); closeFavModal(); renderUI();
     }
 
@@ -452,29 +291,20 @@
     async function saveFavsToCloud() {
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        localStorage.setItem('arabus_favs_folders', JSON.stringify(favFolders));
         showMsg("Избранное обновлено");
         if (user) {
-            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({ list: localFavs, custom: favCustom, folders: favFolders }, { merge: true }); 
-            } catch(e) {}
+            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom }); } 
+            catch(e) {}
         }
     }
 
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            if (user) { db.enableNetwork().catch(() => {}); }
-            renderUI();
-        }
-    });
-
+    // --- БЛОКНОТ ---
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
 
-        if (subscriptionStatus === 'freemium') { showMsg("Блокнот только в ПРЕМИУМ"); showPaymentBlock(); return;}
-
+        // Сохраняем в память телефона МГНОВЕННО, даже если нет аккаунта
         const noteId = 'note_' + Date.now();
         const newNote = { id: noteId, ar, ru, ts: Date.now() };
         myNotes.push(newNote);
@@ -485,9 +315,11 @@
         showMsg("Фраза сохранена!");
         renderUI();
 
+        // Отправляем в облако, только если есть аккаунт
         if (user) {
             try {
                 const docRef = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: newNote.ts });
+                // Обновляем временный ID на облачный
                 const noteIndex = myNotes.findIndex(n => n.id === noteId);
                 if(noteIndex !== -1) {
                     myNotes[noteIndex].id = docRef.id;
@@ -498,13 +330,15 @@
     }
 
     async function removeNote(id, e) {
-        if(e) e.stopPropagation();
+        e.stopPropagation();
         if (confirm("Удалить запись из блокнота?")) {
+            // Удаляем из памяти телефона МГНОВЕННО
             myNotes = myNotes.filter(n => n.id !== id);
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             renderUI();
             showMsg("Удалено");
 
+            // Удаляем из облака, если есть аккаунт
             if (user && !id.toString().startsWith('note_')) {
                 try {
                     await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
@@ -513,6 +347,7 @@
         }
     }
 
+    // --- ПОИСК ---
     function doSearch() { renderUI(); }
 
     function getArabicStems(word) {
@@ -536,26 +371,22 @@
         const q = document.getElementById('queryInput').value.toLowerCase().trim();
         list.innerHTML = "";
         
-        // --- ВКЛАДКА БЛОКНОТ ---
         if (activeTab === 'trans') {
-            if (subscriptionStatus === 'freemium') {
-                list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен только в ПРЕМИУМ-версии</div>`;
-                return;
-            }
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
-                el.onclick = function() { this.classList.toggle('expanded'); };
                 el.innerHTML = `
-                    <div class="note-header">
-                        <div class="note-ru">${n.ru}</div>
-                        <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
-                    </div>
-                    <div class="details">
-                        <span class="ar-full">${n.ar}</span>
-                        <div class="actions">
-                            <button class="btn" onclick="speak('${n.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-red" onclick="removeNote('${n.id}', event)">🗑 Удалить</button>
+                    <div onclick="this.classList.toggle('expanded')">
+                        <div class="note-header">
+                            <div class="note-ru">${n.ru}</div>
+                            <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
+                        </div>
+                        <div class="details">
+                            <span class="ar-full">${n.ar}</span>
+                            <div class="actions">
+                                <button class="btn" onclick="speak('${n.ar}', event)">🔊 Слушать</button>
+                                <button class="btn btn-red" onclick="removeNote('${n.id}', event)">🗑 Удалить</button>
+                            </div>
                         </div>
                     </div>`;
                 list.appendChild(el);
@@ -567,27 +398,22 @@
         
         const nQ = normalize(q); 
         const searchStems = getArabicStems(nQ); 
+        
         let mappedPastTense = reverseVerbsMap[nQ];
         
         let filtered = dictBase.filter(w => {
             const itemKey = w.ar + '::' + w.ru;
             const isFav = localFavs.includes(itemKey) || localFavs.includes(w.ar);
             
-            if (activeTab === 'fav') {
-                if (!isFav) return false;
-                if (activeFolder !== 'Все') {
-                    const f = favFolders[itemKey] || favFolders[w.ar] || 'Общие';
-                    if (f !== activeFolder) return false;
-                }
-            } else if (!q) {
-                return false; 
-            }
+            if (activeTab === 'fav' && !isFav) return false;
+            if (!q) return activeTab === 'fav';
             
             const nWordAr = normalize(w.ar);
             const nWordRu = w.ru.toLowerCase();
             const nRoot = normalize(w.root || ""); 
             
             if (nWordRu.includes(q)) return true;
+            
             if (mappedPastTense && nWordAr === mappedPastTense) return true;
             
             for (let stem of searchStems) {
@@ -622,86 +448,6 @@
 
         currentRenderedWords = filtered.slice(0, 50);
 
-        // --- ВКЛАДКА ИЗБРАННОЕ (ПАПКИ И КНОПКА ВИДА) ---
-        if (activeTab === 'fav') {
-            const allFolders = new Set(['Все']);
-            localFavs.forEach(key => {
-                const f = favFolders[key] || 'Общие';
-                allFolders.add(f);
-            });
-            
-            if (!allFolders.has(activeFolder)) activeFolder = 'Все';
-
-            // Чипсы папок
-            const chipsHtml = Array.from(allFolders).map(f => 
-                `<button class="folder-chip ${f === activeFolder ? 'active' : ''}" onclick="selectFolder('${f}')">${f}</button>`
-            ).join('');
-            
-            const chipsContainer = document.createElement('div');
-            chipsContainer.className = 'folder-chips-container';
-            chipsContainer.innerHTML = chipsHtml;
-            list.appendChild(chipsContainer);
-            
-            // Кнопка переключения вида: Список / Карточки
-            if (currentRenderedWords.length > 0) {
-                const toggleBtn = document.createElement('button');
-                toggleBtn.className = 'view-toggle-btn';
-                if (viewMode === 'list') {
-                    toggleBtn.innerHTML = '📄 Режим списка';
-                } else {
-                    toggleBtn.innerHTML = '🎴 Режим карточек';
-                }
-                toggleBtn.onclick = toggleViewMode;
-                list.appendChild(toggleBtn);
-            } else {
-                const emptyMsg = document.createElement('div');
-                emptyMsg.style.textAlign = 'center';
-                emptyMsg.style.color = 'var(--gray)';
-                emptyMsg.style.padding = '20px';
-                emptyMsg.innerText = 'В этой папке пока нет слов';
-                list.appendChild(emptyMsg);
-                return; 
-            }
-        }
-
-        // --- РЕНДЕР СЛОВ ---
-        
-        // ЕСЛИ РЕЖИМ СЕТКИ (КАРТОЧКИ) И ВКЛАДКА ИЗБРАННОЕ
-        if (activeTab === 'fav' && viewMode === 'grid') {
-            const gridContainer = document.createElement('div');
-            gridContainer.className = 'grid-view';
-            
-            currentRenderedWords.forEach((w, idx) => {
-                const itemKey = w.ar + '::' + w.ru;
-                const customRu = favCustom[itemKey] || favCustom[w.ar];
-                const displayRu = (customRu) ? customRu : (w.short_ru || w.ru.split(';')[0]);
-                
-                const card = document.createElement('div');
-                card.className = 'g-card';
-                card.onclick = function() { this.classList.toggle('flipped'); };
-                
-                let starAction = `onclick="handleFavClick(${idx}, event)"`;
-                
-                card.innerHTML = `
-                    <div class="g-star" ${starAction}>★</div>
-                    <div class="g-inner">
-                        <div class="g-face g-front">
-                            <div class="g-ru">${displayRu}</div>
-                            <div class="g-hint">Коснись, чтобы перевернуть</div>
-                        </div>
-                        <div class="g-face g-back">
-                            <div class="g-ar">${w.ar}</div>
-                            <button class="btn btn-green" style="padding: 10px; width: 80%; border-radius: 12px; margin-top:10px;" onclick="speak('${w.ar}', event)">🔊</button>
-                        </div>
-                    </div>
-                `;
-                gridContainer.appendChild(card);
-            });
-            list.appendChild(gridContainer);
-            return;
-        }
-
-        // ОБЫЧНЫЙ СПИСОК (Для Словаря и для Избранного в режиме "Список")
         currentRenderedWords.forEach((w, idx) => {
             const itemKey = w.ar + '::' + w.ru;
             const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
@@ -718,31 +464,23 @@
                 </div>`;
             }
 
-            let favBtnHtml = '';
-            if (subscriptionStatus === 'freemium' && !active) {
-                favBtnHtml = `<button class="btn btn-star btn-block-lock" onclick="handleFavClick(${idx}, event)">🔒 В Премиум</button>`;
-            } else {
-                favBtnHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">${active ? '★ В избранном' : '☆ В избранное'}</button>`;
-            }
-
             const el = document.createElement('div');
             el.className = 'item';
-            // Стандартное и простое раскрытие, никаких стопов события!
-            el.onclick = function() { this.classList.toggle('expanded'); };
-            
             el.innerHTML = `
-                <div class="dict-row">
-                    <div class="dict-ru">${displayRu}</div>
-                    <div class="dict-ar">${w.ar}</div>
-                </div>
-                <div class="details">
-                    ${verbInfoHtml}
-                    <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
-                    <div class="actions">
-                        <button class="btn ${subscriptionStatus === 'freemium' ? 'btn-speak-freemium' : ''}" onclick="speak('${w.ar}', event)">
-                            ${subscriptionStatus === 'freemium' ? '🔒' : '🔊'} Слушать
-                        </button>
-                        ${favBtnHtml}
+                <div onclick="this.classList.toggle('expanded')">
+                    <div class="dict-row">
+                        <div class="dict-ru" style="${active && customRu ? 'color: var(--primary);' : ''}">${displayRu}</div>
+                        <div class="dict-ar">${w.ar}</div>
+                    </div>
+                    <div class="details">
+                        ${verbInfoHtml}
+                        <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
+                        <div class="actions">
+                            <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
+                            <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
+                                ${active ? '★ В избранном' : '☆ В избранное'}
+                            </button>
+                        </div>
                     </div>
                 </div>`;
             list.appendChild(el);
@@ -750,15 +488,7 @@
     }
 
     function switchTab(t) {
-        if (t === 'trans' && subscriptionStatus === 'freemium') {
-            showMsg("Блокнот доступен только в ПРЕМИУМ");
-            showPaymentBlock();
-            return;
-        }
-
         activeTab = t;
-        activeFolder = 'Все'; 
-        
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
@@ -767,6 +497,11 @@
         document.getElementById('queryInput').value = '';
         
         renderUI();
+    }
+
+    function speak(t, e) {
+        e.stopPropagation(); window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
     }
 
     async function toggleAuth() { if (user) auth.signOut(); else await auth.signInWithPopup(provider); }
