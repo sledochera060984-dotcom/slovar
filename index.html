@@ -79,7 +79,6 @@
         .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
         
         .note-header { display: flex; flex-direction: column; gap: 8px; }
-        .note-header-top { display: flex; justify-content: space-between; align-items: flex-start; }
         .note-ru { font-size: 14px; color: #334155; font-weight: 600; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex: 1;}
         .note-ar-hint { font-size: 15px; color: var(--primary); direction: rtl; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .note-full-ru { white-space: pre-wrap; margin-bottom: 12px; color: #334155; font-size: 14px; line-height: 1.5; }
@@ -144,6 +143,7 @@
         .scroll-btn { width: 44px; height: 44px; border-radius: 14px; border: none; background: rgba(39, 174, 96, 0.94); color: white; font-size: 19px; font-weight: 900; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.24); display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .scroll-btn.hidden { display: none; }
         .scroll-btn:active { transform: scale(0.96); }
+        
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
 
@@ -204,7 +204,7 @@
         <div class="payment-block-icon">⭐️</div>
         <div class="payment-block-title">АРАБРУС ПРЕМИУМ</div>
         <div class="payment-block-desc">
-            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Папки, Карточки, Блокнот и Озвучку.
+            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Коллекции, Карточки, Блокнот и Озвучку.
         </div>
         <div class="payment-block-uid" id="paymentUidDisplay">Ваш ID: Неизвестно</div>
         <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
@@ -218,7 +218,7 @@
 <div id="selectionActionBar" class="selection-bar">
     <div style="font-weight: 800; font-size: 14px;">Выбрано: <span id="selCount">0</span></div>
     <div style="display:flex; gap:10px;">
-        <button class="sel-btn" onclick="openBulkColModal()">📁 В папку</button>
+        <button class="sel-btn" onclick="openBulkColModal()">📁 В коллекцию</button>
         <button class="sel-btn sel-btn-red" onclick="openBulkDelModal()">🗑 Удалить</button>
         <button class="sel-btn" style="background:transparent; font-size:20px; padding: 5px;" onclick="toggleSelectionMode()">✖</button>
     </div>
@@ -240,13 +240,13 @@
     </div>
 </div>
 
-<!-- МОДАЛКА 2: ДОБАВИТЬ В КОЛЛЕКЦИЮ (ДЛЯ ИЗБРАННОГО И БЛОКНОТА) -->
+<!-- МОДАЛКА 2: ДОБАВИТЬ В КОЛЛЕКЦИЮ (ИЗ ИЗБРАННОГО / БЛОКНОТА) -->
 <div id="colModal" class="modal-overlay">
     <div class="modal-card">
-        <h3 style="margin-top:0; margin-bottom:10px; color:#1e293b; text-align: center;">В папку</h3>
-        <p id="colModalDesc" style="text-align:center; color:var(--gray); font-size:14px; margin-bottom:15px;">Укажите папку (коллекцию)</p>
+        <h3 style="margin-top:0; margin-bottom:10px; color:#1e293b; text-align: center;">В коллекцию</h3>
+        <p id="colModalDesc" style="text-align:center; color:var(--gray); font-size:14px; margin-bottom:15px;">Укажите коллекцию (папку)</p>
         
-        <input type="text" id="colModalInput" placeholder="Например: Разговорник, Урок 1..." style="margin-bottom:20px; font-weight: bold; color: #1e293b;">
+        <input type="text" id="colModalInput" placeholder="Например: Урок 1, Глаголы..." style="margin-bottom:20px; font-weight: bold; color: #1e293b;">
         
         <div style="display:flex; gap:10px;">
             <button class="btn btn-green" onclick="confirmColModal()">💾 Сохранить</button>
@@ -272,6 +272,20 @@
     </div>
 </div>
 
+<!-- МОДАЛКА 4: ЕДИНИЧНОЕ УДАЛЕНИЕ ИЗ БЛОКНОТА -->
+<div id="delNoteModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin-top:0; margin-bottom:15px; color:#ef4444; text-align: center;">Удаление записи</h3>
+        <p style="text-align:center; color:#1e293b; font-size:15px; font-weight:700; margin-bottom:20px; line-height:1.4;">
+            Вы точно уверены, что хотите удалить эту фразу из блокнота?
+        </p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-red" onclick="confirmDelNote()">🗑 Да, удалить</button>
+            <button class="btn" onclick="closeDelNoteModal()">Отмена</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast">Сообщение</div>
 
 <div id="scrollNav" class="scroll-nav">
@@ -284,16 +298,15 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v70-ultimate-notebook';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v72-perfect-sync';
     
     let user = null;
     let subscriptionStatus = 'guest'; 
     
+    // ЛОКАЛЬНЫЕ ПЕРЕМЕННЫЕ
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let favCollections = JSON.parse(localStorage.getItem('arabus_favs_collections')) || {}; 
-    let favUpdatedAt = Number(localStorage.getItem('arabus_favs_updated_at')) || 0;
-    
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
     
     let activeTab = 'dict';
@@ -307,8 +320,8 @@
     let isSelectionMode = false;
     let selectedItems = new Set();
     let singleColActionKey = null;
+    let noteToDeleteId = null;
 
-    let initialFavSyncDone = false; 
     let syncUnsubscribers = [];
     let toastTimer = null;
 
@@ -326,13 +339,6 @@
     }
 
     function makeFavKey(ar, ru) { return `${String(ar ?? '')}::${String(ru ?? '')}`; }
-
-    function persistFavsLocal() {
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
-        localStorage.setItem('arabus_favs_updated_at', String(favUpdatedAt || 0));
-    }
 
     function stopLiveSync() {
         syncUnsubscribers.forEach(unsub => { try { if (typeof unsub === 'function') unsub(); } catch (e) {} });
@@ -382,10 +388,10 @@
         }
     }, 100);
 
+    // Авторизация
     auth.onAuthStateChanged(async (u) => {
         stopLiveSync();
         user = u;
-        initialFavSyncDone = false;
         const btn = document.getElementById('authBtn');
         if (user) {
             const displayName = (user.displayName || 'Пользователь').split(' ')[0];
@@ -400,6 +406,9 @@
         }
     });
 
+    // ==========================================
+    // ИДЕАЛЬНАЯ БЕСШОВНАЯ СИНХРОНИЗАЦИЯ
+    // ==========================================
     function startLiveSync() {
         if (!user) return;
 
@@ -407,37 +416,37 @@
         const notesRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes');
         const paymentRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo');
 
+        // ИЗБРАННОЕ: 100% доверие Firestore
         const unsubFavs = favsRef.onSnapshot(doc => {
-            if (doc.metadata.hasPendingWrites) return;
-            const cloudRaw = doc.exists ? doc.data() : null;
-            if (!cloudRaw) {
-                if (!initialFavSyncDone && localFavs.length > 0) { initialFavSyncDone = true; saveFavsToCloud(); }
+            if (!doc.exists) {
+                // Первый вход: заливаем локальные данные в пустое облако
+                if (localFavs.length > 0) {
+                    favsRef.set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true }).catch(()=>{});
+                }
                 return;
             }
-
-            const cloudUpdatedAt = Number(cloudRaw.updatedAt) || 0;
-            if (!initialFavSyncDone) {
-                initialFavSyncDone = true;
-                if (localFavs.length > 0 && favUpdatedAt >= cloudUpdatedAt) { saveFavsToCloud(); return; }
-            }
-
-            if (cloudUpdatedAt > favUpdatedAt) {
-                localFavs = cloudRaw.list || [];
-                favCustom = cloudRaw.custom || {};
-                favCollections = cloudRaw.collections || {};
-                favUpdatedAt = cloudUpdatedAt;
-                persistFavsLocal();
-                renderUI();
-            }
+            
+            const data = doc.data();
+            localFavs = data.list || [];
+            favCustom = data.custom || {};
+            favCollections = data.collections || {};
+            
+            localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+            localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+            localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+            
+            if (activeTab === 'fav' || activeTab === 'dict') renderUI();
         }, e => { console.log(e); });
 
+        // БЛОКНОТ: 100% доверие Firestore
         const unsubNotes = notesRef.onSnapshot(snap => {
-            if (snap.metadata.hasPendingWrites) return; 
             myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            myNotes.sort((a,b) => b.ts - a.ts);
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             if (activeTab === 'trans') renderUI();
         }, e => { console.log(e); });
 
+        // ПОДПИСКА
         const unsubPayment = paymentRef.onSnapshot(doc => {
             if (doc.exists) {
                 const paymentData = doc.data();
@@ -481,12 +490,15 @@
     function checkTrialStatus(startTimestamp) {
         const diffMs = Date.now() - startTimestamp;
         const trialMs = 14 * 24 * 60 * 60 * 1000; 
-        if (diffMs < trialMs) updateSubscriptionBar('trialActive', Math.ceil((trialMs - diffMs) / (1000 * 60 * 60 * 24)));
-        else updateSubscriptionBar('freemium');
+        if (diffMs < trialMs) {
+            updateSubscriptionBar('trialActive', Math.ceil((trialMs - diffMs) / (1000 * 60 * 60 * 24)));
+        } else {
+            updateSubscriptionBar('freemium');
+        }
     }
 
     function isPremiumFeatureAllowed() {
-        if (subscriptionStatus === 'guest') { showMsg("Войдите через Google, чтобы использовать это!"); return false; }
+        if (subscriptionStatus === 'guest') { showMsg("Войдите через Google, чтобы использовать эту функцию!"); return false; }
         if (subscriptionStatus === 'freemium') { showPaymentBlock(); return false; }
         return true;
     }
@@ -496,7 +508,9 @@
 
     function selectCollection(c) { 
         activeCollection = c; 
-        isSelectionMode = false; selectedItems.clear(); updateSelectionActionBar();
+        isSelectionMode = false;
+        selectedItems.clear();
+        updateSelectionActionBar();
         renderUI(); 
     }
 
@@ -508,7 +522,7 @@
     }
 
     // ==========================================
-    // ЛОГИКА МАССОВОГО ВЫБОРА И МОДАЛОК
+    // ЛОГИКА МАССОВОГО ВЫБОРА
     // ==========================================
     
     function toggleSelectionMode() {
@@ -565,37 +579,38 @@
             } else {
                 selectedItems.forEach(key => { if (col) favCollections[key] = col; else delete favCollections[key]; });
             }
-            saveFavsToCloud();
+            saveFavsToCloud(); // Мгновенно уходит в облако
         } 
         else if (activeTab === 'trans') {
-            const updates = [];
-            if (singleColActionKey) {
-                const note = myNotes.find(n => n.id === singleColActionKey);
-                if (note) { note.col = col; updates.push(note); }
-            } else {
-                selectedItems.forEach(id => {
-                    const note = myNotes.find(n => n.id === id);
-                    if (note) { note.col = col; updates.push(note); }
-                });
-            }
-            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             if (user) {
-                updates.forEach(n => {
-                    if (!n.id.toString().startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(n.id).update({col: col}).catch(e=>{});
+                if (singleColActionKey) {
+                    if (!singleColActionKey.toString().startsWith('note_')) {
+                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(singleColActionKey).update({col: col}).catch(()=>{});
                     }
-                });
+                } else {
+                    selectedItems.forEach(id => {
+                        if (!id.toString().startsWith('note_')) {
+                            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({col: col}).catch(()=>{});
+                        }
+                    });
+                }
+            } else {
+                // Если вдруг гость с кэшем
+                if (singleColActionKey) { const n = myNotes.find(n => n.id === singleColActionKey); if(n) n.col = col; }
+                else { selectedItems.forEach(id => { const n = myNotes.find(x => x.id === id); if(n) n.col = col; }); }
+                localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+                renderUI();
             }
         }
         
         showMsg("Папка сохранена");
         isSelectionMode = false; selectedItems.clear(); updateSelectionActionBar();
-        closeColModal(); renderUI();
+        closeColModal(); 
     }
 
     function closeColModal() { document.getElementById('colModal').style.display = 'none'; singleColActionKey = null;}
 
-    // --- УМНОЕ УДАЛЕНИЕ (БЕЗ СИСТЕМНОГО ОКНА) ---
+    // --- УМНОЕ УДАЛЕНИЕ ИЗ СПИСКОВ ---
     function openBulkDelModal() {
         if (selectedItems.size === 0) { showMsg("Выберите хотя бы одну запись"); return; }
         document.getElementById('delModalCount').innerText = selectedItems.size;
@@ -632,38 +647,32 @@
                     delete favCollections[key];
                 }
             });
-            saveFavsToCloud();
+            saveFavsToCloud(); // Мгновенно уходит в облако
         } 
         else if (activeTab === 'trans') {
             selectedItems.forEach(id => {
                 if (activeCollection === 'Все') {
-                    myNotes = myNotes.filter(n => n.id !== id);
                     if (user && !id.toString().startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(e=>{});
+                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(()=>{});
                     }
                 } else {
-                    const note = myNotes.find(n => n.id === id);
-                    if (note) {
-                        note.col = '';
-                        if (user && !id.toString().startsWith('note_')) {
-                            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({col: ''}).catch(e=>{});
-                        }
+                    if (user && !id.toString().startsWith('note_')) {
+                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({col: ''}).catch(()=>{});
                     }
                 }
             });
-            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
         }
 
         showMsg(activeCollection === 'Все' ? 'Записи удалены' : 'Убрано из папки');
         isSelectionMode = false; selectedItems.clear(); updateSelectionActionBar();
-        closeDelModal(); renderUI();
+        closeDelModal(); 
     }
 
     function closeDelModal() { document.getElementById('delModal').style.display = 'none'; }
 
 
     // ==========================================
-    // ЛОГИКА ДОБАВЛЕНИЯ ИЗ СЛОВАРЯ
+    // ЛОГИКА ДОБАВЛЕНИЯ В ИЗБРАННОЕ (СЛОВАРЬ)
     // ==========================================
 
     function handleDictFavClick(idx, e) {
@@ -697,21 +706,31 @@
         localFavs.unshift(key); 
         favCustom[key] = ru;
         
-        closeFavModal(); renderUI(); saveFavsToCloud();
+        closeFavModal(); 
+        saveFavsToCloud(); // Вызов облака мгновенно обновит UI
     }
 
     function closeFavModal() { document.getElementById('favModal').style.display = 'none'; window.wordToAddKey = null; }
 
     function saveFavsToCloud() {
-        favUpdatedAt = Date.now(); 
-        persistFavsLocal();
+        // Просто отдаем команду Firestore. Он сам обновит UI через onSnapshot мгновенно!
+        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+        localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+        
         if (user) {
             db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({ list: localFavs, custom: favCustom, collections: favCollections, updatedAt: favUpdatedAt }, { merge: true })
+                .set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true })
                 .catch(e => { console.log(e); });
+        } else {
+            renderUI();
         }
     }
 
+    // ==========================================
+    // ЛОГИКА БЛОКНОТА (Единичное добавление/удаление)
+    // ==========================================
+    
     function saveManualNote() {
         if (!isPremiumFeatureAllowed()) return;
         const ar = document.getElementById('manualAr').value.trim();
@@ -721,16 +740,53 @@
         document.getElementById('manualAr').value = ""; document.getElementById('manualRu').value = ""; 
         showMsg("Фраза сохранена!");
 
-        const newNote = { ar, ru, ts: Date.now(), col: '' };
+        const newNote = { ar, ru, ts: Date.now(), col: (activeCollection !== 'Все' ? activeCollection : '') };
 
         if (user) {
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote).catch(e => {});
+            // Firebase сам обновит UI через onSnapshot мгновенно!
+            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote)
+              .catch(e => { console.log(e); showMsg('Не удалось сохранить запись'); });
         } else {
             newNote.id = 'note_' + Date.now();
             myNotes.push(newNote);
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             renderUI();
         }
+    }
+
+    function removeNoteFromButton(btn, e) {
+        if(e) e.stopPropagation();
+        if (!btn) return;
+        noteToDeleteId = btn.dataset.noteId;
+        document.getElementById('delNoteModal').style.display = 'flex';
+    }
+
+    function confirmDelNote() {
+        if (!noteToDeleteId) return;
+        const id = noteToDeleteId;
+        
+        if (user && !id.toString().startsWith('note_')) {
+            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete()
+              .catch(e => { console.log(e); showMsg('Не удалось удалить запись'); });
+        } else {
+            myNotes = myNotes.filter(n => n.id !== id);
+            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+            renderUI();
+        }
+        
+        showMsg("Удалено");
+        closeDelNoteModal();
+    }
+
+    function closeDelNoteModal() {
+        document.getElementById('delNoteModal').style.display = 'none';
+        noteToDeleteId = null;
+    }
+
+    function speakFromButton(btn, e) {
+        if(e) e.stopPropagation();
+        if (!btn) return;
+        speak(btn.dataset.text || '', e);
     }
 
     function speak(t, e) {
@@ -795,7 +851,6 @@
                 const lq = q.toLowerCase();
                 filteredNotes = filteredNotes.filter(n => n.ru.toLowerCase().includes(lq) || n.ar.toLowerCase().includes(lq));
             }
-            filteredNotes.sort((a, b) => b.ts - a.ts);
 
             // Кнопки папок для Блокнота
             const allCols = new Set(['Все']);
@@ -842,7 +897,9 @@
                         <div class="checkbox-overlay" style="position:relative; top:auto; left:auto; margin-bottom:auto; margin-top:5px;"></div>
                         <div style="flex:1;">
                             <div class="note-header">
-                                <div class="note-ru">${escapeHtml(n.ru)}</div>
+                                <div class="note-header-top">
+                                    <div class="note-ru">${escapeHtml(n.ru)}</div>
+                                </div>
                                 <div class="note-ar-hint">${escapeHtml(String(n.ar).substring(0, 70))}</div>
                                 <div class="note-expand-hint">Нажмите, чтобы раскрыть</div>
                             </div>
@@ -850,9 +907,9 @@
                                 <div class="note-full-ru">${escapeHtml(n.ru)}</div>
                                 <span class="note-full-ar">${escapeHtml(n.ar)}</span>
                                 <div class="actions">
-                                    <button class="btn" onclick="speak('${escapeHtml(n.ar)}', event)">🔊</button>
+                                    <button class="btn" data-text="${escapeHtml(String(n.ar))}" onclick="speakFromButton(this, event)">🔊 Слушать</button>
                                     <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${escapeHtml(n.id)}')">📁 В папку</button>
-                                    <button class="btn btn-red" onclick="event.stopPropagation(); selectedItems.clear(); selectedItems.add('${escapeHtml(n.id)}'); openBulkDelModal();">🗑</button>
+                                    <button class="btn btn-red" data-note-id="${escapeHtml(String(n.id))}" onclick="removeNoteFromButton(this, event)">🗑</button>
                                 </div>
                             </div>
                         </div>
@@ -935,17 +992,24 @@
             if (currentRenderedWords.length > 0) {
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'view-controls';
+
                 const toggleBtn = document.createElement('button');
                 toggleBtn.className = 'view-toggle-btn';
                 toggleBtn.innerHTML = viewMode === 'list' ? '🎴 Карточки' : '📄 Список';
                 toggleBtn.onclick = toggleViewMode;
                 controlsDiv.appendChild(toggleBtn);
+
                 const selectBtn = document.createElement('button');
                 selectBtn.className = 'view-toggle-btn';
-                if(isSelectionMode) { selectBtn.style.background = 'var(--primary)'; selectBtn.style.color = '#fff'; selectBtn.innerHTML = 'Отменить выбор'; } 
-                else { selectBtn.innerHTML = '☑️ Выбрать'; }
+                if(isSelectionMode) {
+                    selectBtn.style.background = 'var(--primary)'; selectBtn.style.color = '#fff';
+                    selectBtn.innerHTML = 'Отменить выбор';
+                } else {
+                    selectBtn.innerHTML = '☑️ Выбрать';
+                }
                 selectBtn.onclick = toggleSelectionMode;
                 controlsDiv.appendChild(selectBtn);
+
                 list.appendChild(controlsDiv);
             } else {
                 list.innerHTML += `<div style="text-align:center; color: var(--gray); padding: 20px;">Здесь пока нет слов</div>`;
@@ -1065,10 +1129,10 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
-        closeFavModal(); closeColModal(); closeDelModal(); hidePaymentBlock();
+        closeFavModal(); closeColModal(); closeDelModal(); closeDelNoteModal(); hidePaymentBlock();
     });
 
-    ['favModal', 'colModal', 'delModal'].forEach(id => {
+    ['favModal', 'colModal', 'delModal', 'delNoteModal'].forEach(id => {
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.addEventListener('click', (e) => {
@@ -1076,6 +1140,7 @@
             if (id === 'favModal') closeFavModal();
             if (id === 'colModal') closeColModal();
             if (id === 'delModal') closeDelModal();
+            if (id === 'delNoteModal') closeDelNoteModal();
         });
     });
 
