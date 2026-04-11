@@ -86,15 +86,15 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #f59e0b; }
 
-        /* КАРТОЧКИ (СЕТКА) */
+        /* КАРТОЧКИ (ФЛЕШКАРТЫ ИЗ СКРИНШОТА) */
         .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 20px; }
-        .g-card { background: transparent; height: 170px; position: relative; cursor: pointer; perspective: 1000px; }
+        .g-card { background: transparent; height: 180px; position: relative; cursor: pointer; perspective: 1000px; }
         .g-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
         .g-card.flipped .g-inner { transform: rotateY(180deg); }
         .g-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; padding: 16px; background: white; }
         .g-back { transform: rotateY(180deg); background: #f8fafc; align-items: center; justify-content: center; }
         
-        .g-del { position: absolute; top: 8px; right: 8px; color: #cbd5e1; font-size: 14px; z-index: 5; padding: 5px;}
+        .g-star { position: absolute; top: 12px; right: 12px; color: #f59e0b; font-size: 20px; z-index: 5; }
         .g-ru { margin: auto; text-align: center; font-size: 14px; font-weight: 700; color: #1e293b; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;}
         .g-hint { text-align: center; font-size: 9px; color: #94a3b8; font-weight: 800; text-transform: uppercase; margin-top: auto; letter-spacing: 0.5px;}
         .g-ar { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; text-align: center; margin-bottom: 12px; line-height: 1.2;}
@@ -126,7 +126,7 @@
     </div>
 
     <!-- Статусы -->
-    <div id="subscriptionBar" class="subscription-bar" onclick="showPaymentBlock()">⏳ Проверка...</div>
+    <div id="subscriptionBar" class="subscription-bar" onclick="showPaymentBlock()">⏳ Проверка подписки...</div>
     <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
@@ -179,7 +179,7 @@
     </div>
 </div>
 
-<!-- УНИВЕРСАЛЬНОЕ МОДАЛЬНОЕ ОКНО -->
+<!-- МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ В КОЛЛЕКЦИЮ/ИЗБРАННОЕ -->
 <div id="favModal">
     <div class="modal-card">
         <h3 id="favModalTitle" style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">В Избранное</h3>
@@ -196,6 +196,7 @@
         
         <div style="display:flex; flex-direction: column; gap:10px;">
             <button class="btn btn-green" onclick="confirmFavModal()">💾 Сохранить</button>
+            <button id="btnFavDelete" class="btn btn-red" onclick="removeFavModal()" style="display:none;">🗑 Удалить из коллекции</button>
             <button class="btn" onclick="closeFavModal()">Отмена</button>
         </div>
     </div>
@@ -208,7 +209,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v61-collections';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v62-perfect-click';
     
     let user = null;
     let subscriptionStatus = 'guest'; // 'guest', 'trialActive', 'freemium', 'premiumActive'
@@ -287,7 +288,7 @@
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
             startLiveSync();
         } else {
-            // ГОСТЬ
+            // ГОСТЬ. Нет аккаунта = нет премиум функций.
             btn.innerText = "🌐 Войти через Google";
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: Войдите в Google`;
             updateSubscriptionBar('guest');
@@ -298,6 +299,7 @@
     function startLiveSync() {
         if (!user) return;
         
+        // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
@@ -311,6 +313,7 @@
               }
           });
 
+        // Синхронизация Блокнота
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -320,11 +323,13 @@
               if (activeTab === 'trans') renderUI();
           });
 
+        // Проверка оплаты и триала
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
           .onSnapshot(doc => {
               if (doc.exists) {
                   const paymentData = doc.data();
                   const now = Date.now();
+                  
                   if (paymentData.premiumUntil && now < paymentData.premiumUntil) {
                       const msLeft = paymentData.premiumUntil - now;
                       const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
@@ -335,7 +340,8 @@
               } else {
                   const trialStartedTs = Date.now();
                   db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
-                    .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs }).catch(()=>{});
+                    .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs })
+                    .catch(()=>{});
                   checkTrialStatus(trialStartedTs);
               }
               renderUI();
@@ -368,9 +374,15 @@
         }
     }
 
-    function checkAccess(feature) {
-        if (subscriptionStatus === 'guest') { showMsg("Войдите в аккаунт Google!"); return false; }
-        if (subscriptionStatus === 'freemium') { showPaymentBlock(); return false; }
+    function isPremiumFeatureAllowed() {
+        if (subscriptionStatus === 'guest') {
+            alert("Пожалуйста, войдите через Google, чтобы использовать эту функцию!");
+            return false;
+        }
+        if (subscriptionStatus === 'freemium') {
+            showPaymentBlock();
+            return false;
+        }
         return true;
     }
 
@@ -380,7 +392,7 @@
     function selectCollection(c) { activeCollection = c; renderUI(); }
 
     function toggleViewMode() {
-        if (!checkAccess()) return;
+        if (!isPremiumFeatureAllowed()) return;
         viewMode = viewMode === 'list' ? 'grid' : 'list';
         localStorage.setItem('arabus_view_mode', viewMode);
         renderUI();
@@ -389,7 +401,7 @@
     // --- ЛОГИКА ДЕЙСТВИЙ (ОБЩАЯ) ---
     function handleActionClick(action, idx, e) {
         if(e) e.stopPropagation();
-        if (!checkAccess()) return;
+        if (!isPremiumFeatureAllowed()) return;
 
         const w = currentRenderedWords[idx];
         const itemKey = w.ar + '::' + w.ru; 
@@ -409,6 +421,7 @@
                 document.getElementById('favModalAr').innerText = w.ar;
                 document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
                 document.getElementById('favModalColBlock').style.display = 'none'; // Скрываем коллекцию
+                document.getElementById('btnFavDelete').style.display = 'none';
                 document.getElementById('favModal').style.display = 'flex';
                 setTimeout(() => document.getElementById('favModalRu').focus(), 100);
             }
@@ -420,6 +433,7 @@
             document.getElementById('favModalRu').value = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
             document.getElementById('favModalCollection').value = favCollections[itemKey] || favCollections[w.ar] || '';
             document.getElementById('favModalColBlock').style.display = 'block'; // Показываем коллекцию
+            document.getElementById('btnFavDelete').style.display = 'block';
             document.getElementById('favModal').style.display = 'flex';
             setTimeout(() => document.getElementById('favModalCollection').focus(), 100);
         }
@@ -447,6 +461,15 @@
         saveFavsToCloud(); closeFavModal(); renderUI();
     }
 
+    function removeFavModal() {
+        const key = window.wordToAddKey;
+        const fallbackKey = window.wordToAddAr;
+        localFavs = localFavs.filter(v => v !== key && v !== fallbackKey);
+        delete favCustom[key]; delete favCustom[fallbackKey];
+        delete favCollections[key]; delete favCollections[fallbackKey];
+        saveFavsToCloud(); closeFavModal(); renderUI();
+    }
+
     function closeFavModal() { document.getElementById('favModal').style.display = 'none'; window.wordToAddKey = null; }
 
     async function saveFavsToCloud() {
@@ -461,7 +484,7 @@
     }
 
     async function saveManualNote() {
-        if (!checkAccess()) return;
+        if (!isPremiumFeatureAllowed()) return;
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) return;
@@ -497,7 +520,7 @@
     function speak(t, e) {
         if(e) e.stopPropagation(); 
         window.speechSynthesis.cancel();
-        if (!checkAccess()) return;
+        if (!isPremiumFeatureAllowed()) return;
         const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
     }
 
@@ -524,7 +547,7 @@
         
         // --- ВКЛАДКА БЛОКНОТ ---
         if (activeTab === 'trans') {
-            if (subscriptionStatus === 'freemium') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен в ПРЕМИУМ</div>`; return; }
+            if (subscriptionStatus === 'freemium') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен в ПРЕМИУМ-версии</div>`; return; }
             if (subscriptionStatus === 'guest') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Войдите в аккаунт, чтобы использовать Блокнот</div>`; return; }
             
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
@@ -533,7 +556,7 @@
                 el.onclick = function() { this.classList.toggle('expanded'); };
                 el.innerHTML = `
                     <div class="note-header">
-                        <div class="note-ru" onclick="event.stopPropagation()">${n.ru}</div>
+                        <div class="note-ru">${n.ru}</div>
                         <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                     </div>
                     <div class="details" onclick="event.stopPropagation()">
@@ -561,7 +584,6 @@
             if (activeTab === 'fav') {
                 if (!isFav) return false;
                 if (activeCollection !== 'Все') {
-                    // Проверяем коллекцию (если пустая - значит не в этой)
                     const col = favCollections[itemKey] || favCollections[w.ar] || '';
                     if (col !== activeCollection) return false;
                 }
@@ -634,7 +656,6 @@
                 card.className = 'g-card';
                 card.onclick = function() { this.classList.toggle('flipped'); };
                 card.innerHTML = `
-                    <div class="g-del" onclick="handleActionClick('toggle_fav', ${idx}, event)">✖</div>
                     <div class="g-inner">
                         <div class="g-face g-front">
                             <div class="g-ru">${displayRu}</div>
@@ -644,7 +665,7 @@
                             <div class="g-ar">${w.ar}</div>
                             <div style="display:flex; gap:6px; width:100%; margin-top:auto;">
                                 <button class="btn btn-green" style="padding:10px; border-radius:10px;" onclick="speak('${w.ar}', event)">🔊</button>
-                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px;" onclick="handleActionClick('edit_col', ${idx}, event)">📁 В папку</button>
+                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px; background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="handleActionClick('edit_col', ${idx}, event)">📁 В папку</button>
                             </div>
                         </div>
                     </div>`;
@@ -668,10 +689,10 @@
 
             let actionHtml = '';
             if (activeTab === 'dict') {
-                // В словаре - просто добавить/убрать из избранного
+                // В словаре - просто добавить/убрать из избранного (БЕЗ папок)
                 actionHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleActionClick('toggle_fav', ${idx}, event)">${active ? '★ В избранном' : '☆ В избранное'}</button>`;
             } else {
-                // В избранном - кнопка коллекции и корзина
+                // В избранном - кнопка коллекции и удаление
                 actionHtml = `
                     <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="handleActionClick('edit_col', ${idx}, event)">📁 В коллекцию</button>
                     <button class="btn btn-red" style="flex: 0.3;" onclick="handleActionClick('toggle_fav', ${idx}, event)">🗑</button>
@@ -680,17 +701,20 @@
 
             const el = document.createElement('div');
             el.className = 'item';
+            
+            // ВАЖНО: Простое открытие карточки. Никаких блокировок клика на тексте!
             el.onclick = function() { this.classList.toggle('expanded'); };
+            
             el.innerHTML = `
                 <div class="dict-row">
-                    <div class="dict-ru" onclick="event.stopPropagation()">${displayRu}</div>
-                    <div class="dict-ar" onclick="event.stopPropagation()">${w.ar}</div>
+                    <div class="dict-ru">${displayRu}</div>
+                    <div class="dict-ar">${w.ar}</div>
                 </div>
                 <div class="details" onclick="event.stopPropagation()">
                     ${verbInfoHtml}
                     <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5; user-select: text; -webkit-user-select: text;">${w.ru}</div>
                     <div class="actions">
-                        <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
+                        <button class="btn ${subscriptionStatus === 'freemium' ? 'btn-speak-freemium' : ''}" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
                         ${actionHtml}
                     </div>
                 </div>`;
@@ -699,6 +723,9 @@
     }
 
     function switchTab(t) {
+        if (t === 'trans' && !isPremiumFeatureAllowed()) return;
+        if (t === 'fav' && !isPremiumFeatureAllowed()) return;
+
         activeTab = t; activeCollection = 'Все'; 
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
@@ -714,5 +741,6 @@
 </script>
 </body>
 </html>
+
 
 
