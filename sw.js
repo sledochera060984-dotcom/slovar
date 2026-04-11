@@ -1,42 +1,59 @@
-const CACHE_NAME = 'arabus-pro-cache-v1';
+const CACHE_NAME = 'arabus-pro-cache-v2';
 const URLS_TO_CACHE = [
-    './',
-    './index.html',
-    './base.js',
-    './manifest.json'
+  './',
+  './index.html',
+  './base.js',
+  './verbs.js',
+  './manifest.json'
 ];
 
-// Установка кэша при первом заходе
 self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-        .then(cache => cache.addAll(URLS_TO_CACHE))
-    );
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(URLS_TO_CACHE))
+  );
+  self.skipWaiting();
 });
 
-// Перехват запросов
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys
+        .filter(key => key !== CACHE_NAME)
+        .map(key => caches.delete(key))
+    ))
+  );
+  self.clients.claim();
+});
+
 self.addEventListener('fetch', event => {
-    if (event.request.method !== 'GET') return;
-    
-    // Игнорируем запросы к облаку Firebase (они работают через свой механизм)
-    if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('google')) return;
+  if (event.request.method !== 'GET') return;
 
-    // Стратегия: "Сначала кэш, потом сеть" (Stale-While-Revalidate)
-    // Это значит, что база 8.5 МБ откроется за 0 секунд из памяти телефона!
-    event.respondWith(
-        caches.match(event.request).then(cachedResponse => {
-            const fetchPromise = fetch(event.request).then(networkResponse => {
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, networkResponse.clone());
-                });
-                return networkResponse;
-            }).catch(() => {
-                console.log("Офлайн режим: загружено из памяти");
-            });
+  const url = event.request.url;
 
-            return cachedResponse || fetchPromise;
+  if (
+    url.includes('firestore.googleapis.com') ||
+    url.includes('googleapis.com') ||
+    url.includes('gstatic.com') ||
+    url.includes('google.com')
+  ) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then(cachedResponse => {
+      const fetchPromise = fetch(event.request)
+        .then(networkResponse => {
+          if (!networkResponse || networkResponse.status !== 200) {
+            return networkResponse;
+          }
+
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+          return networkResponse;
         })
-    );
+        .catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
+    })
+  );
 });
-
-
