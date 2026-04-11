@@ -38,6 +38,7 @@
         .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
         .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s;}
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .tab-subtitle { display: block; font-size: 9px; font-weight: 400; color: inherit; margin-top: 2px; opacity: 0.8; }
 
         input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
         input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
@@ -85,9 +86,16 @@
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
     <div class="tabs">
-        <button id="tabDict" class="tab active" onclick="switchTab('dict')">📚 Словарь</button>
-        <button id="tabFav" class="tab" onclick="switchTab('fav')">⭐ Избранное</button>
-        <button id="tabTrans" class="tab" onclick="switchTab('trans')">📝 Блокнот</button>
+        <button id="tabDict" class="tab active" onclick="switchTab('dict')">
+            📚 Словарь
+        </button>
+        <button id="tabFav" class="tab" onclick="switchTab('fav')">
+            ⭐ Избранное
+        </button>
+        <button id="tabTrans" class="tab" onclick="switchTab('trans')">
+            📝 Блокнот
+            <span class="tab-subtitle">для фраз и предложений</span>
+        </button>
     </div>
 
     <!-- Поиск -->
@@ -97,8 +105,11 @@
 
     <!-- Ручной Блокнот -->
     <div id="translatorSection" style="display:none;">
-        <input type="text" id="manualAr" placeholder="Текст на арабском (напр: سيارة)...">
-        <textarea id="manualRu" placeholder="Перевод на русский (напр: машина)..."></textarea>
+        <div style="font-size: 13px; color: var(--gray); margin-bottom: 12px; font-weight: 600;">
+            Здесь вы можете сохранять целые предложения, устойчивые выражения или правила.
+        </div>
+        <input type="text" id="manualAr" placeholder="Текст на арабском (напр: صَبَاحُ الخَيْرِ)...">
+        <textarea id="manualRu" placeholder="Перевод на русский (напр: Доброе утро)..."></textarea>
         <button class="btn btn-green" style="width: 100%; margin-bottom: 15px;" onclick="saveManualNote()">💾 Сохранить в блокнот</button>
         <div style="font-size: 11px; color: var(--gray); margin: 10px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои Сохраненные Записи:</div>
     </div>
@@ -127,12 +138,15 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v37-tab-clear';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v39-notebook-fixed';
     
     let user = null;
+    
+    // НОВОЕ: Блокнот теперь загружается из памяти телефона сразу!
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
-    let myNotes = []; 
+    let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
+    
     let activeTab = 'dict';
     let currentRenderedWords = []; 
     let normalizedVerbs = {}; 
@@ -206,6 +220,8 @@
 
     function startLiveSync() {
         if (!user) return;
+        
+        // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
@@ -217,9 +233,16 @@
               }
           });
 
+        // НОВОЕ: Синхронизация Блокнота с сохранением в телефон
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
-              myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              // Оставляем те локальные записи, которые еще не успели уйти в облако
+              const localUnsynced = myNotes.filter(n => n.id.toString().startsWith('note_'));
+              
+              myNotes = [...cloudNotes, ...localUnsynced];
+              localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+              
               if (activeTab === 'trans') renderUI();
           });
     }
@@ -280,17 +303,47 @@
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
-        if (!user) { showMsg("Войдите в аккаунт!"); return; }
-        try {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: Date.now() });
-            document.getElementById('manualAr').value = ""; document.getElementById('manualRu').value = ""; showMsg("Фраза сохранена!");
-        } catch (e) { showMsg("Сохранено локально."); }
+
+        // НОВОЕ: Сохраняем в память телефона МГНОВЕННО, даже если нет аккаунта
+        const noteId = 'note_' + Date.now();
+        const newNote = { id: noteId, ar, ru, ts: Date.now() };
+        myNotes.push(newNote);
+        localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+
+        document.getElementById('manualAr').value = ""; 
+        document.getElementById('manualRu').value = ""; 
+        showMsg("Фраза сохранена!");
+        renderUI();
+
+        // Отправляем в облако, только если есть аккаунт
+        if (user) {
+            try {
+                const docRef = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: newNote.ts });
+                // Обновляем временный ID на облачный
+                const noteIndex = myNotes.findIndex(n => n.id === noteId);
+                if(noteIndex !== -1) {
+                    myNotes[noteIndex].id = docRef.id;
+                    localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+                }
+            } catch (e) { console.log(e); }
+        }
     }
 
     async function removeNote(id, e) {
         e.stopPropagation();
         if (confirm("Удалить запись из блокнота?")) {
-            await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete(); showMsg("Удалено");
+            // Удаляем из памяти телефона МГНОВЕННО
+            myNotes = myNotes.filter(n => n.id !== id);
+            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+            renderUI();
+            showMsg("Удалено");
+
+            // Удаляем из облака, если есть аккаунт
+            if (user && !id.toString().startsWith('note_')) {
+                try {
+                    await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
+                } catch(e) {}
+            }
         }
     }
 
@@ -441,7 +494,6 @@
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
         document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
         
-        // НОВОЕ: Очищаем строку поиска при переходе на любую вкладку
         document.getElementById('queryInput').value = '';
         
         renderUI();
@@ -458,5 +510,6 @@
 </script>
 </body>
 </html>
+
 
 
