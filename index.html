@@ -27,13 +27,18 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 40px; }
-        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; overflow: hidden;}
+        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; overflow: hidden; position: relative;}
         
+        /* ШАПКА И ЛОГОТИП */
+        .app-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; padding-top: 5px;}
+        .app-header img { width: 42px; height: 42px; border-radius: 10px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2); }
+        .app-header h1 { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; letter-spacing: 0.5px; }
+
         .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
         .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
         .status-wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
         
-        .subscription-bar { font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; color: white; background: var(--gray); padding: 4px 8px; border-radius: 20px; margin-bottom: 10px; opacity: 0; transition: opacity 0.3s; width: max-content; margin-left: auto; margin-right: auto;}
+        .subscription-bar { font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; color: white; background: var(--gray); padding: 6px 12px; border-radius: 20px; margin-bottom: 15px; opacity: 0; transition: opacity 0.3s; width: max-content; margin-left: auto; margin-right: auto;}
         .sub-active { background: var(--primary); opacity: 1; }
         .sub-trial { background: #b45309; opacity: 1; }
         .sub-freemium { background: #ef4444; opacity: 1; cursor: pointer;}
@@ -44,7 +49,12 @@
         .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s;}
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .tab-subtitle { display: block; font-size: 9px; font-weight: 400; color: inherit; margin-top: 2px; opacity: 0.8; }
-        .tab.blocked { opacity: 0.5; cursor: not-allowed; }
+
+        /* ПАПКИ */
+        .folder-chips-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 12px; }
+        .folder-chips-container::-webkit-scrollbar { display: none; }
+        .folder-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; color: var(--gray); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: 0.2s;}
+        .folder-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
         input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
@@ -54,6 +64,10 @@
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
         
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* РАЗРЕШАЕМ ВЫДЕЛЕНИЕ СЛОВ ДЛЯ КОПИРОВАНИЯ */
+        .dict-ru, .dict-ar, .ar-full { user-select: text; -webkit-user-select: text; }
+        
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; font-weight: 600;}
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         
@@ -61,19 +75,19 @@
         .note-ru { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
         .note-ar-hint { font-size: 14px; color: var(--gray); direction: rtl; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; }
+        .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; cursor: default; }
         .expanded .details { display: block; }
         .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
         
         .verb-conjugation { font-size: 15px; color: #475569; background: #f1f5f9; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
-        .verb-conjugation span { font-size: 20px; font-weight: bold; color: var(--primary); direction: rtl; }
+        .verb-conjugation span { font-size: 20px; font-weight: bold; color: var(--primary); direction: rtl; user-select: text; -webkit-user-select: text;}
 
         .actions { display: flex; gap: 8px; margin-top: 8px; }
         .btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-green { background: var(--primary); color: white; border: none; }
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
-        .btn-block-lock { cursor: not-allowed; border-color: #fee2e2; background: #fef2f2; color: #ef4444; }
+        .btn-block-lock { cursor: not-allowed; border-color: #fee2e2; background: #fef2f2; color: #ef4444; font-weight: 800;}
         .btn-speak-freemium { color: var(--gray); background: #f1f5f9; border-color: #e2e8f0; cursor: not-allowed;}
 
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
@@ -82,13 +96,31 @@
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
         .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
 
-        /* Экран Блокировки Оплаты */
+        /* Экран Оплаты */
         #paymentBlockScreen { display: none; text-align: center; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 100; padding: 40px; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px;}
         .payment-block-icon { font-size: 64px; margin-bottom: 20px; color: var(--primary);}
         .payment-block-title { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 10px;}
         .payment-block-desc { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 20px; }
         .payment-block-uid { font-size: 11px; background: #f1f5f9; padding: 6px 10px; border-radius: 8px; color: var(--gray); margin-bottom: 20px; word-break: break-all;}
         .payment-block-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+        /* Карточки */
+        .fc-overlay { display: none; flex-direction: column; align-items: center; padding: 10px 0; animation: scaleIn 0.2s ease-out;}
+        .fc-header { width: 100%; display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: 800; color: var(--gray); font-size: 15px; align-items: center;}
+        .fc-scene { width: 100%; height: 340px; perspective: 1000px; margin-bottom: 20px; }
+        .fc-card { width: 100%; height: 100%; position: relative; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; cursor: pointer; }
+        .fc-card.flipped { transform: rotateY(180deg); }
+        .fc-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 30px; text-align: center; border: 2px solid #f1f5f9; }
+        .fc-front { border-color: var(--primary); }
+        .fc-back { transform: rotateY(180deg); background: #f8fafc; }
+        .fc-ar { font-size: 48px; font-weight: 800; color: var(--primary); direction: rtl; line-height: 1.4;}
+        .fc-ru { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 24px; line-height: 1.4;}
+        .fc-hint { margin-top: 30px; color: #94a3b8; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;}
+        .fc-controls { display: flex; gap: 12px; width: 100%; }
+        .fc-btn { flex: 1; padding: 16px; border-radius: 16px; font-weight: 800; border: none; cursor: pointer; background: #f1f5f9; color: #475569; font-size: 15px; transition: 0.2s;}
+        .fc-btn:active { transform: scale(0.96); }
+        .fc-btn-primary { background: var(--primary); color: white; }
+        .fc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -97,6 +129,13 @@
 <body>
 
 <div class="card">
+    
+    <!-- Шапка с Логотипом -->
+    <div class="app-header">
+        <img src="icon.png" alt="Logo">
+        <h1>АРАБРУС</h1>
+    </div>
+
     <div id="subscriptionBar" class="subscription-bar" onclick="showPaymentBlock()">⏳ Проверка...</div>
 
     <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
@@ -104,12 +143,8 @@
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
 
     <div class="tabs">
-        <button id="tabDict" class="tab active" onclick="switchTab('dict')">
-            📚 Словарь
-        </button>
-        <button id="tabFav" class="tab" onclick="switchTab('fav')">
-            ⭐ Избранное
-        </button>
+        <button id="tabDict" class="tab active" onclick="switchTab('dict')">📚 Словарь</button>
+        <button id="tabFav" class="tab" onclick="switchTab('fav')">⭐ Избранное</button>
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">
             📝 Блокнот
             <span class="tab-subtitle">для фраз</span>
@@ -132,31 +167,62 @@
         <div style="font-size: 11px; color: var(--gray); margin: 10px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои Сохраненные Записи:</div>
     </div>
     
+    <!-- Режим Карточек -->
+    <div id="flashcardSection" class="fc-overlay">
+        <div class="fc-header">
+            <span onclick="closeCards()" style="cursor:pointer; color:var(--primary); padding: 5px;">⬅ Назад</span>
+            <span id="fcCounter" style="background:#f1f5f9; padding: 6px 12px; border-radius: 12px;">1 / 10</span>
+        </div>
+        <div class="fc-scene" onclick="flipCard()">
+            <div class="fc-card" id="fcCard">
+                <div class="fc-face fc-front">
+                    <div class="fc-ar" id="fcAr"></div>
+                    <div class="fc-hint">Нажмите, чтобы перевернуть</div>
+                </div>
+                <div class="fc-face fc-back">
+                    <div class="fc-ru" id="fcRu"></div>
+                    <button class="btn btn-green" style="width:auto; padding: 12px 30px; border-radius: 14px;" onclick="speakCard(event)">🔊 Слушать слово</button>
+                </div>
+            </div>
+        </div>
+        <div class="fc-controls">
+            <button class="fc-btn" id="fcPrevBtn" onclick="prevCard()">⬅ Назад</button>
+            <button class="fc-btn fc-btn-primary" id="fcNextBtn" onclick="nextCard()">Дальше ➡️</button>
+        </div>
+    </div>
+
+    <!-- Основной список -->
+    <div id="list" class="list"></div>
+    
     <!-- Экран Блокировки Оплаты -->
     <div id="paymentBlockScreen">
         <div class="payment-block-icon">⭐️</div>
         <div class="payment-block-title">АРАБРУС ПРЕМИУМ</div>
         <div class="payment-block-desc">
-            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Блокнот, Избранное и Озвучку всего за <b>100 руб/месяц</b>.
+            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Папки, Карточки, Блокнот и Озвучку всего за <b>100 руб/месяц</b>.
         </div>
         <div class="payment-block-uid" id="paymentUidDisplay">Ваш ID: Неизвестно</div>
         <div class="payment-block-actions">
-            <!-- Сюда вставьте ссылку на ваш Телеграм -->
-            <a href="https://t.me/ВАШ_ТЕЛЕГРАМ" target="_blank" class="btn btn-green" style="text-decoration: none;">📝 Связаться для оплаты</a>
-            <button class="btn" onclick="switchTab('dict'); hidePaymentBlock();">Назад к словарю</button>
+            <!-- КНОПКА ОТПРАВКИ НА ПОЧТУ (С УТОЧНЕНИЕМ ЦЕНЫ) -->
+            <a href="mailto:Sledochera060984@gmail.com?subject=Оплата%20АРАБРУС%20ПРЕМИУМ" target="_blank" class="btn btn-green" style="text-decoration: none; font-size: 15px; padding: 14px;">✉️ Написать на почту (100 руб / месяц)</a>
+            <button class="btn" style="padding: 14px;" onclick="switchTab('dict'); hidePaymentBlock();">Назад к словарю</button>
         </div>
     </div>
 
-    <div id="list" class="list"></div>
 </div>
 
 <!-- Модальное окно: Избранное -->
 <div id="favModal">
     <div class="modal-card">
-        <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">Добавить в избранное</h3>
+        <h3 style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">В Избранное</h3>
         <div id="favModalAr" class="modal-ar"></div>
-        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш точный перевод:</label>
+        
+        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Папка (категория):</label>
+        <input type="text" id="favModalFolder" placeholder="Например: Глаголы" style="margin-top:8px; margin-bottom:15px; font-weight: bold; color: #1e293b;">
+        
+        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш перевод:</label>
         <input type="text" id="favModalRu" style="margin-top:8px; margin-bottom:20px; font-weight: bold; color: #1e293b;">
+        
         <div style="display:flex; gap:10px;">
             <button class="btn btn-green" onclick="confirmFavModal()">💾 Сохранить</button>
             <button class="btn" onclick="closeFavModal()">Отмена</button>
@@ -171,20 +237,25 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v41-monthly-sub';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v46-monthly';
     
     let user = null;
     
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
+    let favFolders = JSON.parse(localStorage.getItem('arabus_favs_folders')) || {}; 
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
     
     let activeTab = 'dict';
+    let activeFolder = 'Все'; 
     let currentRenderedWords = []; 
+    let lastFilteredWords = []; 
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
 
-    // Статус: 'trialActive', 'freemium', 'premiumActive', 'checking'
+    let fcList = [];
+    let fcIndex = 0;
+
     let subscriptionStatus = 'checking'; 
 
     function showMsg(text) {
@@ -219,7 +290,7 @@
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
-            s.innerText = `✅ АРАБРУС Готов: ${dictBase.length} слов`;
+            s.innerText = `✅ БАЗА ГОТОВА: ${dictBase.length} СЛОВ`;
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
@@ -260,8 +331,10 @@
               if (doc.exists) {
                   localFavs = doc.data().list || [];
                   favCustom = doc.data().custom || {};
+                  favFolders = doc.data().folders || {};
                   localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
                   localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+                  localStorage.setItem('arabus_favs_folders', JSON.stringify(favFolders));
                   renderUI();
               }
           });
@@ -275,24 +348,20 @@
               if (activeTab === 'trans') renderUI();
           });
 
-        // НОВАЯ ЛОГИКА: Подписка по дате
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
           .onSnapshot(doc => {
               if (doc.exists) {
                   const paymentData = doc.data();
                   const now = Date.now();
                   
-                  // Если premiumUntil больше текущего времени, значит подписка еще действует
                   if (paymentData.premiumUntil && now < paymentData.premiumUntil) {
                       const msLeft = paymentData.premiumUntil - now;
                       const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
                       updateSubscriptionBar('premiumActive', daysLeft);
                   } else {
-                      // Подписка закончилась (или её не было), проверяем триал
                       checkTrialStatus(paymentData.trialStartedTimestamp);
                   }
               } else {
-                  // Первичный вход: создаем триал
                   const trialStartedTs = Date.now();
                   db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
                     .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs })
@@ -314,7 +383,7 @@
         } else if (status === 'trialActive') {
             bar.innerText = `Триал: ${daysLeft} дней осталось`; bar.classList.add('sub-trial');
         } else if (status === 'freemium') {
-            bar.innerText = 'Freemium (Озвучка и Блокнот заблокированы)'; bar.classList.add('sub-freemium');
+            bar.innerText = 'Freemium (Озвучка и Избранное заблокированы)'; bar.classList.add('sub-freemium');
         } else if (status === 'checking') {
              bar.innerText = 'Проверка доступа...'; bar.className = 'subscription-bar';
         }
@@ -334,7 +403,8 @@
     }
 
     function speak(t, e) {
-        e.stopPropagation(); window.speechSynthesis.cancel();
+        if(e) e.stopPropagation(); 
+        window.speechSynthesis.cancel();
         
         if (subscriptionStatus === 'freemium') {
             showMsg("Озвучка доступна только в ПРЕМИУМ");
@@ -345,12 +415,13 @@
         const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
     }
 
-    function isNotebookAllowed() {
-        return (subscriptionStatus === 'premiumActive' || subscriptionStatus === 'trialActive');
-    }
-
     function showPaymentBlock() { if(subscriptionStatus === 'freemium') document.getElementById('paymentBlockScreen').style.display = 'flex'; }
     function hidePaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'none'; }
+
+    function selectFolder(f) {
+        activeFolder = f;
+        renderUI();
+    }
 
     function handleFavClick(idx, e) {
         e.stopPropagation();
@@ -365,26 +436,33 @@
             return;
         }
 
-        if (localFavs.includes(itemKey) || localFavs.includes(w.ar)) {
+        if (active) {
             localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
             delete favCustom[itemKey]; delete favCustom[w.ar];
+            delete favFolders[itemKey]; delete favFolders[w.ar]; 
             saveFavsToCloud(); renderUI();
         } else {
             window.wordToAddKey = itemKey;
             document.getElementById('favModalAr').innerText = w.ar;
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
+            document.getElementById('favModalFolder').value = activeFolder !== 'Все' ? activeFolder : 'Общие';
             document.getElementById('favModal').style.display = 'flex';
-            setTimeout(() => document.getElementById('favModalRu').focus(), 100);
+            setTimeout(() => document.getElementById('favModalFolder').focus(), 100);
         }
     }
 
     function confirmFavModal() {
         const key = window.wordToAddKey;
         const ru = document.getElementById('favModalRu').value.trim();
+        let folder = document.getElementById('favModalFolder').value.trim();
+        if (!folder) folder = 'Общие';
+
         if (!key || !ru) { showMsg("Заполните перевод!"); return; }
 
         if (!localFavs.includes(key)) localFavs.push(key);
         favCustom[key] = ru; 
+        favFolders[key] = folder; 
+        
         saveFavsToCloud(); closeFavModal(); renderUI();
     }
 
@@ -396,10 +474,12 @@
     async function saveFavsToCloud() {
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+        localStorage.setItem('arabus_favs_folders', JSON.stringify(favFolders));
         showMsg("Избранное обновлено");
         if (user) {
-            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs').set({ list: localFavs, custom: favCustom }); } 
-            catch(e) {}
+            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
+                .set({ list: localFavs, custom: favCustom, folders: favFolders }, { merge: true }); 
+            } catch(e) {}
         }
     }
 
@@ -415,7 +495,7 @@
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
 
-        if (!isNotebookAllowed()) { showMsg("Блокнот только в ПРЕМИУМ"); showPaymentBlock(); return;}
+        if (subscriptionStatus === 'freemium') { showMsg("Блокнот только в ПРЕМИУМ"); showPaymentBlock(); return;}
 
         const noteId = 'note_' + Date.now();
         const newNote = { id: noteId, ar, ru, ts: Date.now() };
@@ -455,6 +535,76 @@
         }
     }
 
+    function openCards() {
+        if (subscriptionStatus === 'freemium') {
+            showMsg("Карточки доступны в ПРЕМИУМ");
+            showPaymentBlock();
+            return;
+        }
+        
+        fcList = lastFilteredWords; 
+        if(fcList.length === 0) return;
+        
+        fcIndex = 0;
+        
+        document.getElementById('searchSection').style.display = 'none';
+        document.getElementById('list').style.display = 'none';
+        document.querySelector('.tabs').style.display = 'none'; 
+        document.getElementById('flashcardSection').style.display = 'flex';
+        
+        renderFC();
+    }
+
+    function closeCards() {
+        document.getElementById('flashcardSection').style.display = 'none';
+        document.getElementById('searchSection').style.display = 'block';
+        document.getElementById('list').style.display = 'block';
+        document.querySelector('.tabs').style.display = 'flex';
+    }
+
+    function renderFC() {
+        const card = document.getElementById('fcCard');
+        card.classList.remove('flipped'); 
+        
+        const w = fcList[fcIndex];
+        const itemKey = w.ar + '::' + w.ru;
+        const customRu = favCustom[itemKey] || favCustom[w.ar];
+        const displayRu = customRu ? customRu : (w.short_ru || w.ru.split(';')[0]);
+        
+        setTimeout(() => {
+            document.getElementById('fcAr').innerText = w.ar;
+            document.getElementById('fcRu').innerText = displayRu;
+            document.getElementById('fcCounter').innerText = `${fcIndex + 1} / ${fcList.length}`;
+            
+            document.getElementById('fcPrevBtn').disabled = (fcIndex === 0);
+            document.getElementById('fcNextBtn').disabled = (fcIndex === fcList.length - 1);
+        }, 150);
+    }
+
+    function flipCard() {
+        document.getElementById('fcCard').classList.toggle('flipped');
+    }
+
+    function nextCard() {
+        if (fcIndex < fcList.length - 1) {
+            fcIndex++;
+            renderFC();
+        }
+    }
+
+    function prevCard() {
+        if (fcIndex > 0) {
+            fcIndex--;
+            renderFC();
+        }
+    }
+
+    function speakCard(e) {
+        e.stopPropagation(); 
+        const w = fcList[fcIndex];
+        speak(w.ar, e);
+    }
+
     function doSearch() { renderUI(); }
 
     function getArabicStems(word) {
@@ -478,9 +628,8 @@
         const q = document.getElementById('queryInput').value.toLowerCase().trim();
         list.innerHTML = "";
         
-        const notebookAllowed = isNotebookAllowed();
         if (activeTab === 'trans') {
-            if (!notebookAllowed) {
+            if (subscriptionStatus === 'freemium') {
                 list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен только в ПРЕМИУМ-версии</div>`;
                 return;
             }
@@ -490,10 +639,10 @@
                 el.innerHTML = `
                     <div onclick="this.classList.toggle('expanded')">
                         <div class="note-header">
-                            <div class="note-ru">${n.ru}</div>
+                            <div class="note-ru" onclick="event.stopPropagation()">${n.ru}</div>
                             <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                         </div>
-                        <div class="details">
+                        <div class="details" onclick="event.stopPropagation()">
                             <span class="ar-full">${n.ar}</span>
                             <div class="actions">
                                 <button class="btn" onclick="speak('${n.ar}', event)">🔊 Слушать</button>
@@ -516,8 +665,15 @@
             const itemKey = w.ar + '::' + w.ru;
             const isFav = localFavs.includes(itemKey) || localFavs.includes(w.ar);
             
-            if (activeTab === 'fav' && !isFav) return false;
-            if (!q) return activeTab === 'fav';
+            if (activeTab === 'fav') {
+                if (!isFav) return false;
+                if (activeFolder !== 'Все') {
+                    const f = favFolders[itemKey] || favFolders[w.ar] || 'Общие';
+                    if (f !== activeFolder) return false;
+                }
+            } else if (!q) {
+                return false; 
+            }
             
             const nWordAr = normalize(w.ar);
             const nWordRu = w.ru.toLowerCase();
@@ -556,7 +712,53 @@
             });
         }
 
+        lastFilteredWords = filtered; 
         currentRenderedWords = filtered.slice(0, 50);
+
+        if (activeTab === 'fav') {
+            const allFolders = new Set(['Все']);
+            localFavs.forEach(key => {
+                const f = favFolders[key] || 'Общие';
+                allFolders.add(f);
+            });
+            
+            if (!allFolders.has(activeFolder)) activeFolder = 'Все';
+
+            const chipsHtml = Array.from(allFolders).map(f => 
+                `<button class="folder-chip ${f === activeFolder ? 'active' : ''}" onclick="selectFolder('${f}')">${f}</button>`
+            ).join('');
+            
+            const chipsContainer = document.createElement('div');
+            chipsContainer.className = 'folder-chips-container';
+            chipsContainer.innerHTML = chipsHtml;
+            list.appendChild(chipsContainer);
+            
+            if (lastFilteredWords.length > 0) {
+                const btnCard = document.createElement('button');
+                if (subscriptionStatus === 'freemium') {
+                    btnCard.className = 'btn btn-block-lock';
+                    btnCard.innerHTML = '🔒 Учить карточки (Премиум)';
+                    btnCard.onclick = showPaymentBlock;
+                } else {
+                    btnCard.className = 'btn btn-green';
+                    btnCard.innerHTML = `🎴 Учить карточки: ${activeFolder} (${lastFilteredWords.length})`;
+                    btnCard.onclick = openCards;
+                }
+                btnCard.style.width = '100%';
+                btnCard.style.marginBottom = '15px';
+                btnCard.style.padding = '14px';
+                btnCard.style.fontSize = '15px';
+                list.appendChild(btnCard);
+            } else {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.style.textAlign = 'center';
+                emptyMsg.style.color = 'var(--gray)';
+                emptyMsg.style.padding = '20px';
+                emptyMsg.innerText = 'В этой папке пока нет слов';
+                list.appendChild(emptyMsg);
+                return; 
+            }
+        }
 
         currentRenderedWords.forEach((w, idx) => {
             const itemKey = w.ar + '::' + w.ru;
@@ -568,7 +770,7 @@
             const cleanAr = normalize(w.ar);
             if (normalizedVerbs[cleanAr]) {
                 verbInfoHtml = `
-                <div class="verb-conjugation">
+                <div class="verb-conjugation" onclick="event.stopPropagation()">
                     <div>Настоящее время:</div>
                     <span>${normalizedVerbs[cleanAr]}</span>
                 </div>`;
@@ -586,12 +788,12 @@
             el.innerHTML = `
                 <div onclick="this.classList.toggle('expanded')">
                     <div class="dict-row">
-                        <div class="dict-ru" style="${active && customRu ? 'color: var(--primary);' : ''}">${displayRu}</div>
-                        <div class="dict-ar">${w.ar}</div>
+                        <div class="dict-ru" onclick="event.stopPropagation()">${displayRu}</div>
+                        <div class="dict-ar" onclick="event.stopPropagation()">${w.ar}</div>
                     </div>
-                    <div class="details">
+                    <div class="details" onclick="event.stopPropagation()">
                         ${verbInfoHtml}
-                        <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
+                        <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5; user-select: text; -webkit-user-select: text;">${w.ru}</div>
                         <div class="actions">
                             <button class="btn ${subscriptionStatus === 'freemium' ? 'btn-speak-freemium' : ''}" onclick="speak('${w.ar}', event)">
                                 ${subscriptionStatus === 'freemium' ? '🔒' : '🔊'} Слушать
@@ -612,6 +814,8 @@
         }
 
         activeTab = t;
+        activeFolder = 'Все'; 
+        
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
         document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
@@ -628,6 +832,5 @@
 </script>
 </body>
 </html>
-
 
 
