@@ -57,8 +57,9 @@
         .collection-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; color: var(--gray); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: 0.2s;}
         .collection-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* КНОПКА ПЕРЕКЛЮЧЕНИЯ ВИДА */
-        .view-toggle-btn { width: 100%; padding: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; color: var(--primary); font-size: 14px; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02);}
+        /* КНОПКА ПЕРЕКЛЮЧЕНИЯ ВИДА И ВЫБОРА */
+        .view-controls { display: flex; gap: 10px; margin-bottom: 16px; }
+        .view-toggle-btn { flex: 1; padding: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; color: var(--primary); font-size: 14px; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02);}
         .view-toggle-btn:active { transform: scale(0.98); }
 
         input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
@@ -66,8 +67,8 @@
         textarea { height: 100px; resize: none; }
 
         /* СПИСОК */
-        .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
-        .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
+        .list { list-style: none; padding: 0; margin: 0; min-height: 100px; padding-bottom: 60px; }
+        .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; transition: background 0.2s; }
         .dict-row { display: flex; justify-content: space-between; align-items: center; }
         .dict-ru, .dict-ar, .ar-full { user-select: text; -webkit-user-select: text; }
         .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; font-weight: 600;}
@@ -86,9 +87,9 @@
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #f59e0b; }
 
-        /* КАРТОЧКИ (ФЛЕШКАРТЫ ИЗ СКРИНШОТА) */
-        .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 20px; }
-        .g-card { background: transparent; height: 180px; position: relative; cursor: pointer; perspective: 1000px; }
+        /* КАРТОЧКИ (СЕТКА) */
+        .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 80px; }
+        .g-card { background: transparent; height: 170px; position: relative; cursor: pointer; perspective: 1000px; }
         .g-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
         .g-card.flipped .g-inner { transform: rotateY(180deg); }
         .g-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; padding: 16px; background: white; }
@@ -99,6 +100,27 @@
         .g-hint { text-align: center; font-size: 9px; color: #94a3b8; font-weight: 800; text-transform: uppercase; margin-top: auto; letter-spacing: 0.5px;}
         .g-ar { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; text-align: center; margin-bottom: 12px; line-height: 1.2;}
 
+        /* --- РЕЖИМ ВЫБОРА (MULTI-SELECT) --- */
+        .checkbox-overlay { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #cbd5e1; background: white; z-index: 10; align-items: center; justify-content: center; display: none; flex-shrink: 0; margin-right: 12px;}
+        .g-card .checkbox-overlay { position: absolute; top: 12px; left: 12px; margin: 0; }
+        
+        .selection-mode .checkbox-overlay { display: flex; }
+        .selection-mode .btn-star, .selection-mode .g-star { display: none !important; }
+        
+        .selected .checkbox-overlay { background: var(--primary); border-color: var(--primary); }
+        .selected .checkbox-overlay::after { content: '✓'; color: white; font-size: 14px; font-weight: bold; }
+        
+        .item.selected { background: #f0fdf4; border-color: #a7f3d0; border-radius: 12px; padding-left: 10px; padding-right: 10px;}
+        .g-card.selected .g-face { border-color: var(--primary); background: #f0fdf4; box-shadow: 0 0 0 2px var(--primary); }
+
+        /* ПЛАВАЮЩАЯ ПАНЕЛЬ ВЫБОРА */
+        .selection-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #1e293b; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -4px 20px rgba(0,0,0,0.15); padding-bottom: calc(15px + env(safe-area-inset-bottom));}
+        .selection-bar.active { transform: translateY(0); }
+        .sel-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;}
+        .sel-btn:active { background: rgba(255,255,255,0.25); }
+        .sel-btn-red { background: #ef4444; }
+        .sel-btn-red:active { background: #dc2626; }
+
         /* ЭКРАН ОПЛАТЫ */
         #paymentBlockScreen { display: none; text-align: center; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 100; padding: 40px; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px;}
         .payment-block-icon { font-size: 64px; margin-bottom: 20px; color: var(--primary);}
@@ -107,8 +129,8 @@
         .payment-block-uid { font-size: 11px; background: #f1f5f9; padding: 6px 10px; border-radius: 8px; color: var(--gray); margin-bottom: 20px; word-break: break-all;}
 
         /* МОДАЛКИ */
-        #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
-        #favModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+        #toast { display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
 
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -179,25 +201,56 @@
     </div>
 </div>
 
-<!-- МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ В КОЛЛЕКЦИЮ/ИЗБРАННОЕ -->
-<div id="favModal">
+<!-- ПЛАВАЮЩАЯ ПАНЕЛЬ МАССОВОГО ВЫБОРА -->
+<div id="selectionActionBar" class="selection-bar">
+    <div style="font-weight: 800; font-size: 14px;">Выбрано: <span id="selCount">0</span></div>
+    <div style="display:flex; gap:10px;">
+        <button class="sel-btn" onclick="openBulkColModal()">📁 В папку</button>
+        <button class="sel-btn sel-btn-red" onclick="openBulkDelModal()">🗑</button>
+        <button class="sel-btn" style="background:transparent; font-size:20px; padding: 5px;" onclick="toggleSelectionMode()">✖</button>
+    </div>
+</div>
+
+<!-- МОДАЛКА: ПРОСТОЕ ДОБАВЛЕНИЕ (ДЛЯ СЛОВАРЯ) ИЛИ ИЗМЕНЕНИЕ ПЕРЕВОДА -->
+<div id="favModal" class="modal-overlay">
     <div class="modal-card">
         <h3 id="favModalTitle" style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">В Избранное</h3>
         <div id="favModalAr" style="font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center;"></div>
         
         <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш перевод:</label>
-        <input type="text" id="favModalRu" style="margin-top:8px; margin-bottom:15px; font-weight: bold; color: #1e293b;">
-        
-        <!-- Блок коллекции (скрыт по умолчанию для словаря) -->
-        <div id="favModalColBlock" style="display: none;">
-            <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Название коллекции:</label>
-            <input type="text" id="favModalCollection" placeholder="Например: Урок 1, Глаголы..." style="margin-top:8px; margin-bottom:20px; font-weight: bold; color: #1e293b;">
-        </div>
+        <input type="text" id="favModalRu" style="margin-top:8px; margin-bottom:20px; font-weight: bold; color: #1e293b;">
         
         <div style="display:flex; flex-direction: column; gap:10px;">
             <button class="btn btn-green" onclick="confirmFavModal()">💾 Сохранить</button>
-            <button id="btnFavDelete" class="btn btn-red" onclick="removeFavModal()" style="display:none;">🗑 Удалить из коллекции</button>
             <button class="btn" onclick="closeFavModal()">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛКА: ДОБАВИТЬ В КОЛЛЕКЦИЮ МАССОВО ИЛИ ЕДИНИЧНО -->
+<div id="colModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin-top:0; margin-bottom:10px; color:#1e293b; text-align: center;">В коллекцию</h3>
+        <p id="colModalDesc" style="text-align:center; color:var(--gray); font-size:14px; margin-bottom:15px;">Укажите папку для слова</p>
+        
+        <input type="text" id="colModalInput" placeholder="Например: Урок 1, Глаголы..." style="margin-bottom:20px; font-weight: bold; color: #1e293b;">
+        
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-green" onclick="confirmColModal()">💾 Сохранить</button>
+            <button class="btn" onclick="closeColModal()">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛКА: ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ -->
+<div id="delModal" class="modal-overlay">
+    <div class="modal-card">
+        <h3 style="margin-top:0; margin-bottom:15px; color:#ef4444; text-align: center;">Удаление слов</h3>
+        <p style="text-align:center; color:#1e293b; font-size:16px; font-weight:bold; margin-bottom:10px;">Слов выбрано: <span id="delModalCount"></span></p>
+        <p style="text-align:center; color:#ef4444; font-size:14px; font-weight:800; margin-bottom:20px; line-height:1.4;">Вы точно собираетесь удалить эти слова из избранного? Это действие нельзя отменить!</p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-red" onclick="confirmDelModal()">🗑 Точно удалить</button>
+            <button class="btn" onclick="closeDelModal()">Отмена</button>
         </div>
     </div>
 </div>
@@ -209,10 +262,10 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v62-perfect-click';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v63-multiselect';
     
     let user = null;
-    let subscriptionStatus = 'guest'; // 'guest', 'trialActive', 'freemium', 'premiumActive'
+    let subscriptionStatus = 'guest'; 
     
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
@@ -227,7 +280,10 @@
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
     
-    let modalMode = 'fav'; // 'fav' (просто добавить) или 'col' (добавить в коллекцию)
+    // ПЕРЕМЕННЫЕ МАССОВОГО ВЫБОРА
+    let isSelectionMode = false;
+    let selectedItems = new Set(); // Хранит itemKey выбранных элементов
+    let singleColActionKey = null; // Для единичного добавления в коллекцию
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -288,7 +344,7 @@
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
             startLiveSync();
         } else {
-            // ГОСТЬ. Нет аккаунта = нет премиум функций.
+            // ГОСТЬ.
             btn.innerText = "🌐 Войти через Google";
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: Войдите в Google`;
             updateSubscriptionBar('guest');
@@ -299,7 +355,6 @@
     function startLiveSync() {
         if (!user) return;
         
-        // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
@@ -313,7 +368,6 @@
               }
           });
 
-        // Синхронизация Блокнота
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -323,13 +377,11 @@
               if (activeTab === 'trans') renderUI();
           });
 
-        // Проверка оплаты и триала
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
           .onSnapshot(doc => {
               if (doc.exists) {
                   const paymentData = doc.data();
                   const now = Date.now();
-                  
                   if (paymentData.premiumUntil && now < paymentData.premiumUntil) {
                       const msLeft = paymentData.premiumUntil - now;
                       const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
@@ -340,8 +392,7 @@
               } else {
                   const trialStartedTs = Date.now();
                   db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
-                    .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs })
-                    .catch(()=>{});
+                    .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs }).catch(()=>{});
                   checkTrialStatus(trialStartedTs);
               }
               renderUI();
@@ -375,14 +426,8 @@
     }
 
     function isPremiumFeatureAllowed() {
-        if (subscriptionStatus === 'guest') {
-            alert("Пожалуйста, войдите через Google, чтобы использовать эту функцию!");
-            return false;
-        }
-        if (subscriptionStatus === 'freemium') {
-            showPaymentBlock();
-            return false;
-        }
+        if (subscriptionStatus === 'guest') { showMsg("Войдите через Google, чтобы использовать эту функцию!"); return false; }
+        if (subscriptionStatus === 'freemium') { showPaymentBlock(); return false; }
         return true;
     }
 
@@ -398,75 +443,138 @@
         renderUI();
     }
 
-    // --- ЛОГИКА ДЕЙСТВИЙ (ОБЩАЯ) ---
-    function handleActionClick(action, idx, e) {
+    // ==========================================
+    // ЛОГИКА МАССОВОГО ВЫБОРА (MULTI-SELECT)
+    // ==========================================
+    
+    function toggleSelectionMode() {
+        if (!isPremiumFeatureAllowed()) return;
+        isSelectionMode = !isSelectionMode;
+        selectedItems.clear();
+        updateSelectionActionBar();
+        renderUI();
+    }
+
+    function toggleItemSelection(key) {
+        if (selectedItems.has(key)) selectedItems.delete(key);
+        else selectedItems.add(key);
+        updateSelectionActionBar();
+        renderUI(); 
+    }
+
+    function updateSelectionActionBar() {
+        const bar = document.getElementById('selectionActionBar');
+        if (isSelectionMode) {
+            bar.classList.add('active');
+            document.getElementById('selCount').innerText = selectedItems.size;
+        } else {
+            bar.classList.remove('active');
+        }
+    }
+
+    // Открытие окна: В Коллекцию (МАССОВО ИЛИ ЕДИНИЧНО)
+    function openBulkColModal(singleKey = null) {
+        if (!singleKey && selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
+        
+        singleColActionKey = singleKey; 
+        
+        if (singleKey) {
+            document.getElementById('colModalDesc').innerText = 'Укажите папку для выбранного слова';
+            document.getElementById('colModalInput').value = favCollections[singleKey] || (activeCollection !== 'Все' ? activeCollection : '');
+        } else {
+            document.getElementById('colModalDesc').innerText = `Переместить в папку слов: ${selectedItems.size}`;
+            document.getElementById('colModalInput').value = activeCollection !== 'Все' ? activeCollection : '';
+        }
+        
+        document.getElementById('colModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('colModalInput').focus(), 100);
+    }
+
+    function confirmColModal() {
+        let col = document.getElementById('colModalInput').value.trim() || 'Общие';
+        
+        if (singleColActionKey) {
+            favCollections[singleColActionKey] = col;
+            showMsg("Добавлено в коллекцию");
+        } else {
+            selectedItems.forEach(key => { favCollections[key] = col; });
+            showMsg(`Слова (${selectedItems.size}) перемещены`);
+            isSelectionMode = false;
+            selectedItems.clear();
+            updateSelectionActionBar();
+        }
+        
+        saveFavsToCloud(); closeColModal(); renderUI();
+    }
+
+    function closeColModal() { document.getElementById('colModal').style.display = 'none'; singleColActionKey = null;}
+
+    // Открытие окна: Удаление (МАССОВОЕ)
+    function openBulkDelModal() {
+        if (selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
+        document.getElementById('delModalCount').innerText = selectedItems.size;
+        document.getElementById('delModal').style.display = 'flex';
+    }
+
+    function confirmDelModal() {
+        selectedItems.forEach(key => {
+            // Удаляем по ключу "арабский::русский"
+            localFavs = localFavs.filter(v => v !== key);
+            delete favCustom[key]; delete favCollections[key];
+            
+            // На всякий случай удаляем и старый формат "просто арабский"
+            const fallbackAr = key.split('::')[0];
+            localFavs = localFavs.filter(v => v !== fallbackAr);
+            delete favCustom[fallbackAr]; delete favCollections[fallbackAr];
+        });
+        
+        saveFavsToCloud();
+        isSelectionMode = false;
+        selectedItems.clear();
+        updateSelectionActionBar();
+        closeDelModal();
+        showMsg("Слова удалены");
+        renderUI();
+    }
+
+    function closeDelModal() { document.getElementById('delModal').style.display = 'none'; }
+
+
+    // ==========================================
+    // ЛОГИКА ДОБАВЛЕНИЯ В ИЗБРАННОЕ (СЛОВАРЬ)
+    // ==========================================
+
+    function handleDictFavClick(idx, e) {
         if(e) e.stopPropagation();
         if (!isPremiumFeatureAllowed()) return;
 
         const w = currentRenderedWords[idx];
         const itemKey = w.ar + '::' + w.ru; 
+        const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
+        
         window.wordToAddKey = itemKey;
-        window.wordToAddAr = w.ar;
+        document.getElementById('favModalAr').innerText = w.ar;
 
-        if (action === 'toggle_fav') {
-            // Простое удаление или добавление (из словаря)
-            if (localFavs.includes(itemKey) || localFavs.includes(w.ar)) {
-                localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
-                delete favCustom[itemKey]; delete favCustom[w.ar];
-                delete favCollections[itemKey]; delete favCollections[w.ar];
-                saveFavsToCloud(); renderUI();
-            } else {
-                modalMode = 'fav';
-                document.getElementById('favModalTitle').innerText = 'В Избранное';
-                document.getElementById('favModalAr').innerText = w.ar;
-                document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
-                document.getElementById('favModalColBlock').style.display = 'none'; // Скрываем коллекцию
-                document.getElementById('btnFavDelete').style.display = 'none';
-                document.getElementById('favModal').style.display = 'flex';
-                setTimeout(() => document.getElementById('favModalRu').focus(), 100);
-            }
-        } else if (action === 'edit_col') {
-            // Добавление в коллекцию (из избранного)
-            modalMode = 'col';
-            document.getElementById('favModalTitle').innerText = 'В коллекцию';
-            document.getElementById('favModalAr').innerText = w.ar;
+        if (active) {
+            // Если уже есть, даем изменить перевод
             document.getElementById('favModalRu').value = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
-            document.getElementById('favModalCollection').value = favCollections[itemKey] || favCollections[w.ar] || '';
-            document.getElementById('favModalColBlock').style.display = 'block'; // Показываем коллекцию
-            document.getElementById('btnFavDelete').style.display = 'block';
-            document.getElementById('favModal').style.display = 'flex';
-            setTimeout(() => document.getElementById('favModalCollection').focus(), 100);
+        } else {
+            // Новое слово
+            document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
         }
+        document.getElementById('favModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('favModalRu').focus(), 100);
     }
 
     function confirmFavModal() {
         const key = window.wordToAddKey;
-        const fallbackAr = window.wordToAddAr;
         const ru = document.getElementById('favModalRu').value.trim();
 
-        if (!localFavs.includes(key) && !localFavs.includes(fallbackAr)) {
+        if (!localFavs.includes(key) && !localFavs.includes(window.wordToAddAr)) {
             localFavs.push(key);
         }
         favCustom[key] = ru; 
-
-        if (modalMode === 'col') {
-            let col = document.getElementById('favModalCollection').value.trim();
-            if (col) {
-                favCollections[key] = col;
-            } else {
-                delete favCollections[key]; // Если стерли
-            }
-        }
         
-        saveFavsToCloud(); closeFavModal(); renderUI();
-    }
-
-    function removeFavModal() {
-        const key = window.wordToAddKey;
-        const fallbackKey = window.wordToAddAr;
-        localFavs = localFavs.filter(v => v !== key && v !== fallbackKey);
-        delete favCustom[key]; delete favCustom[fallbackKey];
-        delete favCollections[key]; delete favCollections[fallbackKey];
         saveFavsToCloud(); closeFavModal(); renderUI();
     }
 
@@ -556,7 +664,7 @@
                 el.onclick = function() { this.classList.toggle('expanded'); };
                 el.innerHTML = `
                     <div class="note-header">
-                        <div class="note-ru">${n.ru}</div>
+                        <div class="note-ru" onclick="event.stopPropagation()">${n.ru}</div>
                         <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                     </div>
                     <div class="details" onclick="event.stopPropagation()">
@@ -584,7 +692,7 @@
             if (activeTab === 'fav') {
                 if (!isFav) return false;
                 if (activeCollection !== 'Все') {
-                    const col = favCollections[itemKey] || favCollections[w.ar] || '';
+                    const col = favCollections[itemKey] || favCollections[w.ar] || 'Общие';
                     if (col !== activeCollection) return false;
                 }
             } else if (!q) return false; 
@@ -611,7 +719,7 @@
 
         currentRenderedWords = filtered.slice(0, 50);
 
-        // --- ВКЛАДКА ИЗБРАННОЕ (Коллекции и Кнопка вида) ---
+        // --- ВКЛАДКА ИЗБРАННОЕ ---
         if (activeTab === 'fav') {
             if (subscriptionStatus === 'freemium') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Избранное доступно в ПРЕМИУМ</div>`; return; }
             if (subscriptionStatus === 'guest') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Войдите в аккаунт, чтобы использовать Избранное</div>`; return; }
@@ -623,7 +731,6 @@
             });
             if (!allCols.has(activeCollection)) activeCollection = 'Все';
 
-            // Отрисовка кнопок коллекций
             if (allCols.size > 1 || activeCollection !== 'Все') {
                 const chipsContainer = document.createElement('div');
                 chipsContainer.className = 'collections-container';
@@ -631,31 +738,59 @@
                 list.appendChild(chipsContainer);
             }
             
-            // Кнопка режима
+            // Кнопки режима и выбора
             if (currentRenderedWords.length > 0) {
+                const controlsDiv = document.createElement('div');
+                controlsDiv.className = 'view-controls';
+
                 const toggleBtn = document.createElement('button');
                 toggleBtn.className = 'view-toggle-btn';
-                toggleBtn.innerHTML = viewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка';
+                toggleBtn.innerHTML = viewMode === 'list' ? '🎴 Карточки' : '📄 Список';
                 toggleBtn.onclick = toggleViewMode;
-                list.appendChild(toggleBtn);
+                controlsDiv.appendChild(toggleBtn);
+
+                const selectBtn = document.createElement('button');
+                selectBtn.className = 'view-toggle-btn';
+                if(isSelectionMode) {
+                    selectBtn.style.background = 'var(--primary)'; selectBtn.style.color = '#fff';
+                    selectBtn.innerHTML = 'Отменить выбор';
+                } else {
+                    selectBtn.innerHTML = '☑️ Выбрать';
+                }
+                selectBtn.onclick = toggleSelectionMode;
+                controlsDiv.appendChild(selectBtn);
+
+                list.appendChild(controlsDiv);
             } else {
                 list.innerHTML += `<div style="text-align:center; color: var(--gray); padding: 20px;">Здесь пока нет слов</div>`;
                 return;
             }
         }
 
+        const isSelModeClass = isSelectionMode ? 'selection-mode' : '';
+
         // --- РЕНДЕР КАРТОЧЕК (СЕТКА В ИЗБРАННОМ) ---
         if (activeTab === 'fav' && viewMode === 'grid') {
             const gridContainer = document.createElement('div');
             gridContainer.className = 'grid-view';
+            
             currentRenderedWords.forEach((w, idx) => {
                 const itemKey = w.ar + '::' + w.ru;
                 const displayRu = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
                 
+                const isSelected = selectedItems.has(itemKey);
+                const selActive = isSelected ? 'selected' : '';
+
                 const card = document.createElement('div');
-                card.className = 'g-card';
-                card.onclick = function() { this.classList.toggle('flipped'); };
+                card.className = `g-card ${isSelModeClass} ${selActive}`;
+                
+                card.onclick = function() { 
+                    if (isSelectionMode) toggleItemSelection(itemKey);
+                    else this.classList.toggle('flipped'); 
+                };
+
                 card.innerHTML = `
+                    <div class="checkbox-overlay"></div>
                     <div class="g-inner">
                         <div class="g-face g-front">
                             <div class="g-ru">${displayRu}</div>
@@ -665,7 +800,7 @@
                             <div class="g-ar">${w.ar}</div>
                             <div style="display:flex; gap:6px; width:100%; margin-top:auto;">
                                 <button class="btn btn-green" style="padding:10px; border-radius:10px;" onclick="speak('${w.ar}', event)">🔊</button>
-                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px; background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="handleActionClick('edit_col', ${idx}, event)">📁 В папку</button>
+                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px; background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${itemKey}')">📁 В папку</button>
                             </div>
                         </div>
                     </div>`;
@@ -689,26 +824,30 @@
 
             let actionHtml = '';
             if (activeTab === 'dict') {
-                // В словаре - просто добавить/убрать из избранного (БЕЗ папок)
-                actionHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleActionClick('toggle_fav', ${idx}, event)">${active ? '★ В избранном' : '☆ В избранное'}</button>`;
+                actionHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleDictFavClick(${idx}, event)">${active ? '★ Изменить перевод' : '☆ В избранное'}</button>`;
             } else {
-                // В избранном - кнопка коллекции и удаление
                 actionHtml = `
-                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="handleActionClick('edit_col', ${idx}, event)">📁 В коллекцию</button>
-                    <button class="btn btn-red" style="flex: 0.3;" onclick="handleActionClick('toggle_fav', ${idx}, event)">🗑</button>
+                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${itemKey}')">📁 В коллекцию</button>
+                    <button class="btn btn-red" style="flex: 0.3;" onclick="event.stopPropagation(); selectedItems.add('${itemKey}'); openBulkDelModal();">🗑</button>
                 `;
             }
 
+            const isSelected = selectedItems.has(itemKey);
+            const selActive = isSelected ? 'selected' : '';
+
             const el = document.createElement('div');
-            el.className = 'item';
+            el.className = `item ${isSelModeClass} ${selActive}`;
             
-            // ВАЖНО: Простое открытие карточки. Никаких блокировок клика на тексте!
-            el.onclick = function() { this.classList.toggle('expanded'); };
+            el.onclick = function() { 
+                if (isSelectionMode) toggleItemSelection(itemKey);
+                else this.classList.toggle('expanded'); 
+            };
             
             el.innerHTML = `
                 <div class="dict-row">
-                    <div class="dict-ru">${displayRu}</div>
-                    <div class="dict-ar">${w.ar}</div>
+                    <div class="checkbox-overlay" style="position:relative; top:auto; left:auto;"></div>
+                    <div class="dict-ru" onclick="${isSelectionMode?'':'event.stopPropagation()'}">${displayRu}</div>
+                    <div class="dict-ar" onclick="${isSelectionMode?'':'event.stopPropagation()'}">${w.ar}</div>
                 </div>
                 <div class="details" onclick="event.stopPropagation()">
                     ${verbInfoHtml}
@@ -725,6 +864,10 @@
     function switchTab(t) {
         if (t === 'trans' && !isPremiumFeatureAllowed()) return;
         if (t === 'fav' && !isPremiumFeatureAllowed()) return;
+
+        isSelectionMode = false;
+        selectedItems.clear();
+        updateSelectionActionBar();
 
         activeTab = t; activeCollection = 'Все'; 
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
