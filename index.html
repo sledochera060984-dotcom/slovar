@@ -306,7 +306,7 @@
     let selectedItems = new Set();
     let singleColActionKey = null;
 
-    let initialFavSyncDone = false; // Флаг для правильного старта синхронизации
+    let initialFavSyncDone = false; 
     let syncUnsubscribers = [];
     let toastTimer = null;
 
@@ -326,10 +326,6 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-    }
-
-    function jsString(value) {
-        return JSON.stringify(String(value ?? ''));
     }
 
     function makeFavKey(ar, ru) {
@@ -456,6 +452,21 @@
             const displayName = (user.displayName || 'Пользователь').split(' ')[0];
             btn.innerText = `Выйти (${displayName})`;
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
+            
+            // МИГРАЦИЯ БЛОКНОТА ИЗ ОФЛАЙНА В ОБЛАКО
+            const offlineNotes = myNotes.filter(n => n.id && n.id.toString().startsWith('note_'));
+            if (offlineNotes.length > 0) {
+                const batch = db.batch();
+                offlineNotes.forEach(note => {
+                    const ref = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc();
+                    batch.set(ref, { ar: note.ar, ru: note.ru, ts: note.ts });
+                });
+                batch.commit().then(() => {
+                    myNotes = myNotes.filter(n => !n.id.toString().startsWith('note_'));
+                    localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+                }).catch(e => console.log("Ошибка миграции: ", e));
+            }
+
             startLiveSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
@@ -472,35 +483,38 @@
         const notesRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes');
         const paymentRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo');
 
+        // УМНАЯ СИНХРОНИЗАЦИЯ ИЗБРАННОГО
         const unsubFavs = favsRef.onSnapshot(doc => {
-            const cloudRaw = doc.exists ? doc.data() : { list: [], custom: {}, collections: {}, updatedAt: 0 };
+            // Игнорируем свое же эхо от локальных изменений, чтобы предотвратить "прыжки" UI
+            if (doc.metadata.hasPendingWrites) return;
+
+            const cloudRaw = doc.exists ? doc.data() : null;
+            if (!cloudRaw) {
+                if (!initialFavSyncDone && localFavs.length > 0) {
+                    initialFavSyncDone = true;
+                    saveFavsToCloud();
+                }
+                return;
+            }
+
             const cloudData = normalizeFavState(cloudRaw.list, cloudRaw.custom, cloudRaw.collections);
             const cloudUpdatedAt = normalizeFavTimestamp(cloudRaw.updatedAt);
 
             if (!initialFavSyncDone) {
                 initialFavSyncDone = true;
-                const hasLocal = localFavs.length > 0;
-                const hasCloud = cloudData.list.length > 0;
-
-                if (hasLocal && (!hasCloud || favUpdatedAt >= cloudUpdatedAt)) {
+                if (localFavs.length > 0 && favUpdatedAt >= cloudUpdatedAt) {
                     saveFavsToCloud();
-                    renderUI();
                     return;
                 }
+            }
 
+            if (cloudUpdatedAt > favUpdatedAt) {
                 applyFavState({ ...cloudData, updatedAt: cloudUpdatedAt });
                 renderUI();
-                return;
             }
-
-            if (cloudUpdatedAt < favUpdatedAt) {
-                return;
-            }
-
-            applyFavState({ ...cloudData, updatedAt: cloudUpdatedAt });
-            renderUI();
         }, e => { console.log(e); showMsg('Не удалось синхронизировать избранное'); });
 
+        // УМНАЯ СИНХРОНИЗАЦИЯ БЛОКНОТА
         const unsubNotes = notesRef.onSnapshot(snap => {
             myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
@@ -689,14 +703,12 @@
             }
         });
 
-        favUpdatedAt = Date.now();
         isSelectionMode = false;
         selectedItems.clear();
         updateSelectionActionBar();
         closeDelModal();
         showMsg(activeCollection === 'Все' ? 'Слова удалены' : 'Убрано из коллекции');
 
-        persistFavsLocal();
         renderUI();
         saveFavsToCloud();
     }
@@ -736,12 +748,10 @@
         if (!key) return;
 
         localFavs = localFavs.filter(v => v !== key);
-        localFavs.unshift(key);
+        localFavs.unshift(key); // Добавляем в начало
         favCustom[key] = ru;
-        favUpdatedAt = Date.now();
 
         closeFavModal(); 
-        persistFavsLocal();
         renderUI();
         saveFavsToCloud();
     }
@@ -753,12 +763,14 @@
         localFavs = normalized.list;
         favCustom = normalized.custom;
         favCollections = normalized.collections;
-        if (!favUpdatedAt) favUpdatedAt = Date.now();
+        favUpdatedAt = Date.now(); // ВАЖНО: Обновляем метку времени перед сохранением
+        
         persistFavsLocal();
+        
         if (user) {
             db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
                 .set({ list: localFavs, custom: favCustom, collections: favCollections, updatedAt: favUpdatedAt }, { merge: true })
-                .catch(e => { console.log(e); showMsg('Не удалось синхронизировать избранное'); });
+                .catch(e => { console.log(e); showMsg('Не удалось синхронизировать'); });
         }
     }
 
@@ -774,9 +786,9 @@
         const newNote = { ar, ru, ts: Date.now() };
 
         if (user) {
-            // Внимание: мы просто отдаем команду Firestore. Он сам обновит UI через onSnapshot мгновенно!
+            // Firebase сам обновит UI через onSnapshot благодаря кэшу! Никаких дубликатов!
             db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote)
-              .catch(e => { console.log(e); showMsg('Не удалось сохранить запись'); });
+              .catch(e => { console.log(e); showMsg('Ошибка сохранения'); });
         } else {
             newNote.id = 'note_' + Date.now();
             myNotes.push(newNote);
@@ -790,7 +802,9 @@
         if (!id) return;
         if (confirm("Удалить запись?")) {
             if (user && !id.toString().startsWith('note_')) {
-                db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(e => { console.log(e); showMsg('Не удалось удалить запись'); });
+                // Аналогично, удаление из Firestore моментально обновляет UI
+                db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete()
+                  .catch(e => { console.log(e); showMsg('Ошибка удаления'); });
             } else {
                 myNotes = myNotes.filter(n => n.id !== id);
                 localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
@@ -957,10 +971,10 @@
         if (activeTab === 'fav') {
             const favOrder = new Map(localFavs.map((key, index) => [key, index]));
             filtered.sort((a, b) => {
-                const keyA = a.ar + '::' + a.ru;
-                const keyB = b.ar + '::' + b.ru;
-                const orderA = favOrder.has(keyA) ? favOrder.get(keyA) : (favOrder.has(a.ar) ? favOrder.get(a.ar) : Number.MAX_SAFE_INTEGER);
-                const orderB = favOrder.has(keyB) ? favOrder.get(keyB) : (favOrder.has(b.ar) ? favOrder.get(b.ar) : Number.MAX_SAFE_INTEGER);
+                const keyA = makeFavKey(a.ar, a.ru);
+                const keyB = makeFavKey(b.ar, b.ru);
+                const orderA = favOrder.has(keyA) ? favOrder.get(keyA) : Number.MAX_SAFE_INTEGER;
+                const orderB = favOrder.has(keyB) ? favOrder.get(keyB) : Number.MAX_SAFE_INTEGER;
                 return orderA - orderB;
             });
         }
@@ -1087,7 +1101,6 @@
             const el = document.createElement('div');
             el.className = `item ${isSelModeClass} ${selActive}`;
             
-            // ВАЖНО: Никаких блокировок!
             el.onclick = function() { 
                 if (isSelectionMode) toggleItemSelection(itemKey);
                 else this.classList.toggle('expanded'); 
