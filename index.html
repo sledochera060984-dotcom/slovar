@@ -9,9 +9,9 @@
     <meta name="theme-color" content="#27ae60">
     
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2907/2907253.png">
+    <link rel="apple-touch-icon" href="icon.png">
     
-    <title>Arabus Pro</title>
+    <title>АРАБРУС</title>
     
     <!-- Загрузка баз -->
     <script src="base.js"></script>
@@ -27,22 +27,28 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 40px; }
-        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; }
+        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; overflow: hidden;}
         
         .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
         .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
         .status-wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
         
+        .subscription-bar { font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; color: white; background: var(--gray); padding: 4px 8px; border-radius: 20px; margin-bottom: 10px; opacity: 0; transition: opacity 0.3s; width: max-content; margin-left: auto; margin-right: auto;}
+        .sub-active { background: var(--primary); opacity: 1; }
+        .sub-trial { background: #b45309; opacity: 1; }
+        .sub-freemium { background: #ef4444; opacity: 1; cursor: pointer;}
+
         .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
 
         .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
         .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s;}
         .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .tab-subtitle { display: block; font-size: 9px; font-weight: 400; color: inherit; margin-top: 2px; opacity: 0.8; }
+        .tab.blocked { opacity: 0.5; cursor: not-allowed; }
 
         input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
         input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
-        textarea { height: 80px; resize: none; }
+        textarea { height: 120px; resize: none; }
 
         .list { list-style: none; padding: 0; margin: 0; min-height: 100px; }
         .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; }
@@ -67,12 +73,22 @@
         .btn-green { background: var(--primary); color: white; border: none; }
         .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
         .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #b45309; }
+        .btn-block-lock { cursor: not-allowed; border-color: #fee2e2; background: #fef2f2; color: #ef4444; }
+        .btn-speak-freemium { color: var(--gray); background: #f1f5f9; border-color: #e2e8f0; cursor: not-allowed;}
 
         #toast { display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
         
         #favModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
         .modal-ar { font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center; }
+
+        /* Экран Блокировки Оплаты */
+        #paymentBlockScreen { display: none; text-align: center; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 100; padding: 40px; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px;}
+        .payment-block-icon { font-size: 64px; margin-bottom: 20px; color: var(--primary);}
+        .payment-block-title { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 10px;}
+        .payment-block-desc { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 20px; }
+        .payment-block-uid { font-size: 11px; background: #f1f5f9; padding: 6px 10px; border-radius: 8px; color: var(--gray); margin-bottom: 20px; word-break: break-all;}
+        .payment-block-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 
         @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -81,6 +97,8 @@
 <body>
 
 <div class="card">
+    <div id="subscriptionBar" class="subscription-bar" onclick="showPaymentBlock()">⏳ Проверка...</div>
+
     <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
     
     <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
@@ -94,7 +112,7 @@
         </button>
         <button id="tabTrans" class="tab" onclick="switchTab('trans')">
             📝 Блокнот
-            <span class="tab-subtitle">для фраз и предложений</span>
+            <span class="tab-subtitle">для фраз</span>
         </button>
     </div>
 
@@ -114,6 +132,21 @@
         <div style="font-size: 11px; color: var(--gray); margin: 10px 0 8px 0; font-weight: 800; text-transform: uppercase;">Мои Сохраненные Записи:</div>
     </div>
     
+    <!-- Экран Блокировки Оплаты -->
+    <div id="paymentBlockScreen">
+        <div class="payment-block-icon">⭐️</div>
+        <div class="payment-block-title">АРАБРУС ПРЕМИУМ</div>
+        <div class="payment-block-desc">
+            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Блокнот, Избранное и Озвучку всего за <b>100 руб/месяц</b>.
+        </div>
+        <div class="payment-block-uid" id="paymentUidDisplay">Ваш ID: Неизвестно</div>
+        <div class="payment-block-actions">
+            <!-- Сюда вставьте ссылку на ваш Телеграм -->
+            <a href="https://t.me/ВАШ_ТЕЛЕГРАМ" target="_blank" class="btn btn-green" style="text-decoration: none;">📝 Связаться для оплаты</a>
+            <button class="btn" onclick="switchTab('dict'); hidePaymentBlock();">Назад к словарю</button>
+        </div>
+    </div>
+
     <div id="list" class="list"></div>
 </div>
 
@@ -138,11 +171,10 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabus-v39-notebook-fixed';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v41-monthly-sub';
     
     let user = null;
     
-    // НОВОЕ: Блокнот теперь загружается из памяти телефона сразу!
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
@@ -151,6 +183,9 @@
     let currentRenderedWords = []; 
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
+
+    // Статус: 'trialActive', 'freemium', 'premiumActive', 'checking'
+    let subscriptionStatus = 'checking'; 
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -174,7 +209,6 @@
 
     db.enablePersistence().catch(function(err) {});
 
-    // ФУНКЦИЯ ОЧИСТКИ ОТ ХАРАКАТОВ
     function normalize(t) { 
         if (!t) return "";
         let res = t.toLowerCase().replace(/[\u064B-\u0652]/g, "").replace(/[أإآ]/g, "ا").trim();
@@ -185,18 +219,15 @@
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
-            s.innerText = `✅ База готова: ${dictBase.length} слов`;
+            s.innerText = `✅ АРАБРУС Готов: ${dictBase.length} слов`;
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
-            // Инициализация базы глаголов
             if (typeof verbsBase !== 'undefined') {
                 for (let pastTense in verbsBase) {
                     let presentTense = verbsBase[pastTense];
-                    
                     let normPast = normalize(pastTense);
                     let normPresent = normalize(presentTense);
-                    
                     normalizedVerbs[normPast] = presentTense;
                     reverseVerbsMap[normPresent] = normPast;
                 }
@@ -211,17 +242,19 @@
         const btn = document.getElementById('authBtn');
         if (user) {
             btn.innerText = `Выйти (${user.displayName.split(' ')[0]})`;
+            document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
             startLiveSync();
         } else {
             btn.innerText = "🌐 Войти через Google";
+            document.getElementById('paymentUidDisplay').innerText = `Ваш ID: Войдите в Google`;
+            updateSubscriptionBar('freemium'); 
+            renderUI();
         }
-        renderUI();
     });
 
     function startLiveSync() {
         if (!user) return;
         
-        // Синхронизация Избранного
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
               if (doc.exists) {
@@ -233,33 +266,105 @@
               }
           });
 
-        // НОВОЕ: Синхронизация Блокнота с сохранением в телефон
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              // Оставляем те локальные записи, которые еще не успели уйти в облако
               const localUnsynced = myNotes.filter(n => n.id.toString().startsWith('note_'));
-              
               myNotes = [...cloudNotes, ...localUnsynced];
               localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
-              
               if (activeTab === 'trans') renderUI();
+          });
+
+        // НОВАЯ ЛОГИКА: Подписка по дате
+        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
+          .onSnapshot(doc => {
+              if (doc.exists) {
+                  const paymentData = doc.data();
+                  const now = Date.now();
+                  
+                  // Если premiumUntil больше текущего времени, значит подписка еще действует
+                  if (paymentData.premiumUntil && now < paymentData.premiumUntil) {
+                      const msLeft = paymentData.premiumUntil - now;
+                      const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+                      updateSubscriptionBar('premiumActive', daysLeft);
+                  } else {
+                      // Подписка закончилась (или её не было), проверяем триал
+                      checkTrialStatus(paymentData.trialStartedTimestamp);
+                  }
+              } else {
+                  // Первичный вход: создаем триал
+                  const trialStartedTs = Date.now();
+                  db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo')
+                    .set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs })
+                    .catch(()=>{});
+                  
+                  checkTrialStatus(trialStartedTs);
+              }
+              renderUI();
           });
     }
 
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            if (user) { db.enableNetwork().catch(() => {}); }
-            renderUI();
-        }
-    });
+    function updateSubscriptionBar(status, daysLeft = 0) {
+        subscriptionStatus = status;
+        const bar = document.getElementById('subscriptionBar');
+        bar.className = 'subscription-bar'; 
 
-    // --- ИЗБРАННОЕ ---
+        if (status === 'premiumActive') {
+            bar.innerText = `ПРЕМИУМ АКТИВЕН (${daysLeft} ДН.)`; bar.classList.add('sub-active');
+        } else if (status === 'trialActive') {
+            bar.innerText = `Триал: ${daysLeft} дней осталось`; bar.classList.add('sub-trial');
+        } else if (status === 'freemium') {
+            bar.innerText = 'Freemium (Озвучка и Блокнот заблокированы)'; bar.classList.add('sub-freemium');
+        } else if (status === 'checking') {
+             bar.innerText = 'Проверка доступа...'; bar.className = 'subscription-bar';
+        }
+    }
+
+    function checkTrialStatus(startTimestamp) {
+        const diffMs = Date.now() - startTimestamp;
+        const trialMs = 14 * 24 * 60 * 60 * 1000; 
+        
+        if (diffMs < trialMs) {
+            const msLeft = trialMs - diffMs;
+            const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+            updateSubscriptionBar('trialActive', daysLeft);
+        } else {
+            updateSubscriptionBar('freemium');
+        }
+    }
+
+    function speak(t, e) {
+        e.stopPropagation(); window.speechSynthesis.cancel();
+        
+        if (subscriptionStatus === 'freemium') {
+            showMsg("Озвучка доступна только в ПРЕМИУМ");
+            showPaymentBlock();
+            return; 
+        }
+
+        const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
+    }
+
+    function isNotebookAllowed() {
+        return (subscriptionStatus === 'premiumActive' || subscriptionStatus === 'trialActive');
+    }
+
+    function showPaymentBlock() { if(subscriptionStatus === 'freemium') document.getElementById('paymentBlockScreen').style.display = 'flex'; }
+    function hidePaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'none'; }
+
     function handleFavClick(idx, e) {
         e.stopPropagation();
+        
         const w = currentRenderedWords[idx];
         const itemKey = w.ar + '::' + w.ru; 
+        const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
         
+        if (subscriptionStatus === 'freemium' && !active) {
+            showMsg("Добавление в избранное только в ПРЕМИУМ");
+            showPaymentBlock();
+            return;
+        }
+
         if (localFavs.includes(itemKey) || localFavs.includes(w.ar)) {
             localFavs = localFavs.filter(v => v !== itemKey && v !== w.ar);
             delete favCustom[itemKey]; delete favCustom[w.ar];
@@ -298,13 +403,20 @@
         }
     }
 
-    // --- БЛОКНОТ ---
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+            if (user) { db.enableNetwork().catch(() => {}); }
+            renderUI();
+        }
+    });
+
     async function saveManualNote() {
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
         if (!ar || !ru) { showMsg("Заполните оба поля!"); return; }
 
-        // НОВОЕ: Сохраняем в память телефона МГНОВЕННО, даже если нет аккаунта
+        if (!isNotebookAllowed()) { showMsg("Блокнот только в ПРЕМИУМ"); showPaymentBlock(); return;}
+
         const noteId = 'note_' + Date.now();
         const newNote = { id: noteId, ar, ru, ts: Date.now() };
         myNotes.push(newNote);
@@ -315,11 +427,9 @@
         showMsg("Фраза сохранена!");
         renderUI();
 
-        // Отправляем в облако, только если есть аккаунт
         if (user) {
             try {
                 const docRef = await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add({ ar, ru, ts: newNote.ts });
-                // Обновляем временный ID на облачный
                 const noteIndex = myNotes.findIndex(n => n.id === noteId);
                 if(noteIndex !== -1) {
                     myNotes[noteIndex].id = docRef.id;
@@ -332,13 +442,11 @@
     async function removeNote(id, e) {
         e.stopPropagation();
         if (confirm("Удалить запись из блокнота?")) {
-            // Удаляем из памяти телефона МГНОВЕННО
             myNotes = myNotes.filter(n => n.id !== id);
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             renderUI();
             showMsg("Удалено");
 
-            // Удаляем из облака, если есть аккаунт
             if (user && !id.toString().startsWith('note_')) {
                 try {
                     await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete();
@@ -347,7 +455,6 @@
         }
     }
 
-    // --- ПОИСК ---
     function doSearch() { renderUI(); }
 
     function getArabicStems(word) {
@@ -371,7 +478,12 @@
         const q = document.getElementById('queryInput').value.toLowerCase().trim();
         list.innerHTML = "";
         
+        const notebookAllowed = isNotebookAllowed();
         if (activeTab === 'trans') {
+            if (!notebookAllowed) {
+                list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен только в ПРЕМИУМ-версии</div>`;
+                return;
+            }
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
@@ -398,7 +510,6 @@
         
         const nQ = normalize(q); 
         const searchStems = getArabicStems(nQ); 
-        
         let mappedPastTense = reverseVerbsMap[nQ];
         
         let filtered = dictBase.filter(w => {
@@ -413,7 +524,6 @@
             const nRoot = normalize(w.root || ""); 
             
             if (nWordRu.includes(q)) return true;
-            
             if (mappedPastTense && nWordAr === mappedPastTense) return true;
             
             for (let stem of searchStems) {
@@ -464,6 +574,13 @@
                 </div>`;
             }
 
+            let favBtnHtml = '';
+            if (subscriptionStatus === 'freemium' && !active) {
+                favBtnHtml = `<button class="btn btn-star btn-block-lock" onclick="handleFavClick(${idx}, event)">🔒 В Премиум</button>`;
+            } else {
+                favBtnHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">${active ? '★ В избранном' : '☆ В избранное'}</button>`;
+            }
+
             const el = document.createElement('div');
             el.className = 'item';
             el.innerHTML = `
@@ -476,10 +593,10 @@
                         ${verbInfoHtml}
                         <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5;">${w.ru}</div>
                         <div class="actions">
-                            <button class="btn" onclick="speak('${w.ar}', event)">🔊 Слушать</button>
-                            <button class="btn btn-star ${active ? 'active' : ''}" onclick="handleFavClick(${idx}, event)">
-                                ${active ? '★ В избранном' : '☆ В избранное'}
+                            <button class="btn ${subscriptionStatus === 'freemium' ? 'btn-speak-freemium' : ''}" onclick="speak('${w.ar}', event)">
+                                ${subscriptionStatus === 'freemium' ? '🔒' : '🔊'} Слушать
                             </button>
+                            ${favBtnHtml}
                         </div>
                     </div>
                 </div>`;
@@ -488,6 +605,12 @@
     }
 
     function switchTab(t) {
+        if (t === 'trans' && subscriptionStatus === 'freemium') {
+            showMsg("Блокнот доступен только в ПРЕМИУМ");
+            showPaymentBlock();
+            return;
+        }
+
         activeTab = t;
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
@@ -497,11 +620,6 @@
         document.getElementById('queryInput').value = '';
         
         renderUI();
-    }
-
-    function speak(t, e) {
-        e.stopPropagation(); window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; window.speechSynthesis.speak(u);
     }
 
     async function toggleAuth() { if (user) auth.signOut(); else await auth.signInWithPopup(provider); }
