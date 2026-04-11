@@ -262,7 +262,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v63-multiselect';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v64-perfect-click';
     
     let user = null;
     let subscriptionStatus = 'guest'; 
@@ -282,8 +282,8 @@
     
     // ПЕРЕМЕННЫЕ МАССОВОГО ВЫБОРА
     let isSelectionMode = false;
-    let selectedItems = new Set(); // Хранит itemKey выбранных элементов
-    let singleColActionKey = null; // Для единичного добавления в коллекцию
+    let selectedItems = new Set();
+    let singleColActionKey = null;
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -314,7 +314,6 @@
         return res;
     }
 
-    // Инициализация базы
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
@@ -335,7 +334,6 @@
         }
     }, 100);
 
-    // Авторизация
     auth.onAuthStateChanged(async (u) => {
         user = u;
         const btn = document.getElementById('authBtn');
@@ -344,7 +342,6 @@
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
             startLiveSync();
         } else {
-            // ГОСТЬ.
             btn.innerText = "🌐 Войти через Google";
             document.getElementById('paymentUidDisplay').innerText = `Ваш ID: Войдите в Google`;
             updateSubscriptionBar('guest');
@@ -444,7 +441,7 @@
     }
 
     // ==========================================
-    // ЛОГИКА МАССОВОГО ВЫБОРА (MULTI-SELECT)
+    // ЛОГИКА МАССОВОГО ВЫБОРА
     // ==========================================
     
     function toggleSelectionMode() {
@@ -472,12 +469,9 @@
         }
     }
 
-    // Открытие окна: В Коллекцию (МАССОВО ИЛИ ЕДИНИЧНО)
     function openBulkColModal(singleKey = null) {
         if (!singleKey && selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
-        
         singleColActionKey = singleKey; 
-        
         if (singleKey) {
             document.getElementById('colModalDesc').innerText = 'Укажите папку для выбранного слова';
             document.getElementById('colModalInput').value = favCollections[singleKey] || (activeCollection !== 'Все' ? activeCollection : '');
@@ -485,14 +479,12 @@
             document.getElementById('colModalDesc').innerText = `Переместить в папку слов: ${selectedItems.size}`;
             document.getElementById('colModalInput').value = activeCollection !== 'Все' ? activeCollection : '';
         }
-        
         document.getElementById('colModal').style.display = 'flex';
         setTimeout(() => document.getElementById('colModalInput').focus(), 100);
     }
 
     function confirmColModal() {
         let col = document.getElementById('colModalInput').value.trim() || 'Общие';
-        
         if (singleColActionKey) {
             favCollections[singleColActionKey] = col;
             showMsg("Добавлено в коллекцию");
@@ -503,13 +495,11 @@
             selectedItems.clear();
             updateSelectionActionBar();
         }
-        
         saveFavsToCloud(); closeColModal(); renderUI();
     }
 
     function closeColModal() { document.getElementById('colModal').style.display = 'none'; singleColActionKey = null;}
 
-    // Открытие окна: Удаление (МАССОВОЕ)
     function openBulkDelModal() {
         if (selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
         document.getElementById('delModalCount').innerText = selectedItems.size;
@@ -518,16 +508,12 @@
 
     function confirmDelModal() {
         selectedItems.forEach(key => {
-            // Удаляем по ключу "арабский::русский"
             localFavs = localFavs.filter(v => v !== key);
             delete favCustom[key]; delete favCollections[key];
-            
-            // На всякий случай удаляем и старый формат "просто арабский"
             const fallbackAr = key.split('::')[0];
             localFavs = localFavs.filter(v => v !== fallbackAr);
             delete favCustom[fallbackAr]; delete favCollections[fallbackAr];
         });
-        
         saveFavsToCloud();
         isSelectionMode = false;
         selectedItems.clear();
@@ -553,13 +539,12 @@
         const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
         
         window.wordToAddKey = itemKey;
+        window.wordToAddAr = w.ar;
         document.getElementById('favModalAr').innerText = w.ar;
 
         if (active) {
-            // Если уже есть, даем изменить перевод
             document.getElementById('favModalRu').value = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
         } else {
-            // Новое слово
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
         }
         document.getElementById('favModal').style.display = 'flex';
@@ -568,9 +553,10 @@
 
     function confirmFavModal() {
         const key = window.wordToAddKey;
+        const fallbackAr = window.wordToAddAr;
         const ru = document.getElementById('favModalRu').value.trim();
 
-        if (!localFavs.includes(key) && !localFavs.includes(window.wordToAddAr)) {
+        if (!localFavs.includes(key) && !localFavs.includes(fallbackAr)) {
             localFavs.push(key);
         }
         favCustom[key] = ru; 
@@ -661,10 +647,11 @@
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
+                // Открываем без блокировки
                 el.onclick = function() { this.classList.toggle('expanded'); };
                 el.innerHTML = `
                     <div class="note-header">
-                        <div class="note-ru" onclick="event.stopPropagation()">${n.ru}</div>
+                        <div class="note-ru">${n.ru}</div>
                         <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                     </div>
                     <div class="details" onclick="event.stopPropagation()">
@@ -692,7 +679,7 @@
             if (activeTab === 'fav') {
                 if (!isFav) return false;
                 if (activeCollection !== 'Все') {
-                    const col = favCollections[itemKey] || favCollections[w.ar] || 'Общие';
+                    const col = favCollections[itemKey] || favCollections[w.ar] || '';
                     if (col !== activeCollection) return false;
                 }
             } else if (!q) return false; 
@@ -738,7 +725,6 @@
                 list.appendChild(chipsContainer);
             }
             
-            // Кнопки режима и выбора
             if (currentRenderedWords.length > 0) {
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'view-controls';
@@ -838,6 +824,7 @@
             const el = document.createElement('div');
             el.className = `item ${isSelModeClass} ${selActive}`;
             
+            // ВАЖНО: Никаких event.stopPropagation() в самом тексте!
             el.onclick = function() { 
                 if (isSelectionMode) toggleItemSelection(itemKey);
                 else this.classList.toggle('expanded'); 
@@ -846,8 +833,8 @@
             el.innerHTML = `
                 <div class="dict-row">
                     <div class="checkbox-overlay" style="position:relative; top:auto; left:auto;"></div>
-                    <div class="dict-ru" onclick="${isSelectionMode?'':'event.stopPropagation()'}">${displayRu}</div>
-                    <div class="dict-ar" onclick="${isSelectionMode?'':'event.stopPropagation()'}">${w.ar}</div>
+                    <div class="dict-ru">${displayRu}</div>
+                    <div class="dict-ar">${w.ar}</div>
                 </div>
                 <div class="details" onclick="event.stopPropagation()">
                     ${verbInfoHtml}
