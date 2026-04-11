@@ -137,8 +137,10 @@
 
         /* МОДАЛКИ */
         #toast { display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
-        .scroll-nav { position: fixed; right: 14px; bottom: calc(92px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; z-index: 1200; }
-        .scroll-btn { width: 46px; height: 46px; border-radius: 14px; border: none; background: rgba(39, 174, 96, 0.96); color: white; font-size: 20px; font-weight: 900; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.28); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .scroll-nav { position: fixed; right: 14px; bottom: calc(92px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; z-index: 1200; opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity 0.22s ease, transform 0.22s ease; }
+        .scroll-nav.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .scroll-btn { width: 44px; height: 44px; border-radius: 14px; border: none; background: rgba(39, 174, 96, 0.94); color: white; font-size: 19px; font-weight: 900; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.24); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .scroll-btn.hidden { display: none; }
         .scroll-btn:active { transform: scale(0.96); }
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
@@ -271,9 +273,9 @@
 
 <div id="toast">Сообщение</div>
 
-<div class="scroll-nav">
-    <button class="scroll-btn" onclick="scrollToTopPage()" aria-label="Наверх">↑</button>
-    <button class="scroll-btn" onclick="scrollToBottomPage()" aria-label="Вниз">↓</button>
+<div id="scrollNav" class="scroll-nav">
+    <button id="scrollUpBtn" class="scroll-btn" onclick="scrollToTopPage()" aria-label="Наверх">↑</button>
+    <button id="scrollDownBtn" class="scroll-btn" onclick="scrollToBottomPage()" aria-label="Вниз">↓</button>
 </div>
 
 <script>
@@ -289,6 +291,7 @@
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let favCollections = JSON.parse(localStorage.getItem('arabus_favs_collections')) || {}; 
+    let favUpdatedAt = Number(localStorage.getItem('arabus_favs_updated_at')) || 0;
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
     
     let activeTab = 'dict';
@@ -329,6 +332,65 @@
         return JSON.stringify(String(value ?? ''));
     }
 
+    function makeFavKey(ar, ru) {
+        return `${String(ar ?? '')}::${String(ru ?? '')}`;
+    }
+
+    function normalizeFavTimestamp(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+    }
+
+    function persistFavsLocal() {
+        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+        localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+        localStorage.setItem('arabus_favs_updated_at', String(favUpdatedAt || 0));
+    }
+
+    function migrateFavKey(key) {
+        if (!key) return null;
+        const raw = String(key);
+        if (raw.includes('::')) return raw;
+        if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return null;
+        const match = dictBase.find(w => w.ar === raw);
+        return match ? makeFavKey(match.ar, match.ru) : null;
+    }
+
+    function normalizeFavState(list, custom, collections) {
+        const nextList = [];
+        const seen = new Set();
+        (Array.isArray(list) ? list : []).forEach(entry => {
+            const key = migrateFavKey(entry);
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            nextList.push(key);
+        });
+
+        const nextCustom = {};
+        Object.entries(custom || {}).forEach(([key, value]) => {
+            const migrated = migrateFavKey(key);
+            if (migrated) nextCustom[migrated] = value;
+        });
+
+        const nextCollections = {};
+        Object.entries(collections || {}).forEach(([key, value]) => {
+            const migrated = migrateFavKey(key);
+            if (migrated) nextCollections[migrated] = value;
+        });
+
+        return { list: nextList, custom: nextCustom, collections: nextCollections };
+    }
+
+    function applyFavState(state) {
+        const normalized = normalizeFavState(state?.list, state?.custom, state?.collections);
+        localFavs = normalized.list;
+        favCustom = normalized.custom;
+        favCollections = normalized.collections;
+        favUpdatedAt = normalizeFavTimestamp(state?.updatedAt);
+        persistFavsLocal();
+    }
+
     function stopLiveSync() {
         syncUnsubscribers.forEach(unsub => {
             try { if (typeof unsub === 'function') unsub(); } catch (e) { console.log(e); }
@@ -366,6 +428,12 @@
             s.className = "status-bar status-ready";
             clearInterval(initInterval);
             
+            const normalizedFavState = normalizeFavState(localFavs, favCustom, favCollections);
+            localFavs = normalizedFavState.list;
+            favCustom = normalizedFavState.custom;
+            favCollections = normalizedFavState.collections;
+            persistFavsLocal();
+
             if (typeof verbsBase !== 'undefined') {
                 for (let pastTense in verbsBase) {
                     let presentTense = verbsBase[pastTense];
@@ -405,22 +473,33 @@
         const paymentRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo');
 
         const unsubFavs = favsRef.onSnapshot(doc => {
-            let cloudData = doc.exists ? doc.data() : { list: [], custom: {}, collections: {} };
+            const cloudRaw = doc.exists ? doc.data() : { list: [], custom: {}, collections: {}, updatedAt: 0 };
+            const cloudData = normalizeFavState(cloudRaw.list, cloudRaw.custom, cloudRaw.collections);
+            const cloudUpdatedAt = normalizeFavTimestamp(cloudRaw.updatedAt);
+
             if (!initialFavSyncDone) {
                 initialFavSyncDone = true;
-                if (localFavs.length > 0 && (!cloudData.list || cloudData.list.length === 0)) {
+                const hasLocal = localFavs.length > 0;
+                const hasCloud = cloudData.list.length > 0;
+
+                if (hasLocal && (!hasCloud || favUpdatedAt >= cloudUpdatedAt)) {
                     saveFavsToCloud();
+                    renderUI();
                     return;
                 }
+
+                applyFavState({ ...cloudData, updatedAt: cloudUpdatedAt });
+                renderUI();
+                return;
             }
-            localFavs = cloudData.list || [];
-            favCustom = cloudData.custom || {};
-            favCollections = cloudData.collections || {};
-            localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-            localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-            localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+
+            if (cloudUpdatedAt < favUpdatedAt) {
+                return;
+            }
+
+            applyFavState({ ...cloudData, updatedAt: cloudUpdatedAt });
             renderUI();
-        }, e => { console.log(e); showMsg('Ошибка синхронизации избранного'); });
+        }, e => { console.log(e); showMsg('Не удалось синхронизировать избранное'); });
 
         const unsubNotes = notesRef.onSnapshot(snap => {
             myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -603,25 +682,23 @@
         selectedItems.forEach(key => {
             if (activeCollection === 'Все') {
                 localFavs = localFavs.filter(v => v !== key);
-                delete favCustom[key]; delete favCollections[key];
-                const fallbackAr = key.split('::')[0];
-                localFavs = localFavs.filter(v => v !== fallbackAr);
-                delete favCustom[fallbackAr]; delete favCollections[fallbackAr];
+                delete favCustom[key];
+                delete favCollections[key];
             } else {
                 delete favCollections[key];
-                const fallbackAr = key.split('::')[0];
-                delete favCollections[fallbackAr];
             }
         });
-        
+
+        favUpdatedAt = Date.now();
         isSelectionMode = false;
         selectedItems.clear();
         updateSelectionActionBar();
         closeDelModal();
-        showMsg(activeCollection === 'Все' ? "Слова удалены" : "Убрано из коллекции");
-        
-        renderUI(); // Мгновенное обновление
-        saveFavsToCloud(); // Фоновая отправка
+        showMsg(activeCollection === 'Все' ? 'Слова удалены' : 'Убрано из коллекции');
+
+        persistFavsLocal();
+        renderUI();
+        saveFavsToCloud();
     }
 
     function closeDelModal() { document.getElementById('delModal').style.display = 'none'; }
@@ -636,15 +713,14 @@
         if (!isPremiumFeatureAllowed()) return;
 
         const w = currentRenderedWords[idx];
-        const itemKey = w.ar + '::' + w.ru; 
-        const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
+        const itemKey = makeFavKey(w.ar, w.ru);
+        const active = localFavs.includes(itemKey);
         
         window.wordToAddKey = itemKey;
-        window.wordToAddAr = w.ar;
         document.getElementById('favModalAr').innerText = w.ar;
 
         if (active) {
-            document.getElementById('favModalRu').value = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
+            document.getElementById('favModalRu').value = favCustom[itemKey] || w.short_ru || w.ru.split(';')[0];
             document.getElementById('favModalTitle').innerText = 'Изменить перевод';
         } else {
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
@@ -656,28 +732,32 @@
 
     function confirmFavModal() {
         const key = window.wordToAddKey;
-        const fallbackAr = window.wordToAddAr;
         const ru = document.getElementById('favModalRu').value.trim();
+        if (!key) return;
 
-        if (!localFavs.includes(key) && !localFavs.includes(fallbackAr)) {
-            localFavs.unshift(key);
-        }
-        favCustom[key] = ru; 
-        
+        localFavs = localFavs.filter(v => v !== key);
+        localFavs.unshift(key);
+        favCustom[key] = ru;
+        favUpdatedAt = Date.now();
+
         closeFavModal(); 
-        renderUI(); // Мгновенное обновление 
-        saveFavsToCloud(); // Фоновая отправка
+        persistFavsLocal();
+        renderUI();
+        saveFavsToCloud();
     }
 
     function closeFavModal() { document.getElementById('favModal').style.display = 'none'; window.wordToAddKey = null; }
 
     function saveFavsToCloud() {
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+        const normalized = normalizeFavState(localFavs, favCustom, favCollections);
+        localFavs = normalized.list;
+        favCustom = normalized.custom;
+        favCollections = normalized.collections;
+        if (!favUpdatedAt) favUpdatedAt = Date.now();
+        persistFavsLocal();
         if (user) {
             db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true })
+                .set({ list: localFavs, custom: favCustom, collections: favCollections, updatedAt: favUpdatedAt }, { merge: true })
                 .catch(e => { console.log(e); showMsg('Не удалось синхронизировать избранное'); });
         }
     }
@@ -740,6 +820,33 @@
     }
 
     function doSearch() { renderUI(); }
+
+    let scrollUiTimer = null;
+
+    function updateScrollButtons() {
+        const nav = document.getElementById('scrollNav');
+        const up = document.getElementById('scrollUpBtn');
+        const down = document.getElementById('scrollDownBtn');
+        if (!nav || !up || !down) return;
+
+        const top = window.scrollY || document.documentElement.scrollTop || 0;
+        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const canScroll = maxScroll > 120;
+
+        if (!canScroll) {
+            nav.classList.remove('visible');
+            return;
+        }
+
+        nav.classList.add('visible');
+        up.classList.toggle('hidden', top < 120);
+        down.classList.toggle('hidden', top > maxScroll - 120);
+
+        clearTimeout(scrollUiTimer);
+        scrollUiTimer = setTimeout(() => {
+            if (top < 40 || top > maxScroll - 40) nav.classList.remove('visible');
+        }, 1400);
+    }
 
     function scrollToTopPage() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -805,6 +912,7 @@
                     </div>`;
                 list.appendChild(el);
             });
+            setTimeout(updateScrollButtons, 0);
             return;
         }
 
@@ -815,13 +923,13 @@
         let mappedPastTense = reverseVerbsMap[nQ];
         
         let filtered = dictBase.filter(w => {
-            const itemKey = w.ar + '::' + w.ru;
-            const isFav = localFavs.includes(itemKey) || localFavs.includes(w.ar);
+            const itemKey = makeFavKey(w.ar, w.ru);
+            const isFav = localFavs.includes(itemKey);
             
             if (activeTab === 'fav') {
                 if (!isFav) return false;
                 if (activeCollection !== 'Все') {
-                    const col = favCollections[itemKey] || favCollections[w.ar] || '';
+                    const col = favCollections[itemKey] || '';
                     if (col !== activeCollection) return false;
                 }
             } else if (!q) return false; 
@@ -915,8 +1023,8 @@
             gridContainer.className = 'grid-view';
             
             currentRenderedWords.forEach((w, idx) => {
-                const itemKey = w.ar + '::' + w.ru;
-                const displayRu = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
+                const itemKey = makeFavKey(w.ar, w.ru);
+                const displayRu = favCustom[itemKey] || w.short_ru || w.ru.split(';')[0];
                 
                 const isSelected = selectedItems.has(itemKey);
                 const selActive = isSelected ? 'selected' : '';
@@ -947,14 +1055,15 @@
                 gridContainer.appendChild(card);
             });
             list.appendChild(gridContainer);
+            setTimeout(updateScrollButtons, 0);
             return;
         }
 
         // --- РЕНДЕР СПИСКА (Словарь или Избранное) ---
         currentRenderedWords.forEach((w, idx) => {
-            const itemKey = w.ar + '::' + w.ru;
-            const active = localFavs.includes(itemKey) || localFavs.includes(w.ar);
-            const displayRu = (active && (favCustom[itemKey] || favCustom[w.ar])) ? (favCustom[itemKey] || favCustom[w.ar]) : (w.short_ru || w.ru.split(';')[0]);
+            const itemKey = makeFavKey(w.ar, w.ru);
+            const active = localFavs.includes(itemKey);
+            const displayRu = (active && favCustom[itemKey]) ? favCustom[itemKey] : (w.short_ru || w.ru.split(';')[0]);
             
             let verbInfoHtml = '';
             const cleanAr = normalize(w.ar);
@@ -1000,6 +1109,7 @@
                 </div>`;
             list.appendChild(el);
         });
+        setTimeout(updateScrollButtons, 0);
     }
 
     function switchTab(t) {
