@@ -57,7 +57,7 @@
         .collection-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; color: var(--gray); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: 0.2s;}
         .collection-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* КНОПКА ПЕРЕКЛЮЧЕНИЯ ВИДА И ВЫБОРА */
+        /* КНОПКИ ПЕРЕКЛЮЧЕНИЯ ВИДА И ВЫБОРА */
         .view-controls { display: flex; gap: 10px; margin-bottom: 16px; }
         .view-toggle-btn { flex: 1; padding: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; color: var(--primary); font-size: 14px; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02);}
         .view-toggle-btn:active { transform: scale(0.98); }
@@ -75,7 +75,6 @@
         .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
         .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; cursor: default; }
         .expanded .details { display: block; }
-        .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
         
         .verb-conjugation { font-size: 15px; color: #475569; background: #f1f5f9; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
         .verb-conjugation span { font-size: 20px; font-weight: bold; color: var(--primary); direction: rtl; user-select: text; -webkit-user-select: text;}
@@ -95,7 +94,7 @@
         .g-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; padding: 16px; background: white; }
         .g-back { transform: rotateY(180deg); background: #f8fafc; align-items: center; justify-content: center; }
         
-        .g-star { position: absolute; top: 12px; right: 12px; color: #f59e0b; font-size: 20px; z-index: 5; }
+        .g-del { position: absolute; top: 10px; right: 10px; color: #cbd5e1; font-size: 14px; z-index: 5; padding: 5px; font-weight: 800;}
         .g-ru { margin: auto; text-align: center; font-size: 14px; font-weight: 700; color: #1e293b; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;}
         .g-hint { text-align: center; font-size: 9px; color: #94a3b8; font-weight: 800; text-transform: uppercase; margin-top: auto; letter-spacing: 0.5px;}
         .g-ar { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; text-align: center; margin-bottom: 12px; line-height: 1.2;}
@@ -105,7 +104,7 @@
         .g-card .checkbox-overlay { position: absolute; top: 12px; left: 12px; margin: 0; }
         
         .selection-mode .checkbox-overlay { display: flex; }
-        .selection-mode .btn-star, .selection-mode .g-star { display: none !important; }
+        .selection-mode .g-del { display: none !important; } /* Прячем крестик в режиме выбора */
         
         .selected .checkbox-overlay { background: var(--primary); border-color: var(--primary); }
         .selected .checkbox-overlay::after { content: '✓'; color: white; font-size: 14px; font-weight: bold; }
@@ -211,7 +210,7 @@
     </div>
 </div>
 
-<!-- МОДАЛКА: ПРОСТОЕ ДОБАВЛЕНИЕ (ДЛЯ СЛОВАРЯ) ИЛИ ИЗМЕНЕНИЕ ПЕРЕВОДА -->
+<!-- МОДАЛКА: ПРОСТОЕ ДОБАВЛЕНИЕ (ИЗ СЛОВАРЯ) ИЛИ ИЗМЕНЕНИЕ ПЕРЕВОДА -->
 <div id="favModal" class="modal-overlay">
     <div class="modal-card">
         <h3 id="favModalTitle" style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">В Избранное</h3>
@@ -227,7 +226,7 @@
     </div>
 </div>
 
-<!-- МОДАЛКА: ДОБАВИТЬ В КОЛЛЕКЦИЮ МАССОВО ИЛИ ЕДИНИЧНО -->
+<!-- МОДАЛКА: ДОБАВИТЬ В КОЛЛЕКЦИЮ -->
 <div id="colModal" class="modal-overlay">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:10px; color:#1e293b; text-align: center;">В коллекцию</h3>
@@ -242,14 +241,18 @@
     </div>
 </div>
 
-<!-- МОДАЛКА: ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ -->
+<!-- МОДАЛКА: УМНОЕ ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ -->
 <div id="delModal" class="modal-overlay">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:15px; color:#ef4444; text-align: center;">Удаление слов</h3>
         <p style="text-align:center; color:#1e293b; font-size:16px; font-weight:bold; margin-bottom:10px;">Слов выбрано: <span id="delModalCount"></span></p>
-        <p style="text-align:center; color:#ef4444; font-size:14px; font-weight:800; margin-bottom:20px; line-height:1.4;">Вы точно собираетесь удалить эти слова из избранного? Это действие нельзя отменить!</p>
+        
+        <p id="delModalDesc" style="text-align:center; color:#ef4444; font-size:14px; font-weight:800; margin-bottom:20px; line-height:1.4;">
+            Вы точно собираетесь удалить эти слова?
+        </p>
+        
         <div style="display:flex; gap:10px;">
-            <button class="btn btn-red" onclick="confirmDelModal()">🗑 Точно удалить</button>
+            <button id="delModalBtnText" class="btn btn-red" onclick="confirmDelModal()">🗑 Удалить</button>
             <button class="btn" onclick="closeDelModal()">Отмена</button>
         </div>
     </div>
@@ -262,7 +265,7 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v64-perfect-click';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v65-smart-delete';
     
     let user = null;
     let subscriptionStatus = 'guest'; 
@@ -431,7 +434,13 @@
     function showPaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'flex'; }
     function hidePaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'none'; }
 
-    function selectCollection(c) { activeCollection = c; renderUI(); }
+    function selectCollection(c) { 
+        activeCollection = c; 
+        isSelectionMode = false;
+        selectedItems.clear();
+        updateSelectionActionBar();
+        renderUI(); 
+    }
 
     function toggleViewMode() {
         if (!isPremiumFeatureAllowed()) return;
@@ -484,12 +493,16 @@
     }
 
     function confirmColModal() {
-        let col = document.getElementById('colModalInput').value.trim() || 'Общие';
+        let col = document.getElementById('colModalInput').value.trim();
         if (singleColActionKey) {
-            favCollections[singleColActionKey] = col;
-            showMsg("Добавлено в коллекцию");
+            if (col) favCollections[singleColActionKey] = col;
+            else delete favCollections[singleColActionKey]; // Если стерли название папки
+            showMsg("Сохранено в коллекцию");
         } else {
-            selectedItems.forEach(key => { favCollections[key] = col; });
+            selectedItems.forEach(key => { 
+                if (col) favCollections[key] = col; 
+                else delete favCollections[key];
+            });
             showMsg(`Слова (${selectedItems.size}) перемещены`);
             isSelectionMode = false;
             selectedItems.clear();
@@ -500,26 +513,56 @@
 
     function closeColModal() { document.getElementById('colModal').style.display = 'none'; singleColActionKey = null;}
 
+    // --- УМНОЕ УДАЛЕНИЕ ---
     function openBulkDelModal() {
         if (selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
         document.getElementById('delModalCount').innerText = selectedItems.size;
+        
+        const btn = document.getElementById('delModalBtnText');
+        const desc = document.getElementById('delModalDesc');
+
+        if (activeCollection === 'Все') {
+            desc.innerText = "Вы точно собираетесь удалить эти слова из избранного? Это действие нельзя отменить!";
+            desc.style.color = "#ef4444";
+            btn.innerText = "🗑 Точно удалить";
+            btn.className = "btn btn-red";
+            btn.style = "";
+        } else {
+            desc.innerText = `Убрать слова из папки «${activeCollection}»?\nОни останутся в общем списке Избранного.`;
+            desc.style.color = "#b45309"; 
+            btn.innerText = "📁 Убрать из папки";
+            btn.className = "btn";
+            btn.style.backgroundColor = "#fffbeb";
+            btn.style.borderColor = "#fde68a";
+            btn.style.color = "#b45309";
+        }
+
         document.getElementById('delModal').style.display = 'flex';
     }
 
     function confirmDelModal() {
         selectedItems.forEach(key => {
-            localFavs = localFavs.filter(v => v !== key);
-            delete favCustom[key]; delete favCollections[key];
-            const fallbackAr = key.split('::')[0];
-            localFavs = localFavs.filter(v => v !== fallbackAr);
-            delete favCustom[fallbackAr]; delete favCollections[fallbackAr];
+            if (activeCollection === 'Все') {
+                // ПОЛНОЕ УДАЛЕНИЕ
+                localFavs = localFavs.filter(v => v !== key);
+                delete favCustom[key]; delete favCollections[key];
+                const fallbackAr = key.split('::')[0];
+                localFavs = localFavs.filter(v => v !== fallbackAr);
+                delete favCustom[fallbackAr]; delete favCollections[fallbackAr];
+            } else {
+                // УДАЛЕНИЕ ТОЛЬКО ИЗ КОЛЛЕКЦИИ (остается в "Все")
+                delete favCollections[key];
+                const fallbackAr = key.split('::')[0];
+                delete favCollections[fallbackAr];
+            }
         });
+        
         saveFavsToCloud();
         isSelectionMode = false;
         selectedItems.clear();
         updateSelectionActionBar();
         closeDelModal();
-        showMsg("Слова удалены");
+        showMsg(activeCollection === 'Все' ? "Слова удалены" : "Убрано из коллекции");
         renderUI();
     }
 
@@ -527,7 +570,7 @@
 
 
     // ==========================================
-    // ЛОГИКА ДОБАВЛЕНИЯ В ИЗБРАННОЕ (СЛОВАРЬ)
+    // ЛОГИКА ДОБАВЛЕНИЯ ИЗ СЛОВАРЯ
     // ==========================================
 
     function handleDictFavClick(idx, e) {
@@ -544,8 +587,10 @@
 
         if (active) {
             document.getElementById('favModalRu').value = favCustom[itemKey] || favCustom[w.ar] || w.short_ru || w.ru.split(';')[0];
+            document.getElementById('favModalTitle').innerText = 'Изменить перевод';
         } else {
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
+            document.getElementById('favModalTitle').innerText = 'В Избранное';
         }
         document.getElementById('favModal').style.display = 'flex';
         setTimeout(() => document.getElementById('favModalRu').focus(), 100);
@@ -647,11 +692,10 @@
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
-                // Открываем без блокировки
                 el.onclick = function() { this.classList.toggle('expanded'); };
                 el.innerHTML = `
                     <div class="note-header">
-                        <div class="note-ru">${n.ru}</div>
+                        <div class="note-ru" onclick="event.stopPropagation()">${n.ru}</div>
                         <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                     </div>
                     <div class="details" onclick="event.stopPropagation()">
@@ -725,6 +769,7 @@
                 list.appendChild(chipsContainer);
             }
             
+            // Кнопки режима и выбора
             if (currentRenderedWords.length > 0) {
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'view-controls';
@@ -814,7 +859,7 @@
             } else {
                 actionHtml = `
                     <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${itemKey}')">📁 В коллекцию</button>
-                    <button class="btn btn-red" style="flex: 0.3;" onclick="event.stopPropagation(); selectedItems.add('${itemKey}'); openBulkDelModal();">🗑</button>
+                    <button class="btn btn-red" style="flex: 0.3;" onclick="event.stopPropagation(); selectedItems.clear(); selectedItems.add('${itemKey}'); openBulkDelModal();">🗑</button>
                 `;
             }
 
@@ -824,7 +869,6 @@
             const el = document.createElement('div');
             el.className = `item ${isSelModeClass} ${selActive}`;
             
-            // ВАЖНО: Никаких event.stopPropagation() в самом тексте!
             el.onclick = function() { 
                 if (isSelectionMode) toggleItemSelection(itemKey);
                 else this.classList.toggle('expanded'); 
@@ -871,6 +915,5 @@
 </script>
 </body>
 </html>
-
 
 
