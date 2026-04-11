@@ -266,10 +266,10 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v66-final';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v68-fast-sync';
     
     let user = null;
-    let subscriptionStatus = 'guest'; // 'guest', 'trialActive', 'freemium', 'premiumActive'
+    let subscriptionStatus = 'guest'; 
     
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
@@ -284,10 +284,11 @@
     let normalizedVerbs = {}; 
     let reverseVerbsMap = {}; 
     
-    // ПЕРЕМЕННЫЕ МАССОВОГО ВЫБОРА
     let isSelectionMode = false;
     let selectedItems = new Set();
     let singleColActionKey = null;
+
+    let initialFavSyncDone = false; // Флаг для правильного старта синхронизации
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -318,7 +319,6 @@
         return res;
     }
 
-    // Инициализация базы
     const initInterval = setInterval(() => {
         const s = document.getElementById('status');
         if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
@@ -339,7 +339,6 @@
         }
     }, 100);
 
-    // Авторизация
     auth.onAuthStateChanged(async (u) => {
         user = u;
         const btn = document.getElementById('authBtn');
@@ -358,20 +357,32 @@
     function startLiveSync() {
         if (!user) return;
         
+        // УМНАЯ СИНХРОНИЗАЦИЯ ИЗБРАННОГО
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
           .onSnapshot(doc => {
-              if (doc.exists) {
-                  localFavs = doc.data().list || [];
-                  favCustom = doc.data().custom || {};
-                  favCollections = doc.data().collections || {};
-                  localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-                  localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-                  localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
-                  renderUI();
+              let cloudData = doc.exists ? doc.data() : { list: [], custom: {}, collections: {} };
+              
+              if (!initialFavSyncDone) {
+                  initialFavSyncDone = true;
+                  // Если при первом входе на телефоне больше слов, чем в пустом облаке - заливаем телефонные в облако
+                  if (localFavs.length > 0 && (!cloudData.list || cloudData.list.length === 0)) {
+                      saveFavsToCloud();
+                      return;
+                  }
               }
+
+              localFavs = cloudData.list || [];
+              favCustom = cloudData.custom || {};
+              favCollections = cloudData.collections || {};
+              
+              localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
+              localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
+              localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+              
+              renderUI();
           });
 
-        // Исправленный блокнот: никаких дубликатов
+        // УМНАЯ СИНХРОНИЗАЦИЯ БЛОКНОТА (Без дубликатов)
         db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes')
           .onSnapshot(snap => {
               myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -480,11 +491,9 @@
         }
     }
 
-    // --- МОДАЛКА: ДОБАВИТЬ В КОЛЛЕКЦИЮ ---
     function openBulkColModal(singleKey = null) {
         if (!singleKey && selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
         singleColActionKey = singleKey; 
-        
         if (singleKey) {
             document.getElementById('colModalDesc').innerText = 'Укажите коллекцию для выбранного слова';
             document.getElementById('colModalInput').value = favCollections[singleKey] || (activeCollection !== 'Все' ? activeCollection : '');
@@ -501,7 +510,7 @@
         
         if (singleColActionKey) {
             if (col) favCollections[singleColActionKey] = col;
-            else delete favCollections[singleColActionKey]; // Если стерли название
+            else delete favCollections[singleColActionKey]; 
             showMsg("Коллекция обновлена");
         } else {
             selectedItems.forEach(key => { 
@@ -513,12 +522,15 @@
             selectedItems.clear();
             updateSelectionActionBar();
         }
-        saveFavsToCloud(); closeColModal(); renderUI();
+        
+        closeColModal(); 
+        renderUI(); // Мгновенное обновление UI
+        saveFavsToCloud(); // Фоновая отправка
     }
 
     function closeColModal() { document.getElementById('colModal').style.display = 'none'; singleColActionKey = null;}
 
-    // --- МОДАЛКА: УМНОЕ УДАЛЕНИЕ ---
+    // --- УМНОЕ УДАЛЕНИЕ ---
     function openBulkDelModal() {
         if (selectedItems.size === 0) { showMsg("Выберите хотя бы одно слово"); return; }
         document.getElementById('delModalCount').innerText = selectedItems.size;
@@ -548,28 +560,26 @@
     function confirmDelModal() {
         selectedItems.forEach(key => {
             if (activeCollection === 'Все') {
-                // ПОЛНОЕ УДАЛЕНИЕ
                 localFavs = localFavs.filter(v => v !== key);
                 delete favCustom[key]; delete favCollections[key];
-                
                 const fallbackAr = key.split('::')[0];
                 localFavs = localFavs.filter(v => v !== fallbackAr);
                 delete favCustom[fallbackAr]; delete favCollections[fallbackAr];
             } else {
-                // УДАЛЕНИЕ ТОЛЬКО ИЗ КОЛЛЕКЦИИ (остается в "Все")
                 delete favCollections[key];
                 const fallbackAr = key.split('::')[0];
                 delete favCollections[fallbackAr];
             }
         });
         
-        saveFavsToCloud();
         isSelectionMode = false;
         selectedItems.clear();
         updateSelectionActionBar();
         closeDelModal();
         showMsg(activeCollection === 'Все' ? "Слова удалены" : "Убрано из коллекции");
-        renderUI();
+        
+        renderUI(); // Мгновенное обновление
+        saveFavsToCloud(); // Фоновая отправка
     }
 
     function closeDelModal() { document.getElementById('delModal').style.display = 'none'; }
@@ -612,23 +622,27 @@
         }
         favCustom[key] = ru; 
         
-        saveFavsToCloud(); closeFavModal(); renderUI();
+        closeFavModal(); 
+        renderUI(); // Мгновенное обновление 
+        saveFavsToCloud(); // Фоновая отправка
     }
 
     function closeFavModal() { document.getElementById('favModal').style.display = 'none'; window.wordToAddKey = null; }
 
-    async function saveFavsToCloud() {
+    function saveFavsToCloud() {
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
         localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
+        
         if (user) {
-            try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true }); 
-            } catch(e) {}
+            // Без await! Это позволяет приложению работать офлайн без зависаний
+            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
+                .set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true })
+                .catch(e => console.log("Фоновая синхронизация...")); 
         }
     }
 
-    async function saveManualNote() {
+    function saveManualNote() {
         if (!isPremiumFeatureAllowed()) return;
         const ar = document.getElementById('manualAr').value.trim();
         const ru = document.getElementById('manualRu').value.trim();
@@ -640,8 +654,9 @@
         const newNote = { ar, ru, ts: Date.now() };
 
         if (user) {
-            // Облако само обновит UI без дубликатов
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote).catch(e => console.log(e));
+            // Внимание: мы просто отдаем команду Firestore. Он сам обновит UI через onSnapshot мгновенно!
+            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote)
+              .catch(e => console.log("Фоновая синхронизация..."));
         } else {
             newNote.id = 'note_' + Date.now();
             myNotes.push(newNote);
@@ -650,14 +665,16 @@
         }
     }
 
-    async function removeNote(id, e) {
+    function removeNote(id, e) {
         if(e) e.stopPropagation();
         if (confirm("Удалить запись?")) {
-            myNotes = myNotes.filter(n => n.id !== id);
-            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
-            renderUI();
             if (user && !id.toString().startsWith('note_')) {
-                try { await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete(); } catch(e) {}
+                // Облако само удалит из UI
+                db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(e=>{});
+            } else {
+                myNotes = myNotes.filter(n => n.id !== id);
+                localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+                renderUI();
             }
             showMsg("Удалено");
         }
@@ -699,10 +716,11 @@
             myNotes.sort((a,b) => b.ts - a.ts).forEach(n => {
                 const el = document.createElement('div');
                 el.className = 'item';
+                // Без блокировок!
                 el.onclick = function() { this.classList.toggle('expanded'); };
                 el.innerHTML = `
                     <div class="note-header">
-                        <div class="note-ru" onclick="event.stopPropagation()">${n.ru}</div>
+                        <div class="note-ru">${n.ru}</div>
                         <div class="note-ar-hint">${n.ar.substring(0, 40)}</div>
                     </div>
                     <div class="details" onclick="event.stopPropagation()">
@@ -876,6 +894,7 @@
             const el = document.createElement('div');
             el.className = `item ${isSelModeClass} ${selActive}`;
             
+            // ВАЖНО: Никаких блокировок!
             el.onclick = function() { 
                 if (isSelectionMode) toggleItemSelection(itemKey);
                 else this.classList.toggle('expanded'); 
