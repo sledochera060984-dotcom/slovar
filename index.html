@@ -885,6 +885,7 @@
   let notes = [];
   let unsubFavs = null;
   let unsubNotes = null;
+  let activeTtsAudio = null;
   let favSelectionMode = false;
   let selectedFavoriteIds = new Set();
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
@@ -969,12 +970,90 @@
 
   function speak(text, e) {
     if (e) e.stopPropagation();
+
+    const value = String(text || '').trim();
+    if (!value) return;
+
+    const hasArabic = /[\u0600-\u06FF]/.test(value);
+    const lang = hasArabic ? 'ar' : 'ru';
+    const synthLang = hasArabic ? 'ar-SA' : 'ru-RU';
+
+    function stopActiveAudio() {
+      try {
+        if (activeTtsAudio) {
+          activeTtsAudio.pause();
+          activeTtsAudio.currentTime = 0;
+          activeTtsAudio = null;
+        }
+      } catch (_) {}
+    }
+
+    function fallbackAudio() {
+      stopActiveAudio();
+      try {
+        const url = 'https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl='
+          + encodeURIComponent(lang)
+          + '&q=' + encodeURIComponent(value);
+        activeTtsAudio = new Audio(url);
+        activeTtsAudio.play().catch((err) => {
+          console.error('Fallback TTS error:', err);
+          showMsg('Озвучка не запустилась');
+        });
+      } catch (err) {
+        console.error('Fallback TTS setup error:', err);
+        showMsg('Озвучка не поддерживается');
+      }
+    }
+
     try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      window.speechSynthesis.speak(u);
-    } catch (_) {}
+      stopActiveAudio();
+
+      if (!('speechSynthesis' in window)) {
+        fallbackAudio();
+        return;
+      }
+
+      const synth = window.speechSynthesis;
+      synth.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(value);
+      utterance.lang = synthLang;
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      const voices = synth.getVoices ? synth.getVoices() : [];
+      const preferredVoice = voices.find(v => String(v.lang || '').toLowerCase().startsWith(lang));
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      let started = false;
+      const startTimer = setTimeout(() => {
+        if (!started) {
+          try { synth.cancel(); } catch (_) {}
+          fallbackAudio();
+        }
+      }, 1200);
+
+      utterance.onstart = () => {
+        started = true;
+        clearTimeout(startTimer);
+      };
+
+      utterance.onend = () => {
+        clearTimeout(startTimer);
+      };
+
+      utterance.onerror = (err) => {
+        clearTimeout(startTimer);
+        console.error('SpeechSynthesis error:', err);
+        fallbackAudio();
+      };
+
+      synth.speak(utterance);
+    } catch (err) {
+      console.error('Speak error:', err);
+      fallbackAudio();
+    }
   }
 
   function getFavoriteByWord(w) {
