@@ -460,6 +460,22 @@
             const cloudCollections = cloudRaw.collections || {};
             const cloudUpdatedAt = Number(cloudRaw.clientUpdatedAt || cloudRaw.updatedAtMs) || 0;
 
+            // Защита от отката: не принимаем снапшот, если он старее нашего последнего локального изменения.
+            if (favUpdatedAt && cloudUpdatedAt && cloudUpdatedAt < favUpdatedAt) {
+                return;
+            }
+
+            const sameState =
+                JSON.stringify(localFavs) === JSON.stringify(cloudList) &&
+                JSON.stringify(favCustom) === JSON.stringify(cloudCustom) &&
+                JSON.stringify(favCollections) === JSON.stringify(cloudCollections);
+
+            if (sameState) {
+                favUpdatedAt = Math.max(favUpdatedAt || 0, cloudUpdatedAt || 0);
+                persistFavsLocal();
+                return;
+            }
+
             localFavs = cloudList;
             favCustom = cloudCustom;
             favCollections = cloudCollections;
