@@ -194,6 +194,14 @@
       background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
+    .item.collapsible { cursor: pointer; }
+    .item-details {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #e2e8f0;
+    }
+    .item.expanded .item-details { display: block; }
     .item-head {
       display: flex;
       gap: 12px;
@@ -851,26 +859,31 @@
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
 
     return items.map(f => `
-      <div class="item">
+      <div class="item collapsible" onclick="this.classList.toggle('expanded')">
         <div class="item-head">
           <div class="item-left">
             <div class="ru">${escapeHtml(f.customRu || '')}</div>
             <div class="ar">${escapeHtml(f.ar || '')}</div>
-            <div class="hint">${escapeHtml(f.ruSource || '')}</div>
-            ${f.collection ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
           </div>
         </div>
-        <div class="actions">
-          <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
-          <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
-          ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
-          <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
+
+        <div class="item-details" onclick="event.stopPropagation()">
+          <div class="hint">${escapeHtml(f.ruSource || '')}</div>
+          ${f.collection ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
+
+          <div class="actions">
+            <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
+            <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
+            ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
+            <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
+          </div>
         </div>
       </div>
     `).join('');
   }
 
   function renderNotes() {
+
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
 
     let items = [...notes];
