@@ -79,6 +79,10 @@
     }
     #trialIndicator {
       transition: opacity .2s ease;
+      cursor: pointer;
+    }
+    #trialIndicator:hover {
+      filter: brightness(0.98);
     }
     .lock-card {
       border: 1px dashed #cbd5e1;
@@ -995,6 +999,7 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const provider = new firebase.auth.GoogleAuthProvider();
+  const CONTACT_EMAIL = 'sledochera060984@gmail.com';
 
   db.enablePersistence().catch((err) => {
     console.error('Persistence error:', err);
@@ -1113,6 +1118,23 @@
     return !!user && !canUsePremiumFeatures();
   }
 
+  function openActivationContact() {
+    const subject = encodeURIComponent('Активация доступа Arabus Pro');
+    const body = encodeURIComponent(
+      'Здравствуйте! Хочу активировать доступ к функциям Arabus Pro.\n\n'
+      + 'Мой email: ' + (user?.email || 'не указан') + '\n'
+      + 'UID: ' + (user?.uid || 'не указан') + '\n'
+      + 'Имя: ' + (user?.displayName || 'не указано') + '\n'
+    );
+
+    try {
+      window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    } catch (e) {
+      console.error(e);
+      showMsg('Напишите мне для активации: ' + CONTACT_EMAIL);
+    }
+  }
+
   function showActivationPrompt() {
     if (!user) {
       showMsg('Сначала войдите через Google');
@@ -1122,11 +1144,11 @@
 
     const trial = getTrialInfo();
     if (trial.active) {
-      showMsg('Пробный период активен');
+      openActivationContact();
       return;
     }
 
-    showMsg('Напишите мне для активации доступа');
+    openActivationContact();
   }
 
   function renderLockedFeature(featureName) {
@@ -1137,7 +1159,7 @@
         <div class="lock-text">Пробный период 14 дней закончился.
 Напишите мне для активации доступа.
 Стоимость: 100 ₽ в месяц.</div>
-        <button class="btn primary" onclick="showActivationPrompt()">Напишите мне для активации</button>
+        <button class="btn primary" onclick="openActivationContact()">Напишите мне для активации</button>
       </div>
     `;
   }
@@ -1160,12 +1182,12 @@
     const trial = getTrialInfo();
     if (trial.active) {
       trialIndicatorEl.className = 'status wait';
-      trialIndicatorEl.innerText = `🎁 Бесплатный период активен: осталось ${trial.daysLeft} дн.`;
+      trialIndicatorEl.innerText = `🎁 Бесплатный период активен: осталось ${trial.daysLeft} дн. Нажмите для активации позже`;
       return;
     }
 
     trialIndicatorEl.className = 'status err';
-    trialIndicatorEl.innerText = '🔒 Пробный период закончился. Напишите мне для активации доступа';
+    trialIndicatorEl.innerText = '🔒 Пробный период закончился. Нажмите, чтобы написать мне';
   }
 
   function escapeHtml(value) {
@@ -2152,6 +2174,14 @@
     if (e.key !== 'Escape') return;
     closeFavModal();
     closeFolderModal();
+  });
+
+  trialIndicatorEl?.addEventListener('click', () => {
+    if (!user) {
+      showMsg('Сначала войдите через Google');
+      return;
+    }
+    openActivationContact();
   });
 
   window.addEventListener('online', updateSyncIndicator);
