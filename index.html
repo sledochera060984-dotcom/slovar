@@ -552,6 +552,146 @@
       font-size: 12px;
     }
 
+
+    .note-topbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .note-topbar .field {
+      flex: 1;
+      margin-bottom: 0;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    .note-topbar .btn {
+      min-width: 130px;
+      min-height: 40px;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+
+    body.compact-notes .header {
+      margin-bottom: 6px;
+    }
+    body.compact-notes .header img {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+    }
+    body.compact-notes .header h1 {
+      font-size: 18px;
+    }
+    body.compact-notes .status {
+      padding: 8px 10px;
+      font-size: 12px;
+      margin-bottom: 6px;
+      border-radius: 12px;
+    }
+    body.compact-notes .user-line {
+      display: none;
+    }
+    body.compact-notes .auth-row {
+      margin-bottom: 8px;
+    }
+    body.compact-notes .auth-btn {
+      padding: 9px 12px;
+      font-size: 13px;
+      min-height: 40px;
+    }
+    body.compact-notes .tabs {
+      margin-bottom: 8px;
+      padding: 3px;
+      gap: 4px;
+    }
+    body.compact-notes .tab {
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+    body.compact-notes #notesComposer {
+      margin-bottom: 8px;
+    }
+    body.compact-notes #notesComposer .field {
+      margin-bottom: 6px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    body.compact-notes #notesComposer .toolbar {
+      margin-bottom: 6px;
+    }
+    body.compact-notes #notesComposer .btn {
+      min-height: 38px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    body.compact-notes .chips {
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+    }
+    body.compact-notes .chip {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    body.compact-notes #noteTopbar {
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    body.compact-notes #noteSelectionPanel {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+    }
+    body.compact-notes #noteSelectionPanel .folder-select,
+    body.compact-notes #noteSelectionPanel .field {
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    body.compact-notes #noteSelectionPanel .selection-actions .btn {
+      min-height: 34px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+    body.compact-notes #list {
+      gap: 6px;
+      padding-bottom: 16px;
+    }
+    body.compact-notes #list .item {
+      padding: 9px 10px;
+      border-radius: 12px;
+    }
+    body.compact-notes .note-preview-ru {
+      font-size: 13px;
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    body.compact-notes .note-preview-ar {
+      font-size: 20px;
+      line-height: 1.0;
+      direction: rtl;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    body.compact-notes #list .item-details {
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+    body.compact-notes #list .actions {
+      margin-top: 8px;
+      gap: 6px;
+    }
+    body.compact-notes #list .actions .btn {
+      min-height: 34px;
+      padding: 7px 8px;
+      font-size: 12px;
+    }
+
     .toast {
       display: none;
       position: fixed;
@@ -637,16 +777,19 @@
     </div>
 
     <div id="notesComposer" style="display:none;">
-      <div class="section-note">Это новая упрощённая версия: меньше эффектов, но надёжнее логика хранения и синхронизации.</div>
-      <input id="manualAr" class="field" type="text" placeholder="Текст на арабском">
-      <textarea id="manualRu" placeholder="Перевод на русский"></textarea>
-      <div class="toolbar">
+      <input id="manualAr" class="field" type="text" placeholder="Арабский текст">
+      <input id="manualRu" class="field" type="text" placeholder="Перевод на русский">
+      <div class="toolbar" style="margin-top:6px;">
         <button class="btn primary" onclick="saveNote()">💾 Сохранить в блокнот</button>
       </div>
     </div>
 
     <div id="chips" class="chips" style="display:none;"></div>
     <div id="favTopbar" class="fav-topbar" style="display:none;"></div>
+    <div id="noteTopbar" class="note-topbar" style="display:none;">
+      <input id="noteSearchInput" class="field" type="text" placeholder="Поиск по блокноту..." oninput="renderApp()">
+      <button id="noteSelectBtn" class="btn" onclick="toggleNoteSelectionMode()"></button>
+    </div>
     <div id="selectionPanel" class="selection-panel">
       <div style="font-weight:800;">Выбрано: <span id="selectedFavCount">0</span></div>
       <select id="bulkFolderSelect" class="folder-select"></select>
@@ -1410,7 +1553,17 @@
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
 
     let items = [...notes];
+    const noteQuery = (document.getElementById('noteSearchInput')?.value || '').trim().toLowerCase();
+
     if (activeCollection !== 'Все') items = items.filter(n => String(n.collection || '') === activeCollection);
+    if (noteQuery) {
+      items = items.filter(n =>
+        String(n.ru || '').toLowerCase().includes(noteQuery) ||
+        String(n.ar || '').toLowerCase().includes(noteQuery) ||
+        String(n.collection || '').toLowerCase().includes(noteQuery)
+      );
+    }
+
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
     if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
@@ -1421,8 +1574,8 @@
           <div class="select-line" style="width:100%;">
             ${noteSelectionMode ? `<input class="select-box" type="checkbox" ${selectedNoteIds.has(n.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleNoteSelected('${escapeJs(n.id)}')">` : ''}
             <div class="item-left">
-              <div class="ru">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
-              <div class="ar">${escapeHtml(shortPreview(n.ar || '', 48))}</div>
+              <div class="ru note-preview-ru">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
+              <div class="ar note-preview-ar">${escapeHtml(shortPreview(n.ar || '', 56))}</div>
               ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
             </div>
           </div>
@@ -1448,8 +1601,11 @@
     renderNoteSelectionPanel();
 
     document.body.classList.toggle('compact-favs', activeTab === 'fav');
+    document.body.classList.toggle('compact-notes', activeTab === 'notes');
 
     const topbar = document.getElementById('favTopbar');
+    const noteTopbar = document.getElementById('noteTopbar');
+    const noteSelectBtn = document.getElementById('noteSelectBtn');
 
     if (activeTab === 'fav' && user) {
       topbar.style.display = 'flex';
@@ -1460,6 +1616,13 @@
     } else {
       topbar.style.display = 'none';
       topbar.innerHTML = '';
+    }
+
+    if (activeTab === 'notes' && user) {
+      noteTopbar.style.display = 'flex';
+      noteSelectBtn.textContent = noteSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать';
+    } else {
+      noteTopbar.style.display = 'none';
     }
 
     if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
