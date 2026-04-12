@@ -438,6 +438,120 @@
       outline:none;
     }
 
+
+    /* Компактный режим для вкладки Избранное */
+    body.compact-favs .header {
+      margin-bottom: 6px;
+    }
+    body.compact-favs .header img {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+    }
+    body.compact-favs .header h1 {
+      font-size: 18px;
+    }
+    body.compact-favs .status {
+      padding: 8px 10px;
+      font-size: 12px;
+      margin-bottom: 6px;
+      border-radius: 12px;
+    }
+    body.compact-favs .user-line {
+      display: none;
+    }
+    body.compact-favs .auth-row {
+      margin-bottom: 8px;
+    }
+    body.compact-favs .auth-btn {
+      padding: 9px 12px;
+      font-size: 13px;
+      min-height: 40px;
+    }
+    body.compact-favs .tabs {
+      margin-bottom: 8px;
+      padding: 3px;
+      gap: 4px;
+    }
+    body.compact-favs .tab {
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+    body.compact-favs .chips {
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+    }
+    body.compact-favs .chip {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    body.compact-favs #favTopbar {
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    body.compact-favs #favTopbar .btn {
+      min-height: 36px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    body.compact-favs #selectionPanel {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 12px;
+    }
+    body.compact-favs #selectionPanel .folder-select,
+    body.compact-favs #selectionPanel .field {
+      margin-bottom: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    body.compact-favs #selectionPanel .selection-actions .btn {
+      min-height: 34px;
+      padding: 7px 10px;
+      font-size: 12px;
+    }
+    body.compact-favs #list {
+      gap: 6px;
+      padding-bottom: 16px;
+    }
+    body.compact-favs #list .item {
+      padding: 9px 10px;
+      border-radius: 12px;
+    }
+    body.compact-favs #list .item-head {
+      gap: 8px;
+    }
+    body.compact-favs #list .ru {
+      font-size: 13px;
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    body.compact-favs #list .ar {
+      font-size: 22px;
+      line-height: 1.0;
+    }
+    body.compact-favs #list .hint {
+      font-size: 11px;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    body.compact-favs #list .item-details {
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+    body.compact-favs #list .actions {
+      margin-top: 8px;
+      gap: 6px;
+    }
+    body.compact-favs #list .actions .btn {
+      min-height: 34px;
+      padding: 7px 8px;
+      font-size: 12px;
+    }
+
     .toast {
       display: none;
       position: fixed;
@@ -1332,6 +1446,8 @@
     renderCollections();
     renderSelectionPanel();
     renderNoteSelectionPanel();
+
+    document.body.classList.toggle('compact-favs', activeTab === 'fav');
 
     const topbar = document.getElementById('favTopbar');
 
