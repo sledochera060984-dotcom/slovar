@@ -204,7 +204,7 @@
         <div class="payment-block-icon">⭐️</div>
         <div class="payment-block-title">АРАБРУС ПРЕМИУМ</div>
         <div class="payment-block-desc">
-            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Коллекции, Карточки, Блокнот и Озвучку.
+            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Папки, Карточки, Блокнот и Озвучку.
         </div>
         <div class="payment-block-uid" id="paymentUidDisplay">Ваш ID: Неизвестно</div>
         <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
@@ -240,13 +240,13 @@
     </div>
 </div>
 
-<!-- МОДАЛКА 2: ДОБАВИТЬ В КОЛЛЕКЦИЮ (ИЗ ИЗБРАННОГО / БЛОКНОТА) -->
+<!-- МОДАЛКА 2: ДОБАВИТЬ В КОЛЛЕКЦИЮ (ДЛЯ ИЗБРАННОГО И БЛОКНОТА) -->
 <div id="colModal" class="modal-overlay">
     <div class="modal-card">
         <h3 style="margin-top:0; margin-bottom:10px; color:#1e293b; text-align: center;">В папку</h3>
-        <p id="colModalDesc" style="text-align:center; color:var(--gray); font-size:14px; margin-bottom:15px;">Укажите коллекцию (папку)</p>
+        <p id="colModalDesc" style="text-align:center; color:var(--gray); font-size:14px; margin-bottom:15px;">Укажите папку (коллекцию)</p>
         
-        <input type="text" id="colModalInput" placeholder="Например: Урок 1, Глаголы..." style="margin-bottom:20px; font-weight: bold; color: #1e293b;">
+        <input type="text" id="colModalInput" placeholder="Например: Разговорник, Урок 1..." style="margin-bottom:20px; font-weight: bold; color: #1e293b;">
         
         <div style="display:flex; gap:10px;">
             <button class="btn btn-green" onclick="confirmColModal()">💾 Сохранить</button>
@@ -272,20 +272,6 @@
     </div>
 </div>
 
-<!-- МОДАЛКА 4: ЕДИНИЧНОЕ УДАЛЕНИЕ ИЗ БЛОКНОТА -->
-<div id="delNoteModal" class="modal-overlay">
-    <div class="modal-card">
-        <h3 style="margin-top:0; margin-bottom:15px; color:#ef4444; text-align: center;">Удаление записи</h3>
-        <p style="text-align:center; color:#1e293b; font-size:15px; font-weight:700; margin-bottom:20px; line-height:1.4;">
-            Вы точно уверены, что хотите удалить эту фразу из блокнота?
-        </p>
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-red" onclick="confirmDelNote()">🗑 Да, удалить</button>
-            <button class="btn" onclick="closeDelNoteModal()">Отмена</button>
-        </div>
-    </div>
-</div>
-
 <div id="toast">Сообщение</div>
 
 <div id="scrollNav" class="scroll-nav">
@@ -298,16 +284,16 @@
         window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
     }
 
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v74-no-quotes-bug';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v70-ultimate-notebook';
     
     let user = null;
     let subscriptionStatus = 'guest'; 
     
-    // ЛОКАЛЬНЫЕ ПЕРЕМЕННЫЕ
     let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let favCollections = JSON.parse(localStorage.getItem('arabus_favs_collections')) || {}; 
     let favUpdatedAt = Number(localStorage.getItem('arabus_favs_updated_at')) || 0;
+    
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
     
     let activeTab = 'dict';
@@ -321,8 +307,8 @@
     let isSelectionMode = false;
     let selectedItems = new Set();
     let singleColActionKey = null;
-    let noteToDeleteId = null;
 
+    let initialFavSyncDone = false; 
     let syncUnsubscribers = [];
     let toastTimer = null;
 
@@ -396,10 +382,10 @@
         }
     }, 100);
 
-    // Авторизация
     auth.onAuthStateChanged(async (u) => {
         stopLiveSync();
         user = u;
+        initialFavSyncDone = false;
         const btn = document.getElementById('authBtn');
         if (user) {
             const displayName = (user.displayName || 'Пользователь').split(' ')[0];
@@ -414,9 +400,6 @@
         }
     });
 
-    // ==========================================
-    // ИДЕАЛЬНАЯ БЕСШОВНАЯ СИНХРОНИЗАЦИЯ
-    // ==========================================
     function startLiveSync() {
         if (!user) return;
 
@@ -425,28 +408,32 @@
         const paymentRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo');
 
         const unsubFavs = favsRef.onSnapshot(doc => {
-            if (!doc.exists) {
-                if (localFavs.length > 0) {
-                    favsRef.set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true }).catch(()=>{});
-                }
+            if (doc.metadata.hasPendingWrites) return;
+            const cloudRaw = doc.exists ? doc.data() : null;
+            if (!cloudRaw) {
+                if (!initialFavSyncDone && localFavs.length > 0) { initialFavSyncDone = true; saveFavsToCloud(); }
                 return;
             }
-            
-            const data = doc.data();
-            localFavs = data.list || [];
-            favCustom = data.custom || {};
-            favCollections = data.collections || {};
-            
-            localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-            localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-            localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
-            
-            if (activeTab === 'fav' || activeTab === 'dict') renderUI();
+
+            const cloudUpdatedAt = Number(cloudRaw.updatedAt) || 0;
+            if (!initialFavSyncDone) {
+                initialFavSyncDone = true;
+                if (localFavs.length > 0 && favUpdatedAt >= cloudUpdatedAt) { saveFavsToCloud(); return; }
+            }
+
+            if (cloudUpdatedAt > favUpdatedAt) {
+                localFavs = cloudRaw.list || [];
+                favCustom = cloudRaw.custom || {};
+                favCollections = cloudRaw.collections || {};
+                favUpdatedAt = cloudUpdatedAt;
+                persistFavsLocal();
+                renderUI();
+            }
         }, e => { console.log(e); });
 
         const unsubNotes = notesRef.onSnapshot(snap => {
+            if (snap.metadata.hasPendingWrites) return; 
             myNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            myNotes.sort((a,b) => b.ts - a.ts);
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             if (activeTab === 'trans') renderUI();
         }, e => { console.log(e); });
@@ -480,10 +467,10 @@
             bar.textContent = `ПРЕМИУМ АКТИВЕН (${daysLeft} ДН.)`;
             bar.classList.add('sub-active');
         } else if (status === 'trialActive') {
-            bar.innerHTML = `Триал: ${daysLeft} дней осталось · <a href="#" onclick="event.stopPropagation(); showPaymentBlock(); return false;">Подключить премиум за 100 рублей</a>`;
+            bar.innerHTML = `Триал: ${daysLeft} дней осталось · <a href="#" onclick="event.stopPropagation(); showPaymentBlock(); return false;">Оформить подписку</a>`;
             bar.classList.add('sub-trial');
         } else if (status === 'freemium') {
-            bar.innerHTML = `Freemium · <a href="#" onclick="event.stopPropagation(); showPaymentBlock(); return false;">Подключить премиум за 100 рублей</a>`;
+            bar.innerHTML = `Freemium · <a href="#" onclick="event.stopPropagation(); showPaymentBlock(); return false;">Оформить подписку (100 руб)</a>`;
             bar.classList.add('sub-freemium');
         } else if (status === 'guest') {
             bar.textContent = 'Войдите для доступа к функциям';
@@ -494,15 +481,12 @@
     function checkTrialStatus(startTimestamp) {
         const diffMs = Date.now() - startTimestamp;
         const trialMs = 14 * 24 * 60 * 60 * 1000; 
-        if (diffMs < trialMs) {
-            updateSubscriptionBar('trialActive', Math.ceil((trialMs - diffMs) / (1000 * 60 * 60 * 24)));
-        } else {
-            updateSubscriptionBar('freemium');
-        }
+        if (diffMs < trialMs) updateSubscriptionBar('trialActive', Math.ceil((trialMs - diffMs) / (1000 * 60 * 60 * 24)));
+        else updateSubscriptionBar('freemium');
     }
 
     function isPremiumFeatureAllowed() {
-        if (subscriptionStatus === 'guest') { showMsg("Войдите через Google, чтобы использовать эту функцию!"); return false; }
+        if (subscriptionStatus === 'guest') { showMsg("Войдите через Google, чтобы использовать это!"); return false; }
         if (subscriptionStatus === 'freemium') { showPaymentBlock(); return false; }
         return true;
     }
@@ -510,27 +494,9 @@
     function showPaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'flex'; }
     function hidePaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'none'; }
 
-    // --- ОБРАБОТЧИКИ КЛИКОВ (ДЛЯ БЕЗОПАСНОЙ ПЕРЕДАЧИ ДАННЫХ ИЗ HTML) ---
-    function handleCollectionClick(btn) { selectCollection(btn.dataset.col); }
-    
-    function handleColClick(btn, e) { 
-        if(e) e.stopPropagation(); 
-        openBulkColModal(btn.dataset.key); 
-    }
-    
-    function handleDelClick(btn, e) { 
-        if(e) e.stopPropagation(); 
-        selectedItems.clear(); 
-        selectedItems.add(btn.dataset.key); 
-        openBulkDelModal(); 
-    }
-
-
     function selectCollection(c) { 
         activeCollection = c; 
-        isSelectionMode = false;
-        selectedItems.clear();
-        updateSelectionActionBar();
+        isSelectionMode = false; selectedItems.clear(); updateSelectionActionBar();
         renderUI(); 
     }
 
@@ -542,7 +508,7 @@
     }
 
     // ==========================================
-    // ЛОГИКА МАССОВОГО ВЫБОРА
+    // ЛОГИКА МАССОВОГО ВЫБОРА И МОДАЛОК
     // ==========================================
     
     function toggleSelectionMode() {
@@ -599,37 +565,37 @@
             } else {
                 selectedItems.forEach(key => { if (col) favCollections[key] = col; else delete favCollections[key]; });
             }
-            saveFavsToCloud(); // Мгновенно уходит в облако
+            saveFavsToCloud();
         } 
         else if (activeTab === 'trans') {
-            if (user) {
-                if (singleColActionKey) {
-                    if (!singleColActionKey.toString().startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(singleColActionKey).update({col: col}).catch(()=>{});
-                    }
-                } else {
-                    selectedItems.forEach(id => {
-                        if (!id.toString().startsWith('note_')) {
-                            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({col: col}).catch(()=>{});
-                        }
-                    });
-                }
+            const updates = [];
+            if (singleColActionKey) {
+                const note = myNotes.find(n => n.id === singleColActionKey);
+                if (note) { note.col = col; updates.push(note); }
             } else {
-                if (singleColActionKey) { const n = myNotes.find(n => n.id === singleColActionKey); if(n) n.col = col; }
-                else { selectedItems.forEach(id => { const n = myNotes.find(x => x.id === id); if(n) n.col = col; }); }
-                localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
-                renderUI();
+                selectedItems.forEach(id => {
+                    const note = myNotes.find(n => n.id === id);
+                    if (note) { note.col = col; updates.push(note); }
+                });
+            }
+            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+            if (user) {
+                updates.forEach(n => {
+                    if (!n.id.toString().startsWith('note_')) {
+                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(n.id).update({col: col}).catch(e=>{});
+                    }
+                });
             }
         }
         
         showMsg("Папка сохранена");
         isSelectionMode = false; selectedItems.clear(); updateSelectionActionBar();
-        closeColModal(); 
+        closeColModal(); renderUI();
     }
 
     function closeColModal() { document.getElementById('colModal').style.display = 'none'; singleColActionKey = null;}
 
-    // --- УМНОЕ УДАЛЕНИЕ ИЗ СПИСКОВ ---
+    // --- УМНОЕ УДАЛЕНИЕ (БЕЗ СИСТЕМНОГО ОКНА) ---
     function openBulkDelModal() {
         if (selectedItems.size === 0) { showMsg("Выберите хотя бы одну запись"); return; }
         document.getElementById('delModalCount').innerText = selectedItems.size;
@@ -666,32 +632,38 @@
                     delete favCollections[key];
                 }
             });
-            saveFavsToCloud(); // Мгновенно уходит в облако
+            saveFavsToCloud();
         } 
         else if (activeTab === 'trans') {
             selectedItems.forEach(id => {
                 if (activeCollection === 'Все') {
+                    myNotes = myNotes.filter(n => n.id !== id);
                     if (user && !id.toString().startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(()=>{});
+                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(e=>{});
                     }
                 } else {
-                    if (user && !id.toString().startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({col: ''}).catch(()=>{});
+                    const note = myNotes.find(n => n.id === id);
+                    if (note) {
+                        note.col = '';
+                        if (user && !id.toString().startsWith('note_')) {
+                            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({col: ''}).catch(e=>{});
+                        }
                     }
                 }
             });
+            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
         }
 
         showMsg(activeCollection === 'Все' ? 'Записи удалены' : 'Убрано из папки');
         isSelectionMode = false; selectedItems.clear(); updateSelectionActionBar();
-        closeDelModal(); 
+        closeDelModal(); renderUI();
     }
 
     function closeDelModal() { document.getElementById('delModal').style.display = 'none'; }
 
 
     // ==========================================
-    // ЛОГИКА ДОБАВЛЕНИЯ В ИЗБРАННОЕ (СЛОВАРЬ)
+    // ЛОГИКА ДОБАВЛЕНИЯ ИЗ СЛОВАРЯ
     // ==========================================
 
     function handleDictFavClick(idx, e) {
@@ -725,31 +697,21 @@
         localFavs.unshift(key); 
         favCustom[key] = ru;
         
-        closeFavModal(); 
-        saveFavsToCloud(); // Вызов облака мгновенно обновит UI
+        closeFavModal(); renderUI(); saveFavsToCloud();
     }
 
     function closeFavModal() { document.getElementById('favModal').style.display = 'none'; window.wordToAddKey = null; }
 
     function saveFavsToCloud() {
-        // Просто отдаем команду Firestore. Он сам обновит UI через onSnapshot мгновенно!
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
-        
+        favUpdatedAt = Date.now(); 
+        persistFavsLocal();
         if (user) {
             db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({ list: localFavs, custom: favCustom, collections: favCollections }, { merge: true })
+                .set({ list: localFavs, custom: favCustom, collections: favCollections, updatedAt: favUpdatedAt }, { merge: true })
                 .catch(e => { console.log(e); });
-        } else {
-            renderUI();
         }
     }
 
-    // ==========================================
-    // ЛОГИКА БЛОКНОТА (Единичное добавление/удаление)
-    // ==========================================
-    
     function saveManualNote() {
         if (!isPremiumFeatureAllowed()) return;
         const ar = document.getElementById('manualAr').value.trim();
@@ -759,53 +721,16 @@
         document.getElementById('manualAr').value = ""; document.getElementById('manualRu').value = ""; 
         showMsg("Фраза сохранена!");
 
-        const newNote = { ar, ru, ts: Date.now(), col: (activeCollection !== 'Все' ? activeCollection : '') };
+        const newNote = { ar, ru, ts: Date.now(), col: '' };
 
         if (user) {
-            // Firebase сам обновит UI через onSnapshot мгновенно!
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote)
-              .catch(e => { console.log(e); showMsg('Не удалось сохранить запись'); });
+            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote).catch(e => {});
         } else {
             newNote.id = 'note_' + Date.now();
             myNotes.push(newNote);
             localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
             renderUI();
         }
-    }
-
-    function removeNoteFromButton(btn, e) {
-        if(e) e.stopPropagation();
-        if (!btn) return;
-        noteToDeleteId = btn.dataset.noteId;
-        document.getElementById('delNoteModal').style.display = 'flex';
-    }
-
-    function confirmDelNote() {
-        if (!noteToDeleteId) return;
-        const id = noteToDeleteId;
-        
-        if (user && !id.toString().startsWith('note_')) {
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete()
-              .catch(e => { console.log(e); showMsg('Не удалось удалить запись'); });
-        } else {
-            myNotes = myNotes.filter(n => n.id !== id);
-            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
-            renderUI();
-        }
-        
-        showMsg("Удалено");
-        closeDelNoteModal();
-    }
-
-    function closeDelNoteModal() {
-        document.getElementById('delNoteModal').style.display = 'none';
-        noteToDeleteId = null;
-    }
-
-    function speakFromButton(btn, e) {
-        if(e) e.stopPropagation();
-        if (!btn) return;
-        speak(btn.dataset.text || '', e);
     }
 
     function speak(t, e) {
@@ -861,7 +786,7 @@
         // ВЫВОД: БЛОКНОТ
         // ==========================================
         if (activeTab === 'trans') {
-            if (subscriptionStatus === 'freemium') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен в ПРЕМИУМ-версии</div>`; return; }
+            if (subscriptionStatus === 'freemium') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен в ПРЕМИУМ</div>`; return; }
             if (subscriptionStatus === 'guest') { list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Войдите в аккаунт, чтобы использовать Блокнот</div>`; return; }
 
             let filteredNotes = myNotes;
@@ -870,6 +795,7 @@
                 const lq = q.toLowerCase();
                 filteredNotes = filteredNotes.filter(n => n.ru.toLowerCase().includes(lq) || n.ar.toLowerCase().includes(lq));
             }
+            filteredNotes.sort((a, b) => b.ts - a.ts);
 
             // Кнопки папок для Блокнота
             const allCols = new Set(['Все']);
@@ -877,7 +803,7 @@
             if (allCols.size > 1 || activeCollection !== 'Все') {
                 const chipsContainer = document.createElement('div');
                 chipsContainer.className = 'collections-container';
-                chipsContainer.innerHTML = Array.from(allCols).map(c => `<button class="collection-chip ${c === activeCollection ? 'active' : ''}" data-col="${escapeHtml(c)}" onclick="handleCollectionClick(this)">${escapeHtml(c)}</button>`).join('');
+                chipsContainer.innerHTML = Array.from(allCols).map(c => `<button class="collection-chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeHtml(c)}')">${escapeHtml(c)}</button>`).join('');
                 list.appendChild(chipsContainer);
             }
 
@@ -916,9 +842,7 @@
                         <div class="checkbox-overlay" style="position:relative; top:auto; left:auto; margin-bottom:auto; margin-top:5px;"></div>
                         <div style="flex:1;">
                             <div class="note-header">
-                                <div class="note-header-top">
-                                    <div class="note-ru">${escapeHtml(n.ru)}</div>
-                                </div>
+                                <div class="note-ru">${escapeHtml(n.ru)}</div>
                                 <div class="note-ar-hint">${escapeHtml(String(n.ar).substring(0, 70))}</div>
                                 <div class="note-expand-hint">Нажмите, чтобы раскрыть</div>
                             </div>
@@ -926,9 +850,9 @@
                                 <div class="note-full-ru">${escapeHtml(n.ru)}</div>
                                 <span class="note-full-ar">${escapeHtml(n.ar)}</span>
                                 <div class="actions">
-                                    <button class="btn" data-text="${escapeHtml(String(n.ar))}" onclick="speakFromButton(this, event)">🔊 Слушать</button>
-                                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" data-key="${escapeHtml(n.id)}" onclick="handleColClick(this, event)">📁 В папку</button>
-                                    <button class="btn btn-red" data-note-id="${escapeHtml(String(n.id))}" onclick="removeNoteFromButton(this, event)">🗑</button>
+                                    <button class="btn" onclick="speak('${escapeHtml(n.ar)}', event)">🔊</button>
+                                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${escapeHtml(n.id)}')">📁 В папку</button>
+                                    <button class="btn btn-red" onclick="event.stopPropagation(); selectedItems.clear(); selectedItems.add('${escapeHtml(n.id)}'); openBulkDelModal();">🗑</button>
                                 </div>
                             </div>
                         </div>
@@ -1004,32 +928,24 @@
             if (allCols.size > 1 || activeCollection !== 'Все') {
                 const chipsContainer = document.createElement('div');
                 chipsContainer.className = 'collections-container';
-                chipsContainer.innerHTML = Array.from(allCols).map(c => `<button class="collection-chip ${c === activeCollection ? 'active' : ''}" data-col="${escapeHtml(c)}" onclick="handleCollectionClick(this)">${escapeHtml(c)}</button>`).join('');
+                chipsContainer.innerHTML = Array.from(allCols).map(c => `<button class="collection-chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeHtml(c)}')">${escapeHtml(c)}</button>`).join('');
                 list.appendChild(chipsContainer);
             }
             
-            // Кнопки режима и выбора
             if (currentRenderedWords.length > 0) {
                 const controlsDiv = document.createElement('div');
                 controlsDiv.className = 'view-controls';
-
                 const toggleBtn = document.createElement('button');
                 toggleBtn.className = 'view-toggle-btn';
                 toggleBtn.innerHTML = viewMode === 'list' ? '🎴 Карточки' : '📄 Список';
                 toggleBtn.onclick = toggleViewMode;
                 controlsDiv.appendChild(toggleBtn);
-
                 const selectBtn = document.createElement('button');
                 selectBtn.className = 'view-toggle-btn';
-                if(isSelectionMode) {
-                    selectBtn.style.background = 'var(--primary)'; selectBtn.style.color = '#fff';
-                    selectBtn.innerHTML = 'Отменить выбор';
-                } else {
-                    selectBtn.innerHTML = '☑️ Выбрать';
-                }
+                if(isSelectionMode) { selectBtn.style.background = 'var(--primary)'; selectBtn.style.color = '#fff'; selectBtn.innerHTML = 'Отменить выбор'; } 
+                else { selectBtn.innerHTML = '☑️ Выбрать'; }
                 selectBtn.onclick = toggleSelectionMode;
                 controlsDiv.appendChild(selectBtn);
-
                 list.appendChild(controlsDiv);
             } else {
                 list.innerHTML += `<div style="text-align:center; color: var(--gray); padding: 20px;">Здесь пока нет слов</div>`;
@@ -1037,23 +953,17 @@
             }
         }
 
-        const isSelModeClass = isSelectionMode ? 'selection-mode' : '';
-
-        // --- РЕНДЕР КАРТОЧЕК (СЕТКА В ИЗБРАННОМ) ---
+        // КАРТОЧКИ (СЕТКА)
         if (activeTab === 'fav' && viewMode === 'grid') {
             const gridContainer = document.createElement('div');
             gridContainer.className = 'grid-view';
-            
             currentRenderedWords.forEach((w, idx) => {
                 const itemKey = makeFavKey(w.ar, w.ru);
                 const displayRu = favCustom[itemKey] || w.short_ru || w.ru.split(';')[0];
-                
                 const isSelected = selectedItems.has(itemKey);
-                const selActive = isSelected ? 'selected' : '';
-
-                const card = document.createElement('div');
-                card.className = `g-card ${isSelModeClass} ${selActive}`;
                 
+                const card = document.createElement('div');
+                card.className = `g-card ${isSelModeClass} ${isSelected ? 'selected' : ''}`;
                 card.onclick = function() { 
                     if (isSelectionMode) toggleItemSelection(itemKey);
                     else this.classList.toggle('flipped'); 
@@ -1069,8 +979,8 @@
                         <div class="g-face g-back">
                             <div class="g-ar">${escapeHtml(w.ar)}</div>
                             <div style="display:flex; gap:6px; width:100%; margin-top:auto;">
-                                <button class="btn btn-green" style="padding:10px; border-radius:10px;" data-text="${escapeHtml(w.ar)}" onclick="speakFromButton(this, event)">🔊</button>
-                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px; background:#fffbeb; border-color:#fde68a; color:#b45309;" data-key="${escapeHtml(itemKey)}" onclick="handleColClick(this, event)">📁 В папку</button>
+                                <button class="btn btn-green" style="padding:10px; border-radius:10px;" onclick="speak('${escapeHtml(w.ar)}', event)">🔊</button>
+                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px; background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${itemKey}')">📁 В папку</button>
                             </div>
                         </div>
                     </div>`;
@@ -1081,7 +991,7 @@
             return;
         }
 
-        // --- РЕНДЕР СПИСКА (Словарь или Избранное) ---
+        // СПИСОК
         currentRenderedWords.forEach((w, idx) => {
             const itemKey = makeFavKey(w.ar, w.ru);
             const active = localFavs.includes(itemKey);
@@ -1098,16 +1008,14 @@
                 actionHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleDictFavClick(${idx}, event)">${active ? '★ Изменить перевод' : '☆ В избранное'}</button>`;
             } else {
                 actionHtml = `
-                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" data-key="${escapeHtml(itemKey)}" onclick="handleColClick(this, event)">📁 В папку</button>
-                    <button class="btn btn-red" style="flex: 0.3;" data-key="${escapeHtml(itemKey)}" onclick="handleDelClick(this, event)">🗑</button>
+                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${itemKey}')">📁 В папку</button>
+                    <button class="btn btn-red" style="flex: 0.3;" onclick="event.stopPropagation(); selectedItems.clear(); selectedItems.add('${itemKey}'); openBulkDelModal();">🗑</button>
                 `;
             }
 
             const isSelected = selectedItems.has(itemKey);
-            const selActive = isSelected ? 'selected' : '';
-
             const el = document.createElement('div');
-            el.className = `item ${isSelModeClass} ${selActive}`;
+            el.className = `item ${isSelModeClass} ${isSelected ? 'selected' : ''}`;
             
             el.onclick = function() { 
                 if (isSelectionMode) toggleItemSelection(itemKey);
@@ -1124,7 +1032,7 @@
                     ${verbInfoHtml}
                     <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5; user-select: text; -webkit-user-select: text;">${escapeHtml(w.ru)}</div>
                     <div class="actions">
-                        <button class="btn ${subscriptionStatus === 'freemium' ? 'btn-speak-freemium' : ''}" data-text="${escapeHtml(w.ar)}" onclick="speakFromButton(this, event)">🔊 Слушать</button>
+                        <button class="btn ${subscriptionStatus === 'freemium' ? 'btn-speak-freemium' : ''}" onclick="speak('${escapeHtml(w.ar)}', event)">🔊 Слушать</button>
                         ${actionHtml}
                     </div>
                 </div>`;
@@ -1151,25 +1059,16 @@
     }
 
     async function toggleAuth() {
-        try {
-            if (user) await auth.signOut();
-            else await auth.signInWithPopup(provider);
-        } catch (e) {
-            console.log(e);
-            showMsg('Ошибка входа. Попробуйте снова.');
-        }
+        try { if (user) await auth.signOut(); else await auth.signInWithPopup(provider); } 
+        catch (e) { showMsg('Ошибка входа.'); }
     }
 
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
-        closeFavModal();
-        closeColModal();
-        closeDelModal();
-        closeDelNoteModal();
-        hidePaymentBlock();
+        closeFavModal(); closeColModal(); closeDelModal(); hidePaymentBlock();
     });
 
-    ['favModal', 'colModal', 'delModal', 'delNoteModal'].forEach(id => {
+    ['favModal', 'colModal', 'delModal'].forEach(id => {
         const modal = document.getElementById(id);
         if (!modal) return;
         modal.addEventListener('click', (e) => {
@@ -1177,17 +1076,14 @@
             if (id === 'favModal') closeFavModal();
             if (id === 'colModal') closeColModal();
             if (id === 'delModal') closeDelModal();
-            if (id === 'delNoteModal') closeDelNoteModal();
         });
     });
 
     window.addEventListener('beforeunload', stopLiveSync);
-
     window.onload = () => { if (typeof dictBase !== 'undefined') renderUI(); };
 </script>
 </body>
 </html>
-
 
 
 
