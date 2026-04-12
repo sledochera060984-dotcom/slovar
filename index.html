@@ -77,6 +77,38 @@
     #syncIndicator {
       transition: opacity .2s ease;
     }
+    #trialIndicator {
+      transition: opacity .2s ease;
+    }
+    .lock-card {
+      border: 1px dashed #cbd5e1;
+      border-radius: 18px;
+      background: #fff;
+      padding: 18px 16px;
+      text-align: center;
+      color: var(--text);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .lock-card .lock-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+    .lock-card .lock-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #0f172a;
+    }
+    .lock-card .lock-text {
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--muted);
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+    }
+    .btn.locked {
+      opacity: 0.92;
+    }
     .auth-row {
       display: flex;
       gap: 10px;
@@ -769,6 +801,7 @@
 
     <div id="status" class="status wait">⏳ Подключение базы...</div>
     <div id="syncIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">☁️ Проверка синхронизации...</div>
+    <div id="trialIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">🎁 Проверка пробного периода...</div>
     <div id="userLine" class="user-line">Не выполнен вход</div>
 
     <div class="auth-row">
@@ -887,6 +920,8 @@
   let folderModalTargetId = null;
   let favorites = [];
   let notes = [];
+  let userAccess = { premiumActive: false, premiumUntilMs: 0 };
+  let unsubAccess = null;
   let unsubFavs = null;
   let unsubNotes = null;
   let favSnapshotPending = false;
@@ -899,6 +934,7 @@
 
   const statusEl = document.getElementById('status');
   const syncIndicatorEl = document.getElementById('syncIndicator');
+  const trialIndicatorEl = document.getElementById('trialIndicator');
   const listEl = document.getElementById('list');
   const chipsEl = document.getElementById('chips');
 
@@ -946,6 +982,98 @@
 
     syncIndicatorEl.className = 'status ok';
     syncIndicatorEl.innerText = '✅ Всё сохранено в облаке';
+  }
+
+  function getUserCreatedAtMs() {
+    if (!user?.metadata?.creationTime) return 0;
+    const ms = new Date(user.metadata.creationTime).getTime();
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  function hasPaidAccess() {
+    if (!user) return false;
+    if (!userAccess?.premiumActive) return false;
+    if (!userAccess?.premiumUntilMs) return true;
+    return Date.now() <= Number(userAccess.premiumUntilMs || 0);
+  }
+
+  function getTrialInfo() {
+    if (!user) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
+    const createdAtMs = getUserCreatedAtMs();
+    if (!createdAtMs) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
+
+    const trialMs = 14 * 24 * 60 * 60 * 1000;
+    const endMs = createdAtMs + trialMs;
+    const remainingMs = endMs - Date.now();
+    const active = remainingMs > 0;
+    const daysLeft = active ? Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))) : 0;
+
+    return { active, expired: !active, daysLeft, endMs };
+  }
+
+  function canUsePremiumFeatures() {
+    if (!user) return false;
+    if (hasPaidAccess()) return true;
+    return getTrialInfo().active;
+  }
+
+  function isPremiumLocked() {
+    return !!user && !canUsePremiumFeatures();
+  }
+
+  function showActivationPrompt() {
+    if (!user) {
+      showMsg('Сначала войдите через Google');
+      return;
+    }
+    if (hasPaidAccess()) return;
+
+    const trial = getTrialInfo();
+    if (trial.active) {
+      showMsg('Пробный период активен');
+      return;
+    }
+
+    showMsg('Напишите мне для активации доступа');
+  }
+
+  function renderLockedFeature(featureName) {
+    return `
+      <div class="lock-card">
+        <div class="lock-icon">🔒</div>
+        <div class="lock-title">${featureName} доступны по подписке</div>
+        <div class="lock-text">Пробный период 14 дней закончился.
+Напишите мне для активации доступа.
+Стоимость: 100 ₽ в месяц.</div>
+        <button class="btn primary" onclick="showActivationPrompt()">Напишите мне для активации</button>
+      </div>
+    `;
+  }
+
+  function updateTrialIndicator() {
+    if (!trialIndicatorEl) return;
+
+    if (!user) {
+      trialIndicatorEl.className = 'status wait';
+      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 14 дней бесплатного доступа';
+      return;
+    }
+
+    if (hasPaidAccess()) {
+      trialIndicatorEl.className = 'status ok';
+      trialIndicatorEl.innerText = '💎 Премиум-доступ активен';
+      return;
+    }
+
+    const trial = getTrialInfo();
+    if (trial.active) {
+      trialIndicatorEl.className = 'status wait';
+      trialIndicatorEl.innerText = `🎁 Бесплатный период активен: осталось ${trial.daysLeft} дн.`;
+      return;
+    }
+
+    trialIndicatorEl.className = 'status err';
+    trialIndicatorEl.innerText = '🔒 Пробный период закончился. Напишите мне для активации доступа';
   }
 
   function escapeHtml(value) {
@@ -1009,6 +1137,10 @@
 
   function speak(text, e) {
     if (e) e.stopPropagation();
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
@@ -1082,6 +1214,10 @@
 
   async function applyBulkFolder() {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
     const existing = document.getElementById('bulkFolderSelect').value.trim();
@@ -1111,6 +1247,10 @@
 
   async function removeSelectedFavoritesFromFolder() {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
     try {
@@ -1134,6 +1274,10 @@
 
   async function deleteSelectedFavorites() {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
     try {
@@ -1202,6 +1346,10 @@
 
   async function applyBulkNoteFolder() {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     const ids = Array.from(selectedNoteIds);
     if (!ids.length) { showMsg('Сначала выберите записи'); return; }
     const existing = document.getElementById('bulkNoteFolderSelect').value.trim();
@@ -1228,6 +1376,10 @@
 
   async function deleteSelectedNotes() {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     const ids = Array.from(selectedNoteIds);
     if (!ids.length) { showMsg('Сначала выберите записи'); return; }
     try {
@@ -1297,6 +1449,10 @@
       showMsg('Сначала войдите через Google');
       return;
     }
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     if (!favModalWord) return;
 
     const w = favModalWord;
@@ -1326,6 +1482,10 @@
   async function toggleFavoriteDirect(idx) {
     if (!user) {
       showMsg('Сначала войдите через Google');
+      return;
+    }
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
       return;
     }
     const w = currentRenderedWords[idx];
@@ -1393,6 +1553,10 @@
 
   async function removeFavorite(id) {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     try {
       await db.collection('users').doc(user.uid).collection('favorites').doc(id).delete();
       showMsg('Удалено из избранного');
@@ -1404,6 +1568,10 @@
 
   async function removeFavoriteFromFolder(id) {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     try {
       await db.collection('users').doc(user.uid).collection('favorites').doc(id).update({
         collection: '',
@@ -1418,6 +1586,10 @@
 
   async function removeNote(id) {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     try {
       await db.collection('users').doc(user.uid).collection('notes').doc(id).delete();
       showMsg('Запись удалена');
@@ -1429,6 +1601,10 @@
 
   async function removeNoteFromFolder(id) {
     if (!user) return;
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
+      return;
+    }
     try {
       await db.collection('users').doc(user.uid).collection('notes').doc(id).update({
         collection: '',
@@ -1444,6 +1620,10 @@
   async function saveNote() {
     if (!user) {
       showMsg('Сначала войдите через Google');
+      return;
+    }
+    if (!canUsePremiumFeatures()) {
+      showActivationPrompt();
       return;
     }
 
@@ -1493,7 +1673,6 @@
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
     document.getElementById({ dict: 'tabDict', fav: 'tabFav', notes: 'tabNotes' }[tab]).classList.add('active');
     document.getElementById('dictSection').style.display = tab === 'dict' ? 'block' : 'none';
-    document.getElementById('notesComposer').style.display = tab === 'notes' ? 'block' : 'none';
     renderApp();
   }
 
@@ -1545,6 +1724,8 @@
     return currentRenderedWords.map((w, idx) => {
       const fav = getFavoriteByWord(w);
       const present = normalizedVerbs[normalize(w.ar)];
+      const locked = isPremiumLocked();
+
       return `
         <div class="item collapsible" onclick="this.classList.toggle('expanded')">
           <div class="item-head">
@@ -1560,9 +1741,9 @@
             <div class="hint">${escapeHtml(w.ru || '')}</div>
             ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
             <div class="actions">
-              <button class="btn" onclick="speak('${escapeJs(w.ar)}', event)">🔊 Слушать</button>
-              <button class="btn ${fav ? 'warn' : ''}" onclick="toggleFavoriteDirect(${idx})">${fav ? '★ Уже в избранном' : '☆ В избранное'}</button>
-              ${fav ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
+              <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? "showActivationPrompt()" : "speak('" + '${escapeJs(w.ar)}' + "', event)"}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
+              <button class="btn ${locked ? 'locked' : (fav ? 'warn' : '')}" onclick="${locked ? "showActivationPrompt()" : "toggleFavoriteDirect(" + idx + ")"}">${locked ? '🔒 Избранное' : (fav ? '★ Уже в избранном' : '☆ В избранное')}</button>
+              ${fav && !locked ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
             </div>
           </div>
         </div>
@@ -1572,6 +1753,7 @@
 
   function renderFavorites() {
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
+    if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
     let items = [...favorites];
     if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
@@ -1631,6 +1813,7 @@
 
   function renderNotes() {
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
+    if (isPremiumLocked()) return renderLockedFeature('Блокнот');
 
     let items = [...notes];
     const noteQuery = (document.getElementById('noteSearchInput')?.value || '').trim().toLowerCase();
@@ -1679,6 +1862,7 @@
     renderCollections();
     renderSelectionPanel();
     renderNoteSelectionPanel();
+    updateTrialIndicator();
 
     document.body.classList.toggle('compact-favs', activeTab === 'fav');
     document.body.classList.toggle('compact-notes', activeTab === 'notes');
@@ -1686,8 +1870,15 @@
     const topbar = document.getElementById('favTopbar');
     const noteTopbar = document.getElementById('noteTopbar');
     const noteSelectBtn = document.getElementById('noteSelectBtn');
+    const notesComposer = document.getElementById('notesComposer');
+    const favTab = document.getElementById('tabFav');
+    const noteTab = document.getElementById('tabNotes');
+    const locked = isPremiumLocked();
 
-    if (activeTab === 'fav' && user) {
+    favTab.textContent = locked ? '⭐ Избранное 🔒' : '⭐ Избранное';
+    noteTab.textContent = locked ? '📝 Блокнот 🔒' : '📝 Блокнот';
+
+    if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
       topbar.innerHTML = `
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
@@ -1698,11 +1889,15 @@
       topbar.innerHTML = '';
     }
 
-    if (activeTab === 'notes' && user) {
+    if (activeTab === 'notes' && user && !locked) {
       noteTopbar.style.display = 'flex';
       noteSelectBtn.textContent = noteSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать';
     } else {
       noteTopbar.style.display = 'none';
+    }
+
+    if (notesComposer) {
+      notesComposer.style.display = activeTab === 'notes' && !locked ? 'block' : 'none';
     }
 
     if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
@@ -1711,15 +1906,33 @@
   }
 
   function stopListeners() {
+    if (typeof unsubAccess === 'function') { unsubAccess(); unsubAccess = null; }
     if (typeof unsubFavs === 'function') { unsubFavs(); unsubFavs = null; }
     if (typeof unsubNotes === 'function') { unsubNotes(); unsubNotes = null; }
     favSnapshotPending = false;
     noteSnapshotPending = false;
+    userAccess = { premiumActive: false, premiumUntilMs: 0 };
     updateSyncIndicator();
+    updateTrialIndicator();
   }
 
   function startUserListeners() {
     if (!user) return;
+
+    unsubAccess = db.collection('users').doc(user.uid)
+      .onSnapshot((doc) => {
+        const data = doc.exists ? (doc.data() || {}) : {};
+        userAccess = {
+          premiumActive: !!(data.premiumActive || data.premium || data.isPremium),
+          premiumUntilMs: Number(data.premiumUntilMs || data.premiumUntil || data.accessUntilMs || 0)
+        };
+        updateTrialIndicator();
+        renderApp();
+      }, (e) => {
+        console.error(e);
+        userAccess = { premiumActive: false, premiumUntilMs: 0 };
+        updateTrialIndicator();
+      });
 
     unsubFavs = db.collection('users').doc(user.uid).collection('favorites')
       .onSnapshot((snap) => {
@@ -1803,6 +2016,7 @@
       userLine.innerText = 'Не выполнен вход';
     }
     updateSyncIndicator();
+    updateTrialIndicator();
     renderApp();
   });
 
@@ -1848,6 +2062,7 @@
   window.addEventListener('offline', updateSyncIndicator);
   window.addEventListener('load', () => {
     updateSyncIndicator();
+    updateTrialIndicator();
     renderApp();
   });
 </script>
