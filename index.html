@@ -886,6 +886,7 @@
   let unsubFavs = null;
   let unsubNotes = null;
   let activeTtsAudio = null;
+  let activeUtterance = null;
   let ttsVoices = [];
   let ttsPrimed = false;
   let favSelectionMode = false;
@@ -987,16 +988,7 @@
     try {
       refreshTtsVoices();
       if ('speechSynthesis' in window) {
-        const synth = window.speechSynthesis;
-        const unlock = new SpeechSynthesisUtterance(' ');
-        unlock.volume = 0;
-        unlock.rate = 1;
-        unlock.pitch = 1;
-        synth.cancel();
-        synth.speak(unlock);
-        setTimeout(() => {
-          try { synth.cancel(); } catch (_) {}
-        }, 60);
+        window.speechSynthesis.resume();
       }
     } catch (err) {
       console.error('primeTts error:', err);
@@ -1007,40 +999,19 @@
     const voices = ttsVoices.length ? ttsVoices : (window.speechSynthesis?.getVoices?.() || []);
     const lower = String(langPrefix || '').toLowerCase();
 
-    return voices.find(v => String(v.lang || '').toLowerCase() === lower + '-sa')
-      || voices.find(v => String(v.lang || '').toLowerCase().startsWith(lower))
-      || voices.find(v => /arab/i.test(String(v.name || '')) && lower === 'ar')
-      || voices.find(v => /russian|рус/i.test(String(v.name || '')) && lower === 'ru')
-      || null;
-  }
-
-  function stopActiveAudio() {
-    try {
-      if (activeTtsAudio) {
-        activeTtsAudio.pause();
-        activeTtsAudio.currentTime = 0;
-        activeTtsAudio = null;
-      }
-    } catch (_) {}
-  }
-
-  function playRemoteTts(value, lang) {
-    stopActiveAudio();
-    try {
-      const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob'
-        + '&tl=' + encodeURIComponent(lang)
-        + '&q=' + encodeURIComponent(value);
-      activeTtsAudio = new Audio(url);
-      activeTtsAudio.preload = 'auto';
-      activeTtsAudio.crossOrigin = 'anonymous';
-      activeTtsAudio.play().catch((err) => {
-        console.error('Remote TTS play error:', err);
-        showMsg('Озвучка не запустилась');
-      });
-    } catch (err) {
-      console.error('Remote TTS setup error:', err);
-      showMsg('Озвучка не поддерживается');
+    if (lower === 'ar') {
+      return voices.find(v => String(v.lang || '').toLowerCase().startsWith('ar'))
+        || voices.find(v => /arab|الع/i.test(String(v.name || '')))
+        || null;
     }
+
+    if (lower === 'ru') {
+      return voices.find(v => String(v.lang || '').toLowerCase().startsWith('ru'))
+        || voices.find(v => /russian|рус/i.test(String(v.name || '')))
+        || null;
+    }
+
+    return null;
   }
 
   function speak(text, e) {
@@ -1051,26 +1022,24 @@
 
     primeTts();
 
-    const hasArabic = /[\u0600-\u06FF]/.test(value);
-    const lang = hasArabic ? 'ar' : 'ru';
-    const synthLang = hasArabic ? 'ar-SA' : 'ru-RU';
-
-    stopActiveAudio();
-
     if (!('speechSynthesis' in window)) {
-      playRemoteTts(value, lang);
+      showMsg('В браузере нет встроенной озвучки');
       return;
     }
+
+    const hasArabic = /[\u0600-\u06FF]/.test(value);
+    const lang = hasArabic ? 'ar' : 'ru';
+    const synthLang = hasArabic ? 'ar' : 'ru-RU';
 
     try {
       const synth = window.speechSynthesis;
       refreshTtsVoices();
       synth.cancel();
-      synth.resume();
 
       const utterance = new SpeechSynthesisUtterance(value);
+      activeUtterance = utterance;
       utterance.lang = synthLang;
-      utterance.rate = hasArabic ? 0.9 : 0.95;
+      utterance.rate = hasArabic ? 0.85 : 0.95;
       utterance.pitch = 1;
       utterance.volume = 1;
 
@@ -1078,805 +1047,52 @@
       if (preferredVoice) utterance.voice = preferredVoice;
 
       let started = false;
-      let attempts = 0;
+      let retried = false;
 
-      const trySpeak = () => {
-        attempts += 1;
+      const startSpeak = () => {
         try {
-          synth.cancel();
           synth.resume();
           synth.speak(utterance);
         } catch (err) {
-          console.error('speak attempt error:', err);
-          if (attempts >= 2) playRemoteTts(value, lang);
+          console.error('speak start error:', err);
+          showMsg('Озвучка не запустилась');
         }
       };
 
-      const failTimer = setTimeout(() => {
-        if (!started) {
-          if (attempts < 2) {
-            trySpeak();
-            setTimeout(() => {
-              if (!started) playRemoteTts(value, lang);
-            }, 900);
-          } else {
-            playRemoteTts(value, lang);
+      const retryIfNeeded = () => {
+        if (started) return;
+        if (!retried) {
+          retried = true;
+          try {
+            synth.cancel();
+            setTimeout(startSpeak, 80);
+          } catch (err) {
+            console.error('retry speak error:', err);
           }
+          setTimeout(() => {
+            if (!started) showMsg('Озвучка не запустилась');
+          }, 900);
+        } else {
+          showMsg('Озвучка не запустилась');
         }
-      }, 900);
+      };
 
       utterance.onstart = () => {
         started = true;
-        clearTimeout(failTimer);
-      };
-
-      utterance.onend = () => {
-        clearTimeout(failTimer);
       };
 
       utterance.onerror = (err) => {
-        clearTimeout(failTimer);
         console.error('SpeechSynthesis error:', err);
-        playRemoteTts(value, lang);
+        retryIfNeeded();
       };
 
-      trySpeak();
+      utterance.onend = () => {};
+
+      setTimeout(startSpeak, 40);
+      setTimeout(retryIfNeeded, 700);
     } catch (err) {
       console.error('Speak error:', err);
-      playRemoteTts(value, lang);
-    }
-  }
-
-  function getFavoriteByWord(w) {
-    const id = makeFavId(w.ar, w.ru);
-    return favorites.find(f => f.id === id) || null;
-  }
-
-  function getCollectionsForFavorites() {
-    const set = new Set(['Все']);
-    favorites.forEach(f => {
-      if (f.collection && String(f.collection).trim()) set.add(String(f.collection).trim());
-    });
-    return Array.from(set);
-  }
-
-  function getCollectionsForNotes() {
-    const set = new Set(['Все']);
-    notes.forEach(n => {
-      if (n.collection && String(n.collection).trim()) set.add(String(n.collection).trim());
-    });
-    return Array.from(set);
-  }
-
-
-  function toggleFavoriteSelectionMode(forceValue = null) {
-    favSelectionMode = forceValue === null ? !favSelectionMode : !!forceValue;
-    if (!favSelectionMode) selectedFavoriteIds.clear();
-    renderBulkFolderOptions();
-    renderApp();
-  }
-
-  function toggleFavoriteSelected(id) {
-    if (selectedFavoriteIds.has(id)) selectedFavoriteIds.delete(id);
-    else selectedFavoriteIds.add(id);
-    renderSelectionPanel();
-    renderApp();
-  }
-
-  function renderSelectionPanel() {
-    const panel = document.getElementById('selectionPanel');
-    const selectEl = document.getElementById('bulkFolderSelect');
-    const inputEl = document.getElementById('bulkFolderInput');
-    const addBtn = document.getElementById('bulkAddFolderBtn');
-    const removeBtn = document.getElementById('bulkRemoveFolderBtn');
-
-    if (activeTab === 'fav' && favSelectionMode) {
-      panel.classList.add('active');
-      document.getElementById('selectedFavCount').innerText = String(selectedFavoriteIds.size);
-
-      const inFolderView = activeCollection !== 'Все';
-      selectEl.style.display = inFolderView ? 'none' : '';
-      inputEl.style.display = inFolderView ? 'none' : '';
-      addBtn.style.display = inFolderView ? 'none' : '';
-      removeBtn.style.display = inFolderView ? '' : 'none';
-    } else {
-      panel.classList.remove('active');
-    }
-  }
-
-  function renderBulkFolderOptions() {
-    const sel = document.getElementById('bulkFolderSelect');
-    const cols = getCollectionsForFavorites().filter(x => x !== 'Все');
-    sel.innerHTML = '<option value="">Выберите существующую папку</option>' + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-  }
-
-  async function applyBulkFolder() {
-    if (!user) return;
-    const ids = Array.from(selectedFavoriteIds);
-    if (!ids.length) { showMsg('Сначала выберите слова'); return; }
-    const existing = document.getElementById('bulkFolderSelect').value.trim();
-    const typed = document.getElementById('bulkFolderInput').value.trim();
-    const folder = typed || existing;
-    if (!folder) { showMsg('Выберите или введите папку'); return; }
-
-    try {
-      const batch = db.batch();
-      ids.forEach(id => {
-        const ref = db.collection('users').doc(user.uid).collection('favorites').doc(id);
-        batch.update(ref, {
-          collection: folder,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
-      await batch.commit();
-      document.getElementById('bulkFolderInput').value = '';
-      document.getElementById('bulkFolderSelect').value = '';
-      showMsg('Папка сохранена');
-      toggleFavoriteSelectionMode(false);
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка массового сохранения');
-    }
-  }
-
-  async function removeSelectedFavoritesFromFolder() {
-    if (!user) return;
-    const ids = Array.from(selectedFavoriteIds);
-    if (!ids.length) { showMsg('Сначала выберите слова'); return; }
-    try {
-      const batch = db.batch();
-      ids.forEach(id => {
-        const ref = db.collection('users').doc(user.uid).collection('favorites').doc(id);
-        batch.update(ref, {
-          collection: '',
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
-      await batch.commit();
-      showMsg('Убрано из папки');
-      toggleFavoriteSelectionMode(false);
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка массового удаления из папки');
-    }
-  }
-
-
-  async function deleteSelectedFavorites() {
-    if (!user) return;
-    const ids = Array.from(selectedFavoriteIds);
-    if (!ids.length) { showMsg('Сначала выберите слова'); return; }
-    try {
-      const batch = db.batch();
-      ids.forEach(id => {
-        const ref = db.collection('users').doc(user.uid).collection('favorites').doc(id);
-        batch.delete(ref);
-      });
-      await batch.commit();
-      showMsg('Удалено');
-      toggleFavoriteSelectionMode(false);
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка массового удаления');
-    }
-  }
-
-  function toggleFavoriteViewMode() {
-    favViewMode = favViewMode === 'list' ? 'cards' : 'list';
-    localStorage.setItem('arabrus_fav_view_mode', favViewMode);
-    renderApp();
-  }
-
-
-  function shortPreview(text, limit = 90) {
-    const s = String(text || '').replace(/\s+/g, ' ').trim();
-    return s.length > limit ? s.slice(0, limit).trim() + '…' : s;
-  }
-
-  function populateSingleFolderOptions(mode, currentValue = '') {
-    const sel = document.getElementById('singleFolderSelect');
-    const cols = (mode === 'fav' ? getCollectionsForFavorites() : getCollectionsForNotes()).filter(x => x !== 'Все');
-    sel.innerHTML = '<option value="">Выберите существующую папку</option>' + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-    sel.value = currentValue || '';
-  }
-
-  function toggleNoteSelectionMode(forceValue = null) {
-    noteSelectionMode = forceValue === null ? !noteSelectionMode : !!forceValue;
-    if (!noteSelectionMode) selectedNoteIds.clear();
-    renderBulkNoteFolderOptions();
-    renderApp();
-  }
-
-  function toggleNoteSelected(id) {
-    if (selectedNoteIds.has(id)) selectedNoteIds.delete(id);
-    else selectedNoteIds.add(id);
-    renderNoteSelectionPanel();
-    renderApp();
-  }
-
-  function renderNoteSelectionPanel() {
-    const panel = document.getElementById('noteSelectionPanel');
-    if (activeTab === 'notes' && noteSelectionMode) {
-      panel.classList.add('active');
-      document.getElementById('selectedNoteCount').innerText = String(selectedNoteIds.size);
-    } else {
-      panel.classList.remove('active');
-    }
-  }
-
-  function renderBulkNoteFolderOptions() {
-    const sel = document.getElementById('bulkNoteFolderSelect');
-    const cols = getCollectionsForNotes().filter(x => x !== 'Все');
-    sel.innerHTML = '<option value="">Выберите существующую папку</option>' + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
-  }
-
-  async function applyBulkNoteFolder() {
-    if (!user) return;
-    const ids = Array.from(selectedNoteIds);
-    if (!ids.length) { showMsg('Сначала выберите записи'); return; }
-    const existing = document.getElementById('bulkNoteFolderSelect').value.trim();
-    const typed = document.getElementById('bulkNoteFolderInput').value.trim();
-    const folder = typed || existing;
-    if (!folder) { showMsg('Выберите или введите папку'); return; }
-
-    try {
-      const batch = db.batch();
-      ids.forEach(id => {
-        const ref = db.collection('users').doc(user.uid).collection('notes').doc(id);
-        batch.update(ref, { collection: folder, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-      });
-      await batch.commit();
-      document.getElementById('bulkNoteFolderInput').value = '';
-      document.getElementById('bulkNoteFolderSelect').value = '';
-      showMsg('Папка сохранена');
-      toggleNoteSelectionMode(false);
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка массового сохранения');
-    }
-  }
-
-  async function deleteSelectedNotes() {
-    if (!user) return;
-    const ids = Array.from(selectedNoteIds);
-    if (!ids.length) { showMsg('Сначала выберите записи'); return; }
-    try {
-      const batch = db.batch();
-      ids.forEach(id => {
-        const ref = db.collection('users').doc(user.uid).collection('notes').doc(id);
-        batch.delete(ref);
-      });
-      await batch.commit();
-      showMsg('Удалено');
-      toggleNoteSelectionMode(false);
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка массового удаления');
-    }
-  }
-
-  function toggleNoteViewMode() {
-    noteViewMode = noteViewMode === 'list' ? 'cards' : 'list';
-    localStorage.setItem('arabrus_note_view_mode', noteViewMode);
-    renderApp();
-  }
-
-
-  function renderCollections() {
-    let cols = [];
-    if (activeTab === 'fav') cols = getCollectionsForFavorites();
-    else if (activeTab === 'notes') cols = getCollectionsForNotes();
-
-    if (!cols.length || activeTab === 'dict') {
-      chipsEl.style.display = 'none';
-      chipsEl.innerHTML = '';
-      return;
-    }
-
-    if (!cols.includes(activeCollection)) activeCollection = 'Все';
-
-    chipsEl.style.display = 'flex';
-    chipsEl.innerHTML = cols.map(c =>
-      `<button class="chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeJs(c)}')">${escapeHtml(c)}</button>`
-    ).join('');
-  }
-
-  function selectCollection(name) {
-    activeCollection = name;
-    renderApp();
-  }
-
-  function openFavModal(idx) {
-    const w = currentRenderedWords[idx];
-    favModalWord = w;
-    const existing = getFavoriteByWord(w);
-    document.getElementById('favModalAr').innerText = w.ar;
-    document.getElementById('favModalRu').value = existing?.customRu || w.short_ru || String(w.ru || '').split(';')[0];
-    document.getElementById('favModalTitle').innerText = existing ? 'Изменить перевод' : 'В избранное';
-    document.getElementById('favModalWrap').style.display = 'flex';
-    setTimeout(() => document.getElementById('favModalRu').focus(), 50);
-  }
-
-  function closeFavModal() {
-    favModalWord = null;
-    document.getElementById('favModalWrap').style.display = 'none';
-  }
-
-  async function confirmFavModal() {
-    if (!user) {
-      showMsg('Сначала войдите через Google');
-      return;
-    }
-    if (!favModalWord) return;
-
-    const w = favModalWord;
-    const id = makeFavId(w.ar, w.ru);
-    const customRu = document.getElementById('favModalRu').value.trim() || w.short_ru || String(w.ru || '').split(';')[0];
-    const existing = getFavoriteByWord(w);
-
-    const payload = {
-      ar: w.ar,
-      ruSource: w.ru,
-      customRu,
-      collection: existing?.collection || '',
-      ts: existing?.ts || Date.now(),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    try {
-      await db.collection('users').doc(user.uid).collection('favorites').doc(id).set(payload, { merge: true });
-      closeFavModal();
-      showMsg(existing ? 'Перевод обновлён' : 'Добавлено в избранное');
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка сохранения');
-    }
-  }
-
-  async function toggleFavoriteDirect(idx) {
-    if (!user) {
-      showMsg('Сначала войдите через Google');
-      return;
-    }
-    const w = currentRenderedWords[idx];
-    const existing = getFavoriteByWord(w);
-    if (existing) {
-      try {
-        await db.collection('users').doc(user.uid).collection('favorites').doc(existing.id).delete();
-        showMsg('Удалено из избранного');
-      } catch (e) {
-        console.error(e);
-        showMsg('Ошибка удаления');
-      }
-    } else {
-      openFavModal(idx);
-    }
-  }
-
-  function openFolderModal(mode, id, label) {
-    folderModalMode = mode;
-    folderModalTargetId = id;
-    document.getElementById('folderModalDesc').innerText = label;
-    let currentValue = '';
-    if (mode === 'fav') currentValue = favorites.find(x => x.id === id)?.collection || '';
-    if (mode === 'note') currentValue = notes.find(x => x.id === id)?.collection || '';
-    populateSingleFolderOptions(mode, currentValue);
-    document.getElementById('folderInput').value = currentValue || '';
-    document.getElementById('folderModalWrap').style.display = 'flex';
-    setTimeout(() => document.getElementById('folderInput').focus(), 50);
-  }
-
-  function closeFolderModal() {
-    folderModalMode = null;
-    folderModalTargetId = null;
-    document.getElementById('folderModalWrap').style.display = 'none';
-  }
-
-  async function confirmFolderModal() {
-    const selected = document.getElementById('singleFolderSelect').value.trim();
-    const typed = document.getElementById('folderInput').value.trim();
-    const value = typed || selected;
-    if (!user || !folderModalTargetId || !folderModalMode) {
-      closeFolderModal();
-      return;
-    }
-
-    try {
-      if (folderModalMode === 'fav') {
-        await db.collection('users').doc(user.uid).collection('favorites').doc(folderModalTargetId).update({
-          collection: value,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else if (folderModalMode === 'note') {
-        await db.collection('users').doc(user.uid).collection('notes').doc(folderModalTargetId).update({
-          collection: value,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-      closeFolderModal();
-      showMsg('Папка сохранена');
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка сохранения папки');
-    }
-  }
-
-  async function removeFavorite(id) {
-    if (!user) return;
-    try {
-      await db.collection('users').doc(user.uid).collection('favorites').doc(id).delete();
-      showMsg('Удалено из избранного');
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка удаления');
-    }
-  }
-
-  async function removeFavoriteFromFolder(id) {
-    if (!user) return;
-    try {
-      await db.collection('users').doc(user.uid).collection('favorites').doc(id).update({
-        collection: '',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      showMsg('Убрано из папки');
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка изменения папки');
-    }
-  }
-
-  async function removeNote(id) {
-    if (!user) return;
-    try {
-      await db.collection('users').doc(user.uid).collection('notes').doc(id).delete();
-      showMsg('Запись удалена');
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка удаления');
-    }
-  }
-
-  async function removeNoteFromFolder(id) {
-    if (!user) return;
-    try {
-      await db.collection('users').doc(user.uid).collection('notes').doc(id).update({
-        collection: '',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      showMsg('Убрано из папки');
-    } catch (e) {
-      console.error(e);
-      showMsg('Ошибка изменения папки');
-    }
-  }
-
-  async function saveNote() {
-    if (!user) {
-      showMsg('Сначала войдите через Google');
-      return;
-    }
-
-    const ar = document.getElementById('manualAr').value.trim();
-    const ru = document.getElementById('manualRu').value.trim();
-    if (!ar || !ru) {
-      showMsg('Заполните оба поля');
-      return;
-    }
-
-    const localTempId = 'temp_' + Date.now();
-    notes.unshift({
-      id: localTempId,
-      ar,
-      ru,
-      collection: '',
-      ts: Date.now(),
-      isLocalTemp: true
-    });
-    renderApp();
-
-    document.getElementById('manualAr').value = '';
-    document.getElementById('manualRu').value = '';
-    showMsg('Фраза добавлена');
-
-    try {
-      await db.collection('users').doc(user.uid).collection('notes').add({
-        ar,
-        ru,
-        collection: '',
-        ts: Date.now(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      notes = notes.filter(n => n.id !== localTempId);
-      renderApp();
-    } catch (e) {
-      console.error(e);
-      notes = notes.filter(n => n.id !== localTempId);
-      renderApp();
-      showMsg('Ошибка сохранения');
-    }
-  }
-
-  function switchTab(tab) {
-    activeTab = tab;
-    activeCollection = 'Все';
-    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-    document.getElementById({ dict: 'tabDict', fav: 'tabFav', notes: 'tabNotes' }[tab]).classList.add('active');
-    document.getElementById('dictSection').style.display = tab === 'dict' ? 'block' : 'none';
-    document.getElementById('notesComposer').style.display = tab === 'notes' ? 'block' : 'none';
-    renderApp();
-  }
-
-  function renderDictionary() {
-    if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return '<div class="empty">База ещё не загружена</div>';
-
-    const q = document.getElementById('queryInput').value.toLowerCase().trim();
-    if (!q) return '<div class="empty">Начните вводить слово для поиска</div>';
-
-    const nQ = normalize(q);
-    const stems = getArabicStems(nQ);
-    const mappedPastTense = reverseVerbsMap[nQ];
-
-    const filtered = dictBase.filter(w => {
-      const nWordAr = normalize(w.ar);
-      const nRoot = normalize(w.root || '');
-      const nWordRu = String(w.ru || '').toLowerCase();
-
-      if (nWordRu.includes(q)) return true;
-      if (mappedPastTense && nWordAr === mappedPastTense) return true;
-      for (const stem of stems) {
-        if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
-      }
-      return false;
-    });
-
-    filtered.sort((a, b) => {
-      const normAAr = normalize(a.ar);
-      const normBAr = normalize(b.ar);
-      const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
-      const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
-      if (mappedPastTense) {
-        if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
-        if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
-      }
-      if (normAAr === nQ && normBAr !== nQ) return -1;
-      if (normBAr === nQ && normAAr !== nQ) return 1;
-      const startsRuA = ruA.startsWith(q);
-      const startsRuB = ruB.startsWith(q);
-      if (startsRuA && !startsRuB) return -1;
-      if (startsRuB && !startsRuA) return 1;
-      return String(a.ru || '').length - String(b.ru || '').length;
-    });
-
-    currentRenderedWords = filtered.slice(0, 50);
-
-    if (!currentRenderedWords.length) return '<div class="empty">Ничего не найдено</div>';
-
-    return currentRenderedWords.map((w, idx) => {
-      const fav = getFavoriteByWord(w);
-      const present = normalizedVerbs[normalize(w.ar)];
-      return `
-        <div class="item collapsible" onclick="this.classList.toggle('expanded')">
-          <div class="item-head">
-            <div class="item-left">
-              <div class="ru">${escapeHtml(w.short_ru || String(w.ru || '').split(';')[0] || '')}</div>
-              <div class="ar">${escapeHtml(w.ar)}</div>
-              ${present ? `<div class="hint">Настоящее время: <b>${escapeHtml(present)}</b></div>` : ''}
-              ${fav ? `<div class="hint">⭐ Уже в избранном</div>` : ''}
-            </div>
-          </div>
-
-          <div class="item-details" onclick="event.stopPropagation()">
-            <div class="hint">${escapeHtml(w.ru || '')}</div>
-            ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
-            <div class="actions">
-              <button class="btn" onclick="speak('${escapeJs(w.ar)}', event)">🔊 Слушать</button>
-              <button class="btn ${fav ? 'warn' : ''}" onclick="toggleFavoriteDirect(${idx})">${fav ? '★ Уже в избранном' : '☆ В избранное'}</button>
-              ${fav ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function renderFavorites() {
-    if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
-
-    let items = [...favorites];
-    if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
-    items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
-
-    if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
-
-    if (favViewMode === 'cards') {
-      return `<div class="cards-grid">` + items.map(f => `
-        <div class="card-item" onclick="${favSelectionMode ? `toggleFavoriteSelected('${escapeJs(f.id)}')` : `this.classList.toggle('flipped')`}">
-          ${favSelectionMode ? `<input class="card-checkbox" type="checkbox" ${selectedFavoriteIds.has(f.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleFavoriteSelected('${escapeJs(f.id)}')">` : ''}
-          <div class="card-star">★</div>
-          <div class="card-inner">
-            <div class="card-face">
-              <div class="card-front-text">${escapeHtml(f.customRu || '')}</div>
-              <div class="card-hint">коснись, чтобы перевернуть</div>
-            </div>
-            <div class="card-face card-back">
-              <div class="ar">${escapeHtml(f.ar || '')}</div>
-              <div class="actions" style="width:100%; margin-top:14px;">
-                <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                <button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>
-                <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `).join('') + `</div>`;
-    }
-
-    return items.map(f => `
-      <div class="item collapsible" onclick="${favSelectionMode ? `toggleFavoriteSelected('${escapeJs(f.id)}')` : `this.classList.toggle('expanded')`}">
-        <div class="item-head">
-          <div class="select-line" style="width:100%;">
-            ${favSelectionMode ? `<input class="select-box" type="checkbox" ${selectedFavoriteIds.has(f.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleFavoriteSelected('${escapeJs(f.id)}')">` : ''}
-            <div class="item-left">
-              <div class="ru">${escapeHtml(f.customRu || '')}</div>
-              <div class="ar">${escapeHtml(f.ar || '')}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="item-details" onclick="event.stopPropagation()">
-          <div class="hint">${escapeHtml(f.ruSource || '')}</div>
-          ${f.collection ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
-
-          <div class="actions">
-            <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
-            ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
-            <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function renderNotes() {
-    if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
-
-    let items = [...notes];
-    const noteQuery = (document.getElementById('noteSearchInput')?.value || '').trim().toLowerCase();
-
-    if (activeCollection !== 'Все') items = items.filter(n => String(n.collection || '') === activeCollection);
-    if (noteQuery) {
-      items = items.filter(n =>
-        String(n.ru || '').toLowerCase().includes(noteQuery) ||
-        String(n.ar || '').toLowerCase().includes(noteQuery) ||
-        String(n.collection || '').toLowerCase().includes(noteQuery)
-      );
-    }
-
-    items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
-
-    if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
-
-    return items.map(n => `
-      <div class="item note-item collapsible" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('expanded')`}">
-        <div class="item-head">
-          <div class="select-line" style="width:100%;">
-            ${noteSelectionMode ? `<input class="select-box" type="checkbox" ${selectedNoteIds.has(n.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleNoteSelected('${escapeJs(n.id)}')">` : ''}
-            <div class="item-left">
-              <div class="ru note-preview-ru">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
-              <div class="ar note-preview-ar">${escapeHtml(shortPreview(n.ar || '', 56))}</div>
-              ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
-            </div>
-          </div>
-        </div>
-
-        <div class="item-details">
-          <div class="ru">${escapeHtml(n.ru || '')}</div>
-          <div class="ar">${escapeHtml(n.ar || '')}</div>
-          <div class="actions">
-            <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
-            ${n.collection ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
-            <button class="btn danger" onclick="event.stopPropagation(); removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  function renderApp() {
-    renderCollections();
-    renderSelectionPanel();
-    renderNoteSelectionPanel();
-
-    document.body.classList.toggle('compact-favs', activeTab === 'fav');
-    document.body.classList.toggle('compact-notes', activeTab === 'notes');
-
-    const topbar = document.getElementById('favTopbar');
-    const noteTopbar = document.getElementById('noteTopbar');
-    const noteSelectBtn = document.getElementById('noteSelectBtn');
-
-    if (activeTab === 'fav' && user) {
-      topbar.style.display = 'flex';
-      topbar.innerHTML = `
-        <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
-        <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
-      `;
-    } else {
-      topbar.style.display = 'none';
-      topbar.innerHTML = '';
-    }
-
-    if (activeTab === 'notes' && user) {
-      noteTopbar.style.display = 'flex';
-      noteSelectBtn.textContent = noteSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать';
-    } else {
-      noteTopbar.style.display = 'none';
-    }
-
-    if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
-    else if (activeTab === 'fav') listEl.innerHTML = renderFavorites();
-    else listEl.innerHTML = renderNotes();
-  }
-
-  function stopListeners() {
-    if (typeof unsubFavs === 'function') { unsubFavs(); unsubFavs = null; }
-    if (typeof unsubNotes === 'function') { unsubNotes(); unsubNotes = null; }
-  }
-
-  function startUserListeners() {
-    if (!user) return;
-
-    unsubFavs = db.collection('users').doc(user.uid).collection('favorites')
-      .onSnapshot((snap) => {
-        favorites = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
-        renderApp();
-      }, (e) => {
-        console.error(e);
-        showMsg('Ошибка синхронизации избранного');
-      });
-
-    unsubNotes = db.collection('users').doc(user.uid).collection('notes')
-      .onSnapshot((snap) => {
-        const cloud = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
-        const temp = notes.filter(n => n.isLocalTemp);
-        const merged = [...temp, ...cloud];
-        const map = new Map();
-        merged.forEach(n => map.set(n.id, n));
-        notes = Array.from(map.values());
-        renderApp();
-      }, (e) => {
-        console.error(e);
-        showMsg('Ошибка синхронизации блокнота');
-      });
-  }
-
-  async function toggleAuth() {
-    try {
-      if (user) {
-        await auth.signOut();
-        return;
-      }
-      try {
-        await auth.signInWithPopup(provider);
-      } catch (popupError) {
-        console.error('Popup auth error:', popupError);
-        const codes = [
-          'auth/popup-blocked',
-          'auth/popup-closed-by-user',
-          'auth/cancelled-popup-request',
-          'auth/operation-not-supported-in-this-environment'
-        ];
-        if (codes.includes(popupError.code)) {
-          await auth.signInWithRedirect(provider);
-          return;
-        }
-        throw popupError;
-      }
-    } catch (e) {
-      console.error('Auth error:', e);
-      showMsg('Ошибка входа через Google');
+      showMsg('Озвучка не запустилась');
     }
   }
 
