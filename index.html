@@ -510,6 +510,7 @@
 
     <div id="chips" class="chips" style="display:none;"></div>
     <div id="favTopbar" class="fav-topbar" style="display:none;"></div>
+    <div id="noteTopbar" class="fav-topbar" style="display:none;"></div>
     <div id="selectionPanel" class="selection-panel">
       <div style="font-weight:800;">Выбрано: <span id="selectedFavCount">0</span></div>
       <select id="bulkFolderSelect" class="folder-select"></select>
@@ -518,6 +519,16 @@
         <button class="btn" onclick="applyBulkFolder()">📁 В папку</button>
         <button class="btn danger" onclick="deleteSelectedFavorites()">🗑 Удалить</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode(false)">✖ Завершить</button>
+      </div>
+    </div>
+    <div id="noteSelectionPanel" class="selection-panel">
+      <div style="font-weight:800;">Выбрано: <span id="selectedNoteCount">0</span></div>
+      <select id="bulkNoteFolderSelect" class="folder-select"></select>
+      <input id="bulkNoteFolderInput" class="field" type="text" placeholder="Или введите новую папку">
+      <div class="selection-actions">
+        <button class="btn" onclick="applyBulkNoteFolder()">📁 В папку</button>
+        <button class="btn danger" onclick="deleteSelectedNotes()">🗑 Удалить</button>
+        <button class="btn" onclick="toggleNoteSelectionMode(false)">✖ Завершить</button>
       </div>
     </div>
     <div id="list" class="list"></div>
@@ -539,6 +550,7 @@
     <div class="modal">
       <h3>Папка</h3>
       <div id="folderModalDesc" class="section-note" style="text-align:center; margin-bottom:12px;"></div>
+      <select id="singleFolderSelect" class="folder-select"></select>
       <input id="folderInput" class="field" type="text" placeholder="Например: Повторить">
       <div class="modal-actions">
         <button class="btn primary" onclick="confirmFolderModal()">💾 Сохранить</button>
@@ -591,6 +603,9 @@
   let favSelectionMode = false;
   let selectedFavoriteIds = new Set();
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
+  let noteSelectionMode = false;
+  let selectedNoteIds = new Set();
+  let noteViewMode = localStorage.getItem('arabrus_note_view_mode') || 'list';
 
   const statusEl = document.getElementById('status');
   const listEl = document.getElementById('list');
@@ -784,6 +799,103 @@
     renderApp();
   }
 
+
+  function shortPreview(text, limit = 80) {
+    const s = String(text || '').replace(/\s+/g, ' ').trim();
+    return s.length > limit ? s.slice(0, limit).trim() + '…' : s;
+  }
+
+  function toggleNoteSelectionMode(forceValue = null) {
+    noteSelectionMode = forceValue === null ? !noteSelectionMode : !!forceValue;
+    if (!noteSelectionMode) selectedNoteIds.clear();
+    renderBulkNoteFolderOptions();
+    renderApp();
+  }
+
+  function toggleNoteSelected(id) {
+    if (selectedNoteIds.has(id)) selectedNoteIds.delete(id);
+    else selectedNoteIds.add(id);
+    renderNoteSelectionPanel();
+    renderApp();
+  }
+
+  function renderNoteSelectionPanel() {
+    const panel = document.getElementById('noteSelectionPanel');
+    if (activeTab === 'notes' && noteSelectionMode) {
+      panel.classList.add('active');
+      document.getElementById('selectedNoteCount').innerText = String(selectedNoteIds.size);
+    } else {
+      panel.classList.remove('active');
+    }
+  }
+
+  function renderBulkNoteFolderOptions() {
+    const sel = document.getElementById('bulkNoteFolderSelect');
+    const cols = getCollectionsForNotes().filter(x => x !== 'Все');
+    sel.innerHTML = '<option value="">Выберите существующую папку</option>' + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  }
+
+  async function applyBulkNoteFolder() {
+    if (!user) return;
+    const ids = Array.from(selectedNoteIds);
+    if (!ids.length) { showMsg('Сначала выберите записи'); return; }
+    const existing = document.getElementById('bulkNoteFolderSelect').value.trim();
+    const typed = document.getElementById('bulkNoteFolderInput').value.trim();
+    const folder = typed || existing;
+    if (!folder) { showMsg('Выберите или введите папку'); return; }
+
+    try {
+      const batch = db.batch();
+      ids.forEach(id => {
+        const ref = db.collection('users').doc(user.uid).collection('notes').doc(id);
+        batch.update(ref, {
+          collection: folder,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      document.getElementById('bulkNoteFolderInput').value = '';
+      document.getElementById('bulkNoteFolderSelect').value = '';
+      showMsg('Папка сохранена');
+      toggleNoteSelectionMode(false);
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка массового сохранения');
+    }
+  }
+
+  async function deleteSelectedNotes() {
+    if (!user) return;
+    const ids = Array.from(selectedNoteIds);
+    if (!ids.length) { showMsg('Сначала выберите записи'); return; }
+    try {
+      const batch = db.batch();
+      ids.forEach(id => {
+        const ref = db.collection('users').doc(user.uid).collection('notes').doc(id);
+        batch.delete(ref);
+      });
+      await batch.commit();
+      showMsg('Удалено');
+      toggleNoteSelectionMode(false);
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка массового удаления');
+    }
+  }
+
+  function toggleNoteViewMode() {
+    noteViewMode = noteViewMode === 'list' ? 'cards' : 'list';
+    localStorage.setItem('arabrus_note_view_mode', noteViewMode);
+    renderApp();
+  }
+
+  function populateSingleFolderOptions(mode, currentValue = '') {
+    const sel = document.getElementById('singleFolderSelect');
+    const cols = (mode === 'fav' ? getCollectionsForFavorites() : getCollectionsForNotes()).filter(x => x !== 'Все');
+    sel.innerHTML = '<option value="">Выберите существующую папку</option>' + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    sel.value = currentValue || '';
+  }
+
   function renderCollections() {
     let cols = [];
     if (activeTab === 'fav') cols = getCollectionsForFavorites();
@@ -879,7 +991,16 @@
     folderModalMode = mode;
     folderModalTargetId = id;
     document.getElementById('folderModalDesc').innerText = label;
-    document.getElementById('folderInput').value = '';
+
+    let currentValue = '';
+    if (mode === 'fav') {
+      currentValue = favorites.find(x => x.id === id)?.collection || '';
+    } else if (mode === 'note') {
+      currentValue = notes.find(x => x.id === id)?.collection || '';
+    }
+
+    populateSingleFolderOptions(mode, currentValue);
+    document.getElementById('folderInput').value = currentValue || '';
     document.getElementById('folderModalWrap').style.display = 'flex';
     setTimeout(() => document.getElementById('folderInput').focus(), 50);
   }
@@ -891,7 +1012,9 @@
   }
 
   async function confirmFolderModal() {
-    const value = document.getElementById('folderInput').value.trim();
+    const selected = document.getElementById('singleFolderSelect').value.trim();
+    const typed = document.getElementById('folderInput').value.trim();
+    const value = typed || selected;
     if (!user || !folderModalTargetId || !folderModalMode) {
       closeFolderModal();
       return;
@@ -1159,17 +1282,45 @@
 
     if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
 
+    if (noteViewMode === 'cards') {
+      return `<div class="cards-grid">` + items.map(n => `
+        <div class="card-item" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('flipped')`}">
+          ${noteSelectionMode ? `<input class="card-checkbox" type="checkbox" ${selectedNoteIds.has(n.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleNoteSelected('${escapeJs(n.id)}')">` : ''}
+          <div class="card-inner">
+            <div class="card-face">
+              <div class="card-front-text">${escapeHtml(shortPreview(n.ru || '', 70))}</div>
+              <div class="card-hint">${escapeHtml(shortPreview(n.ar || '', 34))}</div>
+            </div>
+            <div class="card-face card-back">
+              <div class="ru" style="text-align:center;">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
+              <div class="ar">${escapeHtml(shortPreview(n.ar || '', 90))}</div>
+              <div class="actions" style="width:100%; margin-top:14px;">
+                <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊</button>
+                <button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁</button>
+                <button class="btn danger" onclick="event.stopPropagation(); removeNote('${escapeJs(n.id)}')">🗑</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('') + `</div>`;
+    }
+
     return items.map(n => `
-      <div class="item collapsible" onclick="this.classList.toggle('expanded')">
+      <div class="item collapsible" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('expanded')`}">
         <div class="item-head">
-          <div class="item-left">
-            <div class="ru">${escapeHtml(n.ru || '')}</div>
-            <div class="ar">${escapeHtml(n.ar || '')}</div>
-            ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
+          <div class="select-line" style="width:100%;">
+            ${noteSelectionMode ? `<input class="select-box" type="checkbox" ${selectedNoteIds.has(n.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleNoteSelected('${escapeJs(n.id)}')">` : ''}
+            <div class="item-left">
+              <div class="ru">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
+              <div class="ar">${escapeHtml(shortPreview(n.ar || '', 60))}</div>
+              ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
+            </div>
           </div>
         </div>
 
         <div class="item-details" onclick="event.stopPropagation()">
+          <div class="ru">${escapeHtml(n.ru || '')}</div>
+          <div class="ar">${escapeHtml(n.ar || '')}</div>
           <div class="actions">
             <button class="btn" onclick="speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
             <button class="btn" onclick="openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
@@ -1179,27 +1330,6 @@
         </div>
       </div>
     `).join('');
-  }
-
-  function renderApp() {
-    renderCollections();
-    renderSelectionPanel();
-
-    const topbar = document.getElementById('favTopbar');
-    if (activeTab === 'fav' && user) {
-      topbar.style.display = 'flex';
-      topbar.innerHTML = `
-        <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
-        <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
-      `;
-    } else {
-      topbar.style.display = 'none';
-      topbar.innerHTML = '';
-    }
-
-    if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
-    else if (activeTab === 'fav') listEl.innerHTML = renderFavorites();
-    else listEl.innerHTML = renderNotes();
   }
 
   function stopListeners() {
