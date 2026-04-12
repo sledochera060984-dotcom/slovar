@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.wARABRUS_18961726",
+      "sha256_cert_fingerprints": [
+        "66:03:D0:AF:76:A8:86:16:D4:F9:5D:87:6F:4F:74:64:9C:52:16:21:CD:F2:AD:6D:77:E5:A5:7B:6C:61:50:ED"
+      ]
+    }
+  }
+]
