@@ -692,6 +692,11 @@
       font-size: 12px;
     }
 
+
+    .note-item.expanded .item-head {
+      display: none;
+    }
+
     .toast {
       display: none;
       position: fixed;
@@ -795,7 +800,8 @@
       <select id="bulkFolderSelect" class="folder-select"></select>
       <input id="bulkFolderInput" class="field" type="text" placeholder="Или введите новую папку">
       <div class="selection-actions">
-        <button class="btn" onclick="applyBulkFolder()">📁 В папку</button>
+        <button id="bulkAddFolderBtn" class="btn" onclick="applyBulkFolder()">📁 В папку</button>
+        <button id="bulkRemoveFolderBtn" class="btn warn" onclick="removeSelectedFavoritesFromFolder()" style="display:none;">📂 Убрать из папки</button>
         <button class="btn danger" onclick="deleteSelectedFavorites()">🗑 Удалить</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode(false)">✖ Завершить</button>
       </div>
@@ -1009,9 +1015,20 @@
 
   function renderSelectionPanel() {
     const panel = document.getElementById('selectionPanel');
+    const selectEl = document.getElementById('bulkFolderSelect');
+    const inputEl = document.getElementById('bulkFolderInput');
+    const addBtn = document.getElementById('bulkAddFolderBtn');
+    const removeBtn = document.getElementById('bulkRemoveFolderBtn');
+
     if (activeTab === 'fav' && favSelectionMode) {
       panel.classList.add('active');
       document.getElementById('selectedFavCount').innerText = String(selectedFavoriteIds.size);
+
+      const inFolderView = activeCollection !== 'Все';
+      selectEl.style.display = inFolderView ? 'none' : '';
+      inputEl.style.display = inFolderView ? 'none' : '';
+      addBtn.style.display = inFolderView ? 'none' : '';
+      removeBtn.style.display = inFolderView ? '' : 'none';
     } else {
       panel.classList.remove('active');
     }
@@ -1051,6 +1068,29 @@
       showMsg('Ошибка массового сохранения');
     }
   }
+
+  async function removeSelectedFavoritesFromFolder() {
+    if (!user) return;
+    const ids = Array.from(selectedFavoriteIds);
+    if (!ids.length) { showMsg('Сначала выберите слова'); return; }
+    try {
+      const batch = db.batch();
+      ids.forEach(id => {
+        const ref = db.collection('users').doc(user.uid).collection('favorites').doc(id);
+        batch.update(ref, {
+          collection: '',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      showMsg('Убрано из папки');
+      toggleFavoriteSelectionMode(false);
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка массового удаления из папки');
+    }
+  }
+
 
   async function deleteSelectedFavorites() {
     if (!user) return;
@@ -1569,7 +1609,7 @@
     if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
 
     return items.map(n => `
-      <div class="item collapsible" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('expanded')`}">
+      <div class="item note-item collapsible" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('expanded')`}">
         <div class="item-head">
           <div class="select-line" style="width:100%;">
             ${noteSelectionMode ? `<input class="select-box" type="checkbox" ${selectedNoteIds.has(n.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleNoteSelected('${escapeJs(n.id)}')">` : ''}
@@ -1581,14 +1621,14 @@
           </div>
         </div>
 
-        <div class="item-details" onclick="event.stopPropagation()">
+        <div class="item-details">
           <div class="ru">${escapeHtml(n.ru || '')}</div>
           <div class="ar">${escapeHtml(n.ar || '')}</div>
           <div class="actions">
-            <button class="btn" onclick="speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
-            ${n.collection ? `<button class="btn warn" onclick="removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
-            <button class="btn danger" onclick="removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
+            <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
+            <button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
+            ${n.collection ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
+            <button class="btn danger" onclick="event.stopPropagation(); removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
           </div>
         </div>
       </div>
