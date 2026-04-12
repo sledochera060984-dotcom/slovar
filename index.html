@@ -533,7 +533,6 @@
 
     <div id="chips" class="chips" style="display:none;"></div>
     <div id="favTopbar" class="fav-topbar" style="display:none;"></div>
-    <div id="noteTopbar" class="note-topbar" style="display:none;"></div>
     <div id="selectionPanel" class="selection-panel">
       <div style="font-weight:800;">Выбрано: <span id="selectedFavCount">0</span></div>
       <select id="bulkFolderSelect" class="folder-select"></select>
@@ -628,7 +627,6 @@
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
   let noteSelectionMode = false;
   let selectedNoteIds = new Set();
-  let noteViewMode = localStorage.getItem('arabrus_note_view_mode') || 'list';
 
   const statusEl = document.getElementById('status');
   const listEl = document.getElementById('list');
@@ -1211,19 +1209,24 @@
       const fav = getFavoriteByWord(w);
       const present = normalizedVerbs[normalize(w.ar)];
       return `
-        <div class="item">
+        <div class="item collapsible" onclick="this.classList.toggle('expanded')">
           <div class="item-head">
             <div class="item-left">
               <div class="ru">${escapeHtml(w.short_ru || String(w.ru || '').split(';')[0] || '')}</div>
               <div class="ar">${escapeHtml(w.ar)}</div>
-              <div class="hint">${escapeHtml(w.ru || '')}</div>
+              ${present ? `<div class="hint">Настоящее время: <b>${escapeHtml(present)}</b></div>` : ''}
+              ${fav ? `<div class="hint">⭐ Уже в избранном</div>` : ''}
             </div>
           </div>
-          ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
-          <div class="actions">
-            <button class="btn" onclick="speak('${escapeJs(w.ar)}', event)">🔊 Слушать</button>
-            <button class="btn ${fav ? 'warn' : ''}" onclick="toggleFavoriteDirect(${idx})">${fav ? '★ Уже в избранном' : '☆ В избранное'}</button>
-            ${fav ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
+
+          <div class="item-details" onclick="event.stopPropagation()">
+            <div class="hint">${escapeHtml(w.ru || '')}</div>
+            ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
+            <div class="actions">
+              <button class="btn" onclick="speak('${escapeJs(w.ar)}', event)">🔊 Слушать</button>
+              <button class="btn ${fav ? 'warn' : ''}" onclick="toggleFavoriteDirect(${idx})">${fav ? '★ Уже в избранном' : '☆ В избранное'}</button>
+              ${fav ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
+            </div>
           </div>
         </div>
       `;
@@ -1298,29 +1301,6 @@
 
     if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
 
-    if (noteViewMode === 'cards') {
-      return `<div class="cards-grid">` + items.map(n => `
-        <div class="card-item" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('flipped')`}">
-          ${noteSelectionMode ? `<input class="card-checkbox" type="checkbox" ${selectedNoteIds.has(n.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleNoteSelected('${escapeJs(n.id)}')">` : ''}
-          <div class="card-inner">
-            <div class="card-face">
-              <div class="card-front-text">${escapeHtml(shortPreview(n.ru || '', 70))}</div>
-              <div class="card-hint">${escapeHtml(shortPreview(n.ar || '', 36))}</div>
-            </div>
-            <div class="card-face card-back">
-              <div class="ru" style="text-align:center;">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
-              <div class="ar">${escapeHtml(shortPreview(n.ar || '', 80))}</div>
-              <div class="actions" style="width:100%; margin-top:14px;">
-                <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊</button>
-                <button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁</button>
-                <button class="btn danger" onclick="event.stopPropagation(); removeNote('${escapeJs(n.id)}')">🗑</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `).join('') + `</div>`;
-    }
-
     return items.map(n => `
       <div class="item collapsible" onclick="${noteSelectionMode ? `toggleNoteSelected('${escapeJs(n.id)}')` : `this.classList.toggle('expanded')`}">
         <div class="item-head">
@@ -1354,7 +1334,6 @@
     renderNoteSelectionPanel();
 
     const topbar = document.getElementById('favTopbar');
-    const noteTopbar = document.getElementById('noteTopbar');
 
     if (activeTab === 'fav' && user) {
       topbar.style.display = 'flex';
@@ -1365,17 +1344,6 @@
     } else {
       topbar.style.display = 'none';
       topbar.innerHTML = '';
-    }
-
-    if (activeTab === 'notes' && user) {
-      noteTopbar.style.display = 'flex';
-      noteTopbar.innerHTML = `
-        <button class="btn" onclick="toggleNoteViewMode()">${noteViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
-        <button class="btn" onclick="toggleNoteSelectionMode()">${noteSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
-      `;
-    } else {
-      noteTopbar.style.display = 'none';
-      noteTopbar.innerHTML = '';
     }
 
     if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
