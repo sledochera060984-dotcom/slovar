@@ -732,6 +732,98 @@
       display: none;
     }
 
+
+    /* Компактный режим при поиске в словаре */
+    body.dict-searching .header,
+    body.dict-searching #status,
+    body.dict-searching #syncIndicator,
+    body.dict-searching #trialIndicator,
+    body.dict-searching .user-line,
+    body.dict-searching .auth-row {
+      display: none;
+    }
+    body.dict-searching .app {
+      padding-top: 10px;
+    }
+    body.dict-searching .tabs {
+      margin-bottom: 8px;
+      padding: 3px;
+      gap: 4px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: #f1f5f9;
+    }
+    body.dict-searching .tab {
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+    body.dict-searching #dictSection {
+      margin-bottom: 6px;
+      position: sticky;
+      top: 44px;
+      z-index: 19;
+      background: #fff;
+      padding-bottom: 4px;
+    }
+    body.dict-searching .search {
+      margin-bottom: 6px;
+      padding: 12px 14px;
+      font-size: 15px;
+      border-radius: 12px;
+    }
+    body.dict-searching #list {
+      gap: 6px;
+      padding-bottom: 16px;
+    }
+    body.dict-searching #list .item {
+      padding: 9px 10px;
+      border-radius: 12px;
+    }
+    body.dict-searching #list .item-head {
+      gap: 8px;
+    }
+    body.dict-searching #list .ru {
+      font-size: 13px;
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 4px;
+    }
+    body.dict-searching #list .ar {
+      font-size: 22px;
+      line-height: 1.0;
+    }
+    body.dict-searching #list .hint {
+      font-size: 11px;
+      line-height: 1.2;
+      margin-top: 2px;
+    }
+    body.dict-searching #list .verb-box {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+    body.dict-searching #list .verb-box span {
+      font-size: 18px;
+    }
+    body.dict-searching #list .item-details {
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+    body.dict-searching #list .actions {
+      margin-top: 8px;
+      gap: 6px;
+    }
+    body.dict-searching #list .actions .btn {
+      min-height: 34px;
+      padding: 7px 8px;
+      font-size: 12px;
+    }
+
     .toast {
       display: none;
       position: fixed;
@@ -1864,8 +1956,12 @@
     renderNoteSelectionPanel();
     updateTrialIndicator();
 
+    const dictQuery = (document.getElementById('queryInput')?.value || '').trim();
+    const dictSearching = activeTab === 'dict' && dictQuery.length > 0;
+
     document.body.classList.toggle('compact-favs', activeTab === 'fav');
     document.body.classList.toggle('compact-notes', activeTab === 'notes');
+    document.body.classList.toggle('dict-searching', dictSearching);
 
     const topbar = document.getElementById('favTopbar');
     const noteTopbar = document.getElementById('noteTopbar');
