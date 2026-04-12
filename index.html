@@ -294,6 +294,8 @@
     let syncUnsubscribers = [];
     let toastTimer = null;
     let pendingNoteIds = new Set();
+    let favSaveInFlight = false;
+    let favExpectedState = null;
 
     function showMsg(text) {
         const t = document.getElementById('toast');
@@ -322,6 +324,13 @@
             .replace(/\u2028/g, '\\u2028')
             .replace(/\u2029/g, '\\u2029');
     }
+
+    function isSameNoteContent(a, b) {
+        return String(a?.ar || '') === String(b?.ar || '') &&
+               String(a?.ru || '') === String(b?.ru || '') &&
+               Number(a?.ts || 0) === Number(b?.ts || 0);
+    }
+
 
     function makeFavKey(ar, ru) {
         return `${String(ar ?? '').trim()}::${String(ru ?? '').trim()}`;
@@ -368,7 +377,7 @@
     const db = firebase.firestore();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+    db.enablePersistence().catch(function(err) {
         console.error('Persistence error:', err);
     });
 
@@ -459,10 +468,19 @@
             const cloudCustom = cloudRaw.custom || {};
             const cloudCollections = cloudRaw.collections || {};
             const cloudUpdatedAt = Number(cloudRaw.clientUpdatedAt || cloudRaw.updatedAtMs) || 0;
+            const cloudStateJson = JSON.stringify({
+                list: cloudList,
+                custom: cloudCustom,
+                collections: cloudCollections
+            });
 
-            // Защита от отката: не принимаем снапшот, если он старее нашего последнего локального изменения.
-            if (favUpdatedAt && cloudUpdatedAt && cloudUpdatedAt < favUpdatedAt) {
-                return;
+            if (favSaveInFlight) {
+                if (cloudStateJson === favExpectedState) {
+                    favSaveInFlight = false;
+                    favExpectedState = null;
+                } else {
+                    return;
+                }
             }
 
             const sameState =
@@ -484,21 +502,22 @@
             renderUI();
         }, e => {
             console.error('Favorites sync error:', e);
-            showMsg('Ошибка синхронизации избранного');
         });
 
         const unsubNotes = notesRef.onSnapshot(snap => {
             if (snap.metadata.hasPendingWrites) return;
 
-            const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+            const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const pendingLocalNotes = myNotes.filter(n => String(n.id).startsWith('pending_'));
+            const stillPending = pendingLocalNotes.filter(p => !cloudNotes.some(c => isSameNoteContent(p, c)));
+
+            myNotes = [...stillPending, ...cloudNotes]
                 .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
-            myNotes = cloudNotes;
             persistNotesLocal();
             if (activeTab === 'trans') renderUI();
         }, e => {
             console.error('Notes sync error:', e);
-            showMsg('Ошибка синхронизации блокнота');
         });
 
         const unsubPayment = paymentRef.onSnapshot(doc => {
@@ -798,8 +817,17 @@
     function saveFavsToCloud() {
         favUpdatedAt = Date.now();
         persistFavsLocal();
+        renderUI();
+
         if (user) {
             const serverTs = firebase.firestore.FieldValue.serverTimestamp();
+            favSaveInFlight = true;
+            favExpectedState = JSON.stringify({
+                list: localFavs,
+                custom: favCustom,
+                collections: favCollections
+            });
+
             return db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
                 .set({
                     list: localFavs,
@@ -810,8 +838,10 @@
                     clientUpdatedAt: favUpdatedAt
                 }, { merge: true })
                 .catch(e => {
+                    favSaveInFlight = false;
+                    favExpectedState = null;
                     console.error('saveFavsToCloud error:', e);
-                    showMsg('Ошибка синхронизации избранного');
+                    showMsg('Не удалось сохранить избранное в облако');
                 });
         }
         return Promise.resolve();
@@ -925,7 +955,7 @@
                 return;
             }
 
-            let filteredNotes = myNotes.filter(n => !String(n.id).startsWith('pending_'));
+            let filteredNotes = myNotes;
             if (activeCollection !== 'Все') filteredNotes = filteredNotes.filter(n => (n.col || '') === activeCollection);
             if (q) {
                 const lq = q.toLowerCase();
