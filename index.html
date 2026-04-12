@@ -1,1312 +1,1024 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#27ae60">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#27ae60">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <title>АРАБРУС</title>
 
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon.png">
+  <script src="base.js"></script>
+  <script src="verbs.js"></script>
 
-    <title>АРАБРУС</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-    <!-- Загрузка баз -->
-    <script src="base.js"></script>
-    <script src="verbs.js"></script>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-    <style>
-        :root { --primary: #27ae60; --bg: #f8fafc; --text: #1e293b; --gray: #64748b; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body { font-family: -apple-system, system-ui, sans-serif; background-color: var(--bg); margin: 0; padding: env(safe-area-inset-top) 12px 12px 12px; color: var(--text); padding-bottom: 40px; }
-        .card { background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 25px rgba(0,0,0,0.06); max-width: 600px; margin: 0 auto; min-height: 80vh; position: relative; overflow: hidden;}
-
-        .app-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px; padding-top: 5px;}
-        .app-header img { width: 42px; height: 42px; border-radius: 10px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2); }
-        .app-header h1 { font-size: 24px; font-weight: 800; color: var(--primary); margin: 0; letter-spacing: 0.5px; }
-
-        .status-bar { text-align: center; padding: 12px; border-radius: 14px; margin-bottom: 12px; font-size: 13px; font-weight: 800; border: 1px solid #e2e8f0; background: #fff; transition: 0.3s; }
-        .status-ready { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
-        .status-wait { background: #fffbeb; color: #b45309; border-color: #fde68a; }
-        .status-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-
-        .subscription-bar { font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; color: white; background: var(--gray); padding: 8px 12px; border-radius: 14px; margin-bottom: 15px; opacity: 0; transition: opacity 0.3s; width: 100%; margin-left: auto; margin-right: auto; line-height: 1.45;}
-        .subscription-bar a { color: white; text-decoration: underline; font-weight: 900; }
-        .sub-active { background: var(--primary); opacity: 1; }
-        .sub-trial { background: #b45309; opacity: 1; }
-        .sub-freemium { background: #ef4444; opacity: 1; cursor: pointer;}
-
-        .auth-btn { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 14px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s;}
-        .auth-btn:active { transform: scale(0.98); }
-
-        .tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 14px; margin-bottom: 16px; }
-        .tab { flex: 1; padding: 10px 4px; border: none; background: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gray); transition: 0.2s; display: flex; flex-direction: column; align-items: center;}
-        .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .tab-subtitle { font-size: 9px; font-weight: 400; opacity: 0.8; margin-top: 2px; }
-
-        .collections-container { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 8px; }
-        .collections-container::-webkit-scrollbar { display: none; }
-        .collection-chip { padding: 8px 16px; border-radius: 20px; background: #f1f5f9; border: 1px solid #e2e8f0; color: var(--gray); font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: 0.2s;}
-        .collection-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-        .view-controls { display: flex; gap: 10px; margin-bottom: 16px; }
-        .view-toggle-btn { flex: 1; padding: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; color: var(--primary); font-size: 14px; font-weight: 700; display: flex; justify-content: center; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02);}
-        .view-toggle-btn:active { transform: scale(0.98); }
-
-        input[type="text"], textarea { width: 100%; padding: 14px 16px; border: 2px solid #f1f5f9; border-radius: 14px; font-size: 16px; outline: none; transition: 0.2s; background: #fff; margin-bottom: 10px; }
-        input[type="text"]:focus, textarea:focus { border-color: var(--primary); }
-        textarea { height: 100px; resize: none; }
-
-        .list { list-style: none; padding: 0; margin: 0; min-height: 100px; padding-bottom: 60px; }
-        .item { border-bottom: 1px solid #f1f5f9; padding: 14px 0; cursor: pointer; transition: background 0.2s; position: relative;}
-        .dict-row { display: flex; justify-content: space-between; align-items: center; }
-        .dict-ru, .dict-ar, .ar-full { user-select: text; -webkit-user-select: text; }
-        .dict-ru { font-size: 16px; color: #334155; flex: 1; padding-right: 12px; font-weight: 600;}
-        .dict-ar { font-size: 24px; font-weight: 700; color: var(--primary); direction: rtl; }
-        .details { display: none; padding-top: 16px; border-top: 1px dashed #e2e8f0; margin-top: 12px; cursor: default; }
-        .expanded .details { display: block; }
-        .ar-full { font-size: 32px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 16px; line-height: 1.3; }
-
-        .note-header { display: flex; flex-direction: column; gap: 8px; }
-        .note-header-top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .note-ru { font-size: 14px; color: #334155; font-weight: 600; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex: 1;}
-        .note-ar-hint { font-size: 15px; color: var(--primary); direction: rtl; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .note-full-ru { white-space: pre-wrap; margin-bottom: 12px; color: #334155; font-size: 14px; line-height: 1.5; }
-        .note-full-ar { font-size: 24px; font-weight: 800; color: var(--primary); direction: rtl; display: block; margin-bottom: 14px; line-height: 1.35; word-break: break-word; }
-        .note-expand-hint { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; }
-
-        .verb-conjugation { font-size: 15px; color: #475569; background: #f1f5f9; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;}
-        .verb-conjugation span { font-size: 20px; font-weight: bold; color: var(--primary); direction: rtl; user-select: text; -webkit-user-select: text;}
-
-        .actions { display: flex; gap: 8px; margin-top: 8px; }
-        .btn { flex: 1; padding: 12px 8px; border-radius: 12px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;}
-        .btn:active { transform: scale(0.96); }
-        .btn-green { background: var(--primary); color: white; border: none; }
-        .btn-red { color: #ef4444; border-color: #fee2e2; background: #fef2f2; }
-        .btn-star.active { background: #fffbeb; border-color: #fde68a; color: #f59e0b; }
-
-        .grid-view { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 80px; }
-        .g-card { background: transparent; height: 170px; position: relative; cursor: pointer; perspective: 1000px; }
-        .g-inner { position: relative; width: 100%; height: 100%; transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1); transform-style: preserve-3d; }
-        .g-card.flipped .g-inner { transform: rotateY(180deg); }
-        .g-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.04); display: flex; flex-direction: column; padding: 16px; background: white; }
-        .g-back { transform: rotateY(180deg); background: #f8fafc; align-items: center; justify-content: center; }
-
-        .g-star { position: absolute; top: 12px; right: 12px; color: #f59e0b; font-size: 20px; z-index: 5; }
-        .g-ru { margin: auto; text-align: center; font-size: 14px; font-weight: 700; color: #1e293b; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;}
-        .g-hint { text-align: center; font-size: 9px; color: #94a3b8; font-weight: 800; text-transform: uppercase; margin-top: auto; letter-spacing: 0.5px;}
-        .g-ar { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; text-align: center; margin-bottom: 12px; line-height: 1.2;}
-
-        .checkbox-overlay { width: 22px; height: 22px; border-radius: 6px; border: 2px solid #cbd5e1; background: white; z-index: 10; align-items: center; justify-content: center; display: none; flex-shrink: 0; margin-right: 12px;}
-        .g-card .checkbox-overlay { position: absolute; top: 12px; left: 12px; margin: 0; }
-
-        .selection-mode .checkbox-overlay { display: flex; }
-        .selection-mode .btn-star, .selection-mode .g-star { display: none !important; }
-
-        .selected .checkbox-overlay { background: var(--primary); border-color: var(--primary); }
-        .selected .checkbox-overlay::after { content: '✓'; color: white; font-size: 14px; font-weight: bold; }
-
-        .item.selected { background: #f0fdf4; border-color: #a7f3d0; border-radius: 12px; padding-left: 10px; padding-right: 10px;}
-        .g-card.selected .g-face { border-color: var(--primary); background: #f0fdf4; box-shadow: 0 0 0 2px var(--primary); }
-
-        .selection-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: #1e293b; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 -4px 20px rgba(0,0,0,0.15); padding-bottom: calc(15px + env(safe-area-inset-bottom));}
-        .selection-bar.active { transform: translateY(0); }
-        .sel-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: 0.2s;}
-        .sel-btn:active { background: rgba(255,255,255,0.25); }
-        .sel-btn-red { background: #ef4444; }
-        .sel-btn-red:active { background: #dc2626; }
-
-        #paymentBlockScreen { display: none; text-align: center; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.98); z-index: 100; padding: 40px; flex-direction: column; justify-content: center; align-items: center; border-radius: 20px;}
-        .payment-block-icon { font-size: 64px; margin-bottom: 20px; color: var(--primary);}
-        .payment-block-title { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 10px;}
-        .payment-block-desc { font-size: 14px; color: var(--gray); line-height: 1.6; margin-bottom: 20px; }
-        .payment-block-uid { font-size: 11px; background: #f1f5f9; padding: 6px 10px; border-radius: 8px; color: var(--gray); margin-bottom: 20px; word-break: break-all;}
-
-        #toast { display: none; position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 20px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1000; animation: fadeUp 0.3s; white-space: nowrap;}
-        .scroll-nav { position: fixed; right: 14px; bottom: calc(92px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; z-index: 1200; opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity 0.22s ease, transform 0.22s ease; }
-        .scroll-nav.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
-        .scroll-btn { width: 44px; height: 44px; border-radius: 14px; border: none; background: rgba(39, 174, 96, 0.94); color: white; font-size: 19px; font-weight: 900; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.24); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .scroll-btn.hidden { display: none; }
-        .scroll-btn:active { transform: scale(0.96); }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
-        .modal-card { background: white; padding: 24px; border-radius: 24px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); animation: scaleIn 0.2s ease-out; }
-
-        @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    </style>
+  <style>
+    :root {
+      --primary: #27ae60;
+      --bg: #f8fafc;
+      --text: #1e293b;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --warn: #b45309;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, system-ui, sans-serif;
+      padding: env(safe-area-inset-top) 12px 40px 12px;
+    }
+    .app {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      min-height: 80vh;
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .header img {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(39,174,96,0.2);
+    }
+    .header h1 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 24px;
+      font-weight: 800;
+    }
+    .status {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .status.ok { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
+    .status.wait { background: #fffbeb; border-color: #fde68a; color: var(--warn); }
+    .status.err { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+    .auth-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .btn, .auth-btn, .tab, .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .auth-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+    }
+    .tabs {
+      display: flex;
+      gap: 6px;
+      background: #f1f5f9;
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 14px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .tab.active {
+      background: #fff;
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .search, .field, textarea {
+      width: 100%;
+      border: 2px solid #f1f5f9;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 16px;
+      outline: none;
+      background: #fff;
+      margin-bottom: 10px;
+    }
+    .search:focus, .field:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+    textarea {
+      resize: none;
+      min-height: 100px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .toolbar .btn {
+      flex: 1;
+      padding: 11px 10px;
+      font-size: 13px;
+    }
+    .btn.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn.warn {
+      background: #fffbeb;
+      color: var(--warn);
+      border-color: #fde68a;
+    }
+    .btn.danger {
+      background: #fef2f2;
+      color: var(--danger);
+      border-color: #fecaca;
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 6px;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      white-space: nowrap;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 26px 10px;
+      font-size: 14px;
+    }
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: 60px;
+    }
+    .item {
+      border: 1px solid #eef2f7;
+      border-radius: 16px;
+      padding: 14px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+    .item-head {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .item-left {
+      flex: 1;
+      min-width: 0;
+    }
+    .ru {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.45;
+      color: #334155;
+      margin-bottom: 6px;
+      white-space: pre-wrap;
+    }
+    .ar {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--primary);
+      direction: rtl;
+      line-height: 1.25;
+      word-break: break-word;
+      text-align: right;
+    }
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      white-space: pre-wrap;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .actions .btn {
+      flex: 1;
+      min-width: 110px;
+      padding: 10px 8px;
+      font-size: 13px;
+    }
+    .verb-box {
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      margin-bottom: 2px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      font-size: 14px;
+      color: #475569;
+    }
+    .verb-box span {
+      direction: rtl;
+      color: var(--primary);
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .section-note {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    .toast {
+      display: none;
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+      z-index: 9999;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+      white-space: nowrap;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.56);
+      z-index: 9998;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .modal {
+      background: #fff;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 22px 44px rgba(0,0,0,0.18);
+    }
+    .modal h3 {
+      margin: 0 0 10px;
+      text-align: center;
+    }
+    .modal .ar-preview {
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--primary);
+      direction: rtl;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .user-line {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 <body>
-
-<div class="card">
-    <div class="app-header">
-        <img src="icon.png" alt="Logo" onerror="this.style.display='none'">
-        <h1>АРАБРУС</h1>
+  <div class="app">
+    <div class="header">
+      <img src="icon.png" alt="Logo" onerror="this.style.display='none'">
+      <h1>АРАБРУС</h1>
     </div>
 
-    <div id="subscriptionBar" class="subscription-bar" onclick="showPaymentBlock()">⏳ Проверка подписки...</div>
-    <div id="status" class="status-bar status-wait">⏳ Подключение базы...</div>
+    <div id="status" class="status wait">⏳ Подключение базы...</div>
+    <div id="userLine" class="user-line">Не выполнен вход</div>
 
-    <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
+    <div class="auth-row">
+      <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
+    </div>
 
     <div class="tabs">
-        <button id="tabDict" class="tab active" onclick="switchTab('dict')">
-            <span>📚 Словарь</span>
-        </button>
-        <button id="tabFav" class="tab" onclick="switchTab('fav')">
-            <span>⭐ Избранное</span>
-        </button>
-        <button id="tabTrans" class="tab" onclick="switchTab('trans')">
-            <span>📝 Блокнот</span>
-            <span class="tab-subtitle">ваши фразы</span>
-        </button>
+      <button id="tabDict" class="tab active" onclick="switchTab('dict')">📚 Словарь</button>
+      <button id="tabFav" class="tab" onclick="switchTab('fav')">⭐ Избранное</button>
+      <button id="tabNotes" class="tab" onclick="switchTab('notes')">📝 Блокнот</button>
     </div>
 
-    <div id="searchSection">
-        <input type="text" id="queryInput" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="doSearch()" autocomplete="off">
+    <div id="dictSection">
+      <input id="queryInput" class="search" type="text" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="renderApp()" autocomplete="off">
     </div>
 
-    <div id="translatorSection" style="display:none;">
-        <div style="font-size: 13px; color: var(--gray); margin-bottom: 12px; font-weight: 600;">
-            Сохраняйте целые предложения, устойчивые выражения или правила.
-        </div>
-        <input type="text" id="manualAr" placeholder="Текст на арабском (напр: صَبَاحُ الخَيْرِ)...">
-        <textarea id="manualRu" placeholder="Перевод на русский (напр: Доброе утро)..."></textarea>
-        <button class="btn btn-green" style="width: 100%; margin-bottom: 15px;" onclick="saveManualNote()">💾 Сохранить в блокнот</button>
+    <div id="notesComposer" style="display:none;">
+      <div class="section-note">Это новая упрощённая версия: меньше эффектов, но надёжнее логика хранения и синхронизации.</div>
+      <input id="manualAr" class="field" type="text" placeholder="Текст на арабском">
+      <textarea id="manualRu" placeholder="Перевод на русский"></textarea>
+      <div class="toolbar">
+        <button class="btn primary" onclick="saveNote()">💾 Сохранить в блокнот</button>
+      </div>
     </div>
 
+    <div id="chips" class="chips" style="display:none;"></div>
     <div id="list" class="list"></div>
+  </div>
 
-    <div id="paymentBlockScreen">
-        <div class="payment-block-icon">⭐️</div>
-        <div class="payment-block-title">АРАБРУС ПРЕМИУМ</div>
-        <div class="payment-block-desc">
-            Ваш пробный период завершен.<br>Оформите подписку, чтобы разблокировать Папки, Карточки, Блокнот и Озвучку.
-        </div>
-        <div class="payment-block-uid" id="paymentUidDisplay">Ваш ID: Неизвестно</div>
-        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
-            <a href="mailto:Sledochera060984@gmail.com?subject=Оплата%20АРАБРУС%20ПРЕМИУМ" target="_blank" class="btn btn-green" style="text-decoration: none; padding: 14px;">✉️ Написать на почту (100 руб/мес)</a>
-            <button class="btn" style="padding: 14px;" onclick="switchTab('dict'); hidePaymentBlock();">Назад к словарю</button>
-        </div>
+  <div id="favModalWrap" class="modal-overlay">
+    <div class="modal">
+      <h3 id="favModalTitle">В избранное</h3>
+      <div id="favModalAr" class="ar-preview"></div>
+      <input id="favModalRu" class="field" type="text" placeholder="Ваш перевод">
+      <div class="modal-actions">
+        <button class="btn primary" onclick="confirmFavModal()">💾 Сохранить</button>
+        <button class="btn" onclick="closeFavModal()">Отмена</button>
+      </div>
     </div>
-</div>
+  </div>
 
-<div id="selectionActionBar" class="selection-bar">
-    <div style="font-weight: 800; font-size: 14px;">Выбрано: <span id="selCount">0</span></div>
-    <div style="display:flex; gap:10px;">
-        <button class="sel-btn" onclick="openBulkColModal()">📁 В папку</button>
-        <button class="sel-btn sel-btn-red" onclick="openBulkDelModal()">🗑 Удалить</button>
-        <button class="sel-btn" style="background:transparent; font-size:20px; padding: 5px;" onclick="toggleSelectionMode()">✖</button>
+  <div id="folderModalWrap" class="modal-overlay">
+    <div class="modal">
+      <h3>Папка</h3>
+      <div id="folderModalDesc" class="section-note" style="text-align:center; margin-bottom:12px;"></div>
+      <input id="folderInput" class="field" type="text" placeholder="Например: Повторить">
+      <div class="modal-actions">
+        <button class="btn primary" onclick="confirmFolderModal()">💾 Сохранить</button>
+        <button class="btn" onclick="closeFolderModal()">Отмена</button>
+      </div>
     </div>
-</div>
+  </div>
 
-<div id="favModal" class="modal-overlay">
-    <div class="modal-card">
-        <h3 id="favModalTitle" style="margin-top:0; margin-bottom:15px; color:#1e293b; text-align: center;">В Избранное</h3>
-        <div id="favModalAr" style="font-size: 32px; font-weight: bold; color: var(--primary); direction: rtl; margin-bottom: 15px; text-align: center;"></div>
-
-        <label style="font-size:12px; color:var(--gray); font-weight:800; text-transform:uppercase;">Ваш перевод:</label>
-        <input type="text" id="favModalRu" style="margin-top:8px; margin-bottom:20px; font-weight: bold; color: #1e293b;">
-
-        <div style="display:flex; flex-direction: column; gap:10px;">
-            <button class="btn btn-green" onclick="confirmFavModal()">💾 Сохранить</button>
-            <button class="btn" onclick="closeFavModal()">Отмена</button>
-        </div>
-    </div>
-</div>
-
-<div id="colModal" class="modal-overlay">
-    <div class="modal-card">
-        <h3 style="margin-top:0; margin-bottom:10px; color:#1e293b; text-align: center;">В папку</h3>
-        <p id="colModalDesc" style="text-align:center; color:var(--gray); font-size:14px; margin-bottom:15px;">Укажите папку (коллекцию)</p>
-
-        <input type="text" id="colModalInput" placeholder="Например: Разговорник, Урок 1..." style="margin-bottom:20px; font-weight: bold; color: #1e293b;">
-
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-green" onclick="confirmColModal()">💾 Сохранить</button>
-            <button class="btn" onclick="closeColModal()">Отмена</button>
-        </div>
-    </div>
-</div>
-
-<div id="delModal" class="modal-overlay">
-    <div class="modal-card">
-        <h3 style="margin-top:0; margin-bottom:15px; color:#ef4444; text-align: center;">Удаление</h3>
-        <p style="text-align:center; color:#1e293b; font-size:16px; font-weight:bold; margin-bottom:10px;">Элементов выбрано: <span id="delModalCount"></span></p>
-
-        <p id="delModalDesc" style="text-align:center; color:#ef4444; font-size:14px; font-weight:800; margin-bottom:20px; line-height:1.4;">
-            Вы точно собираетесь удалить это безвозвратно?
-        </p>
-
-        <div style="display:flex; gap:10px;">
-            <button id="delModalBtnText" class="btn btn-red" onclick="confirmDelModal()">🗑 Удалить</button>
-            <button class="btn" onclick="closeDelModal()">Отмена</button>
-        </div>
-    </div>
-</div>
-
-<div id="toast">Сообщение</div>
-
-<div id="scrollNav" class="scroll-nav">
-    <button id="scrollUpBtn" class="scroll-btn" onclick="scrollToTopPage()" aria-label="Наверх">↑</button>
-    <button id="scrollDownBtn" class="scroll-btn" onclick="scrollToBottomPage()" aria-label="Вниз">↓</button>
-</div>
+  <div id="toast" class="toast">Сообщение</div>
 
 <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch((err) => {
-                console.error('Service worker register error:', err);
-            });
-        });
-    }
-
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'arabrus-v70-ultimate-notebook';
-
-    let user = null;
-    let subscriptionStatus = 'guest';
-
-    let localFavs = JSON.parse(localStorage.getItem('arabus_favs')) || [];
-    let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {};
-    let favCollections = JSON.parse(localStorage.getItem('arabus_favs_collections')) || {};
-    let favUpdatedAt = Number(localStorage.getItem('arabus_favs_updated_at')) || 0;
-
-    let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || [];
-
-    let activeTab = 'dict';
-    let activeCollection = 'Все';
-    let viewMode = localStorage.getItem('arabus_view_mode') || 'list';
-
-    let currentRenderedWords = [];
-    let normalizedVerbs = {};
-    let reverseVerbsMap = {};
-
-    let isSelectionMode = false;
-    let selectedItems = new Set();
-    let singleColActionKey = null;
-
-    let syncUnsubscribers = [];
-    let toastTimer = null;
-    let pendingNoteIds = new Set();
-    let favSaveInFlight = false;
-    let favExpectedState = null;
-
-    function showMsg(text) {
-        const t = document.getElementById('toast');
-        if (!t) return;
-        t.innerText = text;
-        t.style.display = 'block';
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => t.style.display = 'none', 3000);
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function escapeJsString(value) {
-        return String(value ?? '')
-            .replace(/\\/g, '\\\\')
-            .replace(/'/g, "\\'")
-            .replace(/\n/g, '\\n')
-            .replace(/\r/g, '\\r')
-            .replace(/\u2028/g, '\\u2028')
-            .replace(/\u2029/g, '\\u2029');
-    }
-
-    function isSameNoteContent(a, b) {
-        return String(a?.ar || '') === String(b?.ar || '') &&
-               String(a?.ru || '') === String(b?.ru || '') &&
-               Number(a?.ts || 0) === Number(b?.ts || 0);
-    }
-
-
-    function makeFavKey(ar, ru) {
-        return `${String(ar ?? '').trim()}::${String(ru ?? '').trim()}`;
-    }
-
-    function findFavKeyForWord(w) {
-        if (!w) return null;
-        const exactKey = makeFavKey(w.ar, w.ru);
-        return localFavs.includes(exactKey) ? exactKey : null;
-    }
-
-    function persistFavsLocal() {
-        localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
-        localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
-        localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
-        localStorage.setItem('arabus_favs_updated_at', String(favUpdatedAt || 0));
-    }
-
-    function persistNotesLocal() {
-        localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
-    }
-
-    function stopLiveSync() {
-        syncUnsubscribers.forEach(unsub => {
-            try { if (typeof unsub === 'function') unsub(); } catch (e) { console.error(e); }
-        });
-        syncUnsubscribers = [];
-    }
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
-      authDomain: "arabus-dict-96c12.firebaseapp.com",
-      projectId: "arabus-dict-96c12",
-      storageBucket: "arabus-dict-96c12.firebasestorage.app",
-      messagingSenderId: "814248156149",
-      appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
-    };
-
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const provider = new firebase.auth.GoogleAuthProvider();
-
-    db.enablePersistence().catch(function(err) {
-        console.error('Persistence error:', err);
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     });
+  }
 
-    function normalize(t) {
-        if (!t) return "";
-        let res = t.toLowerCase()
-            .replace(/[\u064B-\u0652]/g, "")
-            .replace(/[أإآ]/g, "ا")
-            .trim();
-        if (res.length > 3 && res.startsWith("ال")) res = res.substring(2);
-        return res;
+  const firebaseConfig = {
+    apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
+    authDomain: "arabus-dict-96c12.firebaseapp.com",
+    projectId: "arabus-dict-96c12",
+    storageBucket: "arabus-dict-96c12.firebasestorage.app",
+    messagingSenderId: "814248156149",
+    appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
+  };
+
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const provider = new firebase.auth.GoogleAuthProvider();
+
+  db.enablePersistence().catch((err) => {
+    console.error('Persistence error:', err);
+  });
+
+  let user = null;
+  let activeTab = 'dict';
+  let activeCollection = 'Все';
+  let toastTimer = null;
+  let currentRenderedWords = [];
+  let normalizedVerbs = {};
+  let reverseVerbsMap = {};
+  let favModalWord = null;
+  let folderModalMode = null;
+  let folderModalTargetId = null;
+  let favorites = [];
+  let notes = [];
+  let unsubFavs = null;
+  let unsubNotes = null;
+
+  const statusEl = document.getElementById('status');
+  const listEl = document.getElementById('list');
+  const chipsEl = document.getElementById('chips');
+
+  function showMsg(text) {
+    const t = document.getElementById('toast');
+    t.innerText = text;
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.style.display = 'none', 2600);
+  }
+
+  function setStatus(text, cls) {
+    statusEl.className = 'status ' + cls;
+    statusEl.innerText = text;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeJs(value) {
+    return String(value ?? '')
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\u2028/g, '\\u2028')
+      .replace(/\u2029/g, '\\u2029');
+  }
+
+  function normalize(t) {
+    if (!t) return '';
+    let res = String(t).toLowerCase()
+      .replace(/[\u064B-\u0652]/g, '')
+      .replace(/[أإآ]/g, 'ا')
+      .trim();
+    if (res.length > 3 && res.startsWith('ال')) res = res.substring(2);
+    return res;
+  }
+
+  function makeFavId(ar, ru) {
+    return encodeURIComponent(String(ar).trim() + '||' + String(ru).trim());
+  }
+
+  function getArabicStems(word) {
+    if (!word) return [];
+    let stems = [word];
+    let w = word;
+    if (w.startsWith('س') && w.length > 3) w = w.substring(1);
+    if (w.length >= 3 && /^[يتنا]/.test(w)) {
+      let core = w.substring(1);
+      if (core.endsWith('ون') || core.endsWith('ين') || core.endsWith('ان') || core.endsWith('وا') || core.endsWith('ات')) {
+        core = core.substring(0, core.length - 2);
+      }
+      stems.push(core);
     }
-
-    window.addEventListener('error', (e) => {
-        console.error('Global error:', e.message, e.filename, e.lineno, e.error);
-    });
-
-    const initStartedAt = Date.now();
-    const initInterval = setInterval(() => {
-        const s = document.getElementById('status');
-        if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
-            s.innerText = `✅ БАЗА ГОТОВА: ${dictBase.length} СЛОВ`;
-            s.className = "status-bar status-ready";
-            clearInterval(initInterval);
-
-            if (typeof verbsBase !== 'undefined') {
-                for (let pastTense in verbsBase) {
-                    let presentTense = verbsBase[pastTense];
-                    let normPast = normalize(pastTense);
-                    let normPresent = normalize(presentTense);
-                    normalizedVerbs[normPast] = presentTense;
-                    reverseVerbsMap[normPresent] = normPast;
-                }
-            }
-            renderUI();
-            return;
-        }
-
-        if (Date.now() - initStartedAt > 10000) {
-            clearInterval(initInterval);
-            s.innerText = '❌ Не удалось загрузить базу. Проверьте base.js и verbs.js';
-            s.className = "status-bar status-error";
-        }
-    }, 100);
-
-    auth.getRedirectResult().catch((e) => {
-        console.error('Redirect auth error:', e);
-        showMsg('Ошибка входа через Google');
-    });
-
-    auth.onAuthStateChanged(async (u) => {
-        stopLiveSync();
-        user = u;
-        const btn = document.getElementById('authBtn');
-
-        if (user) {
-            const displayName = (user.displayName || 'Пользователь').split(' ')[0];
-            btn.innerText = `Выйти (${displayName})`;
-            document.getElementById('paymentUidDisplay').innerText = `Ваш ID: ${user.uid}`;
-            startLiveSync();
-        } else {
-            btn.innerText = "🌐 Войти через Google";
-            document.getElementById('paymentUidDisplay').innerText = `Ваш ID: Войдите в Google`;
-            updateSubscriptionBar('guest');
-            renderUI();
-        }
-    });
-
-    function startLiveSync() {
-        if (!user) return;
-
-        const favsRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs');
-        const notesRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes');
-        const paymentRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('paymentInfo');
-
-        const unsubFavs = favsRef.onSnapshot(doc => {
-            if (doc.metadata.hasPendingWrites) return;
-
-            const cloudRaw = doc.exists ? doc.data() : null;
-            if (!cloudRaw) {
-                if (localFavs.length > 0 || Object.keys(favCustom).length > 0 || Object.keys(favCollections).length > 0) {
-                    saveFavsToCloud();
-                }
-                return;
-            }
-
-            const cloudList = Array.isArray(cloudRaw.list) ? cloudRaw.list : [];
-            const cloudCustom = cloudRaw.custom || {};
-            const cloudCollections = cloudRaw.collections || {};
-            const cloudUpdatedAt = Number(cloudRaw.clientUpdatedAt || cloudRaw.updatedAtMs) || 0;
-            const cloudStateJson = JSON.stringify({
-                list: cloudList,
-                custom: cloudCustom,
-                collections: cloudCollections
-            });
-
-            if (favSaveInFlight) {
-                if (cloudStateJson === favExpectedState) {
-                    favSaveInFlight = false;
-                    favExpectedState = null;
-                } else {
-                    return;
-                }
-            }
-
-            const sameState =
-                JSON.stringify(localFavs) === JSON.stringify(cloudList) &&
-                JSON.stringify(favCustom) === JSON.stringify(cloudCustom) &&
-                JSON.stringify(favCollections) === JSON.stringify(cloudCollections);
-
-            if (sameState) {
-                favUpdatedAt = Math.max(favUpdatedAt || 0, cloudUpdatedAt || 0);
-                persistFavsLocal();
-                return;
-            }
-
-            localFavs = cloudList;
-            favCustom = cloudCustom;
-            favCollections = cloudCollections;
-            favUpdatedAt = cloudUpdatedAt || Date.now();
-            persistFavsLocal();
-            renderUI();
-        }, e => {
-            console.error('Favorites sync error:', e);
-        });
-
-        const unsubNotes = notesRef.onSnapshot(snap => {
-            if (snap.metadata.hasPendingWrites) return;
-
-            const cloudNotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            const pendingLocalNotes = myNotes.filter(n => String(n.id).startsWith('pending_'));
-            const stillPending = pendingLocalNotes.filter(p => !cloudNotes.some(c => isSameNoteContent(p, c)));
-
-            myNotes = [...stillPending, ...cloudNotes]
-                .sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
-
-            persistNotesLocal();
-            if (activeTab === 'trans') renderUI();
-        }, e => {
-            console.error('Notes sync error:', e);
-        });
-
-        const unsubPayment = paymentRef.onSnapshot(doc => {
-            if (doc.exists) {
-                const paymentData = doc.data();
-                const now = Date.now();
-                if (paymentData.premiumUntil && now < paymentData.premiumUntil) {
-                    updateSubscriptionBar('premiumActive', Math.ceil((paymentData.premiumUntil - now) / (1000 * 60 * 60 * 24)));
-                } else {
-                    checkTrialStatus(paymentData.trialStartedTimestamp);
-                }
-            } else {
-                const trialStartedTs = Date.now();
-                paymentRef.set({ premiumUntil: 0, trialStartedTimestamp: trialStartedTs }).catch((e) => {
-                    console.error('Payment init error:', e);
-                });
-                checkTrialStatus(trialStartedTs);
-            }
-            renderUI();
-        }, e => {
-            console.error('Payment sync error:', e);
-        });
-
-        syncUnsubscribers = [unsubFavs, unsubNotes, unsubPayment];
-    }
-
-    function updateSubscriptionBar(status, daysLeft = 0) {
-        subscriptionStatus = status;
-        const bar = document.getElementById('subscriptionBar');
-        bar.className = 'subscription-bar';
-
-        if (status === 'premiumActive') {
-            bar.textContent = `ПРЕМИУМ АКТИВЕН (${daysLeft} ДН.)`;
-            bar.classList.add('sub-active');
-        } else if (status === 'trialActive') {
-            bar.innerHTML = `Триал: ${daysLeft} дней осталось · <a href="#" onclick="event.stopPropagation(); showPaymentBlock(); return false;">Оформить подписку</a>`;
-            bar.classList.add('sub-trial');
-        } else if (status === 'freemium') {
-            bar.innerHTML = `Freemium · <a href="#" onclick="event.stopPropagation(); showPaymentBlock(); return false;">Оформить подписку (100 руб)</a>`;
-            bar.classList.add('sub-freemium');
-        } else if (status === 'guest') {
-            bar.textContent = 'Войдите для доступа к функциям';
-            bar.className = 'subscription-bar';
-        }
-    }
-
-    function checkTrialStatus(startTimestamp) {
-        const diffMs = Date.now() - startTimestamp;
-        const trialMs = 14 * 24 * 60 * 60 * 1000;
-        if (diffMs < trialMs) updateSubscriptionBar('trialActive', Math.ceil((trialMs - diffMs) / (1000 * 60 * 60 * 24)));
-        else updateSubscriptionBar('freemium');
-    }
-
-    function isPremiumFeatureAllowed() {
-        if (subscriptionStatus === 'guest') {
-            showMsg("Войдите через Google, чтобы использовать это!");
-            return false;
-        }
-        if (subscriptionStatus === 'freemium') {
-            showPaymentBlock();
-            return false;
-        }
-        return true;
-    }
-
-    function showPaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'flex'; }
-    function hidePaymentBlock() { document.getElementById('paymentBlockScreen').style.display = 'none'; }
-
-    function selectCollection(c) {
-        activeCollection = c;
-        isSelectionMode = false;
-        selectedItems.clear();
-        updateSelectionActionBar();
-        renderUI();
-    }
-
-    function toggleViewMode() {
-        if (!isPremiumFeatureAllowed()) return;
-        viewMode = viewMode === 'list' ? 'grid' : 'list';
-        localStorage.setItem('arabus_view_mode', viewMode);
-        renderUI();
-    }
-
-    function toggleSelectionMode() {
-        if (!isPremiumFeatureAllowed()) return;
-        isSelectionMode = !isSelectionMode;
-        selectedItems.clear();
-        updateSelectionActionBar();
-        renderUI();
-    }
-
-    function toggleItemSelection(key) {
-        if (selectedItems.has(key)) selectedItems.delete(key);
-        else selectedItems.add(key);
-        updateSelectionActionBar();
-        renderUI();
-    }
-
-    function updateSelectionActionBar() {
-        const bar = document.getElementById('selectionActionBar');
-        if (isSelectionMode) {
-            bar.classList.add('active');
-            document.getElementById('selCount').innerText = selectedItems.size;
-        } else {
-            bar.classList.remove('active');
-        }
-    }
-
-    function openBulkColModal(singleKey = null) {
-        if (!singleKey && selectedItems.size === 0) {
-            showMsg("Выберите хотя бы одну запись");
-            return;
-        }
-        singleColActionKey = singleKey;
-
-        let existingCol = '';
-        if (singleKey) {
-            if (activeTab === 'fav') existingCol = favCollections[singleKey] || '';
-            else if (activeTab === 'trans') existingCol = myNotes.find(n => n.id === singleKey)?.col || '';
-            if (!existingCol && activeCollection !== 'Все') existingCol = activeCollection;
-            document.getElementById('colModalDesc').innerText = 'Укажите папку для записи';
-        } else {
-            existingCol = activeCollection !== 'Все' ? activeCollection : '';
-            document.getElementById('colModalDesc').innerText = `Выбрано: ${selectedItems.size}. Укажите папку.`;
-        }
-
-        document.getElementById('colModalInput').value = existingCol;
-        document.getElementById('colModal').style.display = 'flex';
-        setTimeout(() => document.getElementById('colModalInput').focus(), 100);
-    }
-
-    function confirmColModal() {
-        let col = document.getElementById('colModalInput').value.trim();
-
-        if (activeTab === 'fav') {
-            if (singleColActionKey) {
-                if (col) favCollections[singleColActionKey] = col; else delete favCollections[singleColActionKey];
-            } else {
-                selectedItems.forEach(key => {
-                    if (col) favCollections[key] = col; else delete favCollections[key];
-                });
-            }
-            saveFavsToCloud();
-        } else if (activeTab === 'trans') {
-            const updates = [];
-            if (singleColActionKey) {
-                const note = myNotes.find(n => n.id === singleColActionKey);
-                if (note) { note.col = col; updates.push(note); }
-            } else {
-                selectedItems.forEach(id => {
-                    const note = myNotes.find(n => n.id === id);
-                    if (note) { note.col = col; updates.push(note); }
-                });
-            }
-            persistNotesLocal();
-            if (user) {
-                updates.forEach(n => {
-                    if (!String(n.id).startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(n.id).update({ col: col }).catch(e => {
-                            console.error('Update note collection error:', e);
-                        });
-                    }
-                });
-            }
-        }
-
-        showMsg("Папка сохранена");
-        isSelectionMode = false;
-        selectedItems.clear();
-        updateSelectionActionBar();
-        closeColModal();
-        renderUI();
-    }
-
-    function closeColModal() {
-        document.getElementById('colModal').style.display = 'none';
-        singleColActionKey = null;
-    }
-
-    function openBulkDelModal() {
-        if (selectedItems.size === 0) {
-            showMsg("Выберите хотя бы одну запись");
-            return;
-        }
-        document.getElementById('delModalCount').innerText = selectedItems.size;
-
-        const btn = document.getElementById('delModalBtnText');
-        const desc = document.getElementById('delModalDesc');
-
-        if (activeCollection === 'Все') {
-            desc.innerText = "Вы точно собираетесь удалить эти записи навсегда? Это действие нельзя отменить!";
-            desc.style.color = "#ef4444";
-            btn.innerText = "🗑 Точно удалить";
-            btn.className = "btn btn-red";
-            btn.style = "";
-        } else {
-            desc.innerText = `Убрать записи из папки «${activeCollection}»?\nОни останутся в общем списке.`;
-            desc.style.color = "#b45309";
-            btn.innerText = "📁 Убрать из папки";
-            btn.className = "btn";
-            btn.style.backgroundColor = "#fffbeb";
-            btn.style.borderColor = "#fde68a";
-            btn.style.color = "#b45309";
-        }
-
-        document.getElementById('delModal').style.display = 'flex';
-    }
-
-    function confirmDelModal() {
-        if (activeTab === 'fav') {
-            selectedItems.forEach(key => {
-                if (activeCollection === 'Все') {
-                    localFavs = localFavs.filter(v => v !== key);
-                    delete favCustom[key];
-                    delete favCollections[key];
-                } else {
-                    delete favCollections[key];
-                }
-            });
-            saveFavsToCloud();
-        } else if (activeTab === 'trans') {
-            selectedItems.forEach(id => {
-                if (activeCollection === 'Все') {
-                    myNotes = myNotes.filter(n => n.id !== id);
-                    if (user && !String(id).startsWith('note_')) {
-                        db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).delete().catch(e => {
-                            console.error('Delete note error:', e);
-                        });
-                    }
-                } else {
-                    const note = myNotes.find(n => n.id === id);
-                    if (note) {
-                        note.col = '';
-                        if (user && !String(id).startsWith('note_')) {
-                            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').doc(id).update({ col: '' }).catch(e => {
-                                console.error('Clear note collection error:', e);
-                            });
-                        }
-                    }
-                }
-            });
-            persistNotesLocal();
-        }
-
-        showMsg(activeCollection === 'Все' ? 'Записи удалены' : 'Убрано из папки');
-        isSelectionMode = false;
-        selectedItems.clear();
-        updateSelectionActionBar();
-        closeDelModal();
-        renderUI();
-    }
-
-    function closeDelModal() { document.getElementById('delModal').style.display = 'none'; }
-
-    function handleDictFavClick(idx, e) {
-        if (e) e.stopPropagation();
-        if (!isPremiumFeatureAllowed()) return;
-
-        const w = currentRenderedWords[idx];
-        const itemKey = makeFavKey(w.ar, w.ru);
-        const existingFavKey = findFavKeyForWord(w);
-        const active = !!existingFavKey;
-
-        window.wordToAddKey = existingFavKey || itemKey;
-        document.getElementById('favModalAr').innerText = w.ar;
-
-        if (active) {
-            document.getElementById('favModalRu').value = favCustom[existingFavKey] || w.short_ru || w.ru.split(';')[0];
-            document.getElementById('favModalTitle').innerText = 'Изменить перевод';
-        } else {
-            document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
-            document.getElementById('favModalTitle').innerText = 'В Избранное';
-        }
-        document.getElementById('favModal').style.display = 'flex';
-        setTimeout(() => document.getElementById('favModalRu').focus(), 100);
-    }
-
-    function confirmFavModal() {
-        const key = window.wordToAddKey;
-        const ru = document.getElementById('favModalRu').value.trim();
-        if (!key) return;
-
-        localFavs = localFavs.filter(v => v !== key);
-        localFavs.unshift(key);
-        favCustom[key] = ru;
-
-        closeFavModal();
-        renderUI();
-        saveFavsToCloud();
-    }
-
-    function closeFavModal() {
-        document.getElementById('favModal').style.display = 'none';
-        window.wordToAddKey = null;
-    }
-
-    function saveFavsToCloud() {
-        favUpdatedAt = Date.now();
-        persistFavsLocal();
-        renderUI();
-
-        if (user) {
-            const serverTs = firebase.firestore.FieldValue.serverTimestamp();
-            favSaveInFlight = true;
-            favExpectedState = JSON.stringify({
-                list: localFavs,
-                custom: favCustom,
-                collections: favCollections
-            });
-
-            return db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({
-                    list: localFavs,
-                    custom: favCustom,
-                    collections: favCollections,
-                    updatedAt: serverTs,
-                    updatedAtMs: favUpdatedAt,
-                    clientUpdatedAt: favUpdatedAt
-                }, { merge: true })
-                .catch(e => {
-                    favSaveInFlight = false;
-                    favExpectedState = null;
-                    console.error('saveFavsToCloud error:', e);
-                    showMsg('Не удалось сохранить избранное в облако');
-                });
-        }
-        return Promise.resolve();
-    }
-
-    function saveManualNote() {
-        if (!isPremiumFeatureAllowed()) return;
-
-        const ar = document.getElementById('manualAr').value.trim();
-        const ru = document.getElementById('manualRu').value.trim();
-        if (!ar || !ru) return;
-
-        document.getElementById('manualAr').value = "";
-        document.getElementById('manualRu').value = "";
-        showMsg("Фраза сохранена!");
-
-        const newNote = { ar, ru, ts: Date.now(), col: '' };
-
-        if (user) {
-            const optimisticId = 'pending_' + Date.now();
-            const optimisticNote = { id: optimisticId, ...newNote };
-            pendingNoteIds.add(optimisticId);
-            myNotes = [optimisticNote, ...myNotes.filter(n => !pendingNoteIds.has(n.id))];
-            persistNotesLocal();
-            renderUI();
-
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote)
-                .then(() => {
-                    pendingNoteIds.delete(optimisticId);
-                })
-                .catch(e => {
-                    pendingNoteIds.delete(optimisticId);
-                    myNotes = myNotes.filter(n => n.id !== optimisticId);
-                    persistNotesLocal();
-                    renderUI();
-                    console.error('Add note error:', e);
-                    showMsg('Не удалось сохранить запись');
-                });
-        } else {
-            newNote.id = 'note_' + Date.now();
-            myNotes.unshift(newNote);
-            persistNotesLocal();
-            renderUI();
-        }
-    }
-
-    function speak(t, e) {
-        if (e) e.stopPropagation();
-        window.speechSynthesis.cancel();
-        if (!isPremiumFeatureAllowed()) return;
-        const u = new SpeechSynthesisUtterance(t);
-        u.lang = 'ar-SA';
-        window.speechSynthesis.speak(u);
-    }
-
-    function doSearch() { renderUI(); }
-
-    let scrollUiTimer = null;
-    function updateScrollButtons() {
-        const nav = document.getElementById('scrollNav');
-        const up = document.getElementById('scrollUpBtn');
-        const down = document.getElementById('scrollDownBtn');
-        if (!nav || !up || !down) return;
-        const top = window.scrollY || document.documentElement.scrollTop || 0;
-        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-        if (maxScroll <= 120) { nav.classList.remove('visible'); return; }
-
-        nav.classList.add('visible');
-        up.classList.toggle('hidden', top < 120);
-        down.classList.toggle('hidden', top > maxScroll - 120);
-        clearTimeout(scrollUiTimer);
-        scrollUiTimer = setTimeout(() => {
-            if (top < 40 || top > maxScroll - 40) nav.classList.remove('visible');
-        }, 1400);
-    }
-
-    function scrollToTopPage() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
-    function scrollToBottomPage() { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }); }
-
-    function getArabicStems(word) {
-        if (!word) return [];
-        let stems = [word];
-        let w = word;
-        if (w.startsWith("س") && w.length > 3) w = w.substring(1);
-        if (w.length >= 3 && /^[يتنا]/.test(w)) {
-            let core = w.substring(1);
-            if (core.endsWith("ون") || core.endsWith("ين") || core.endsWith("ان") || core.endsWith("وا") || core.endsWith("ات")) {
-                core = core.substring(0, core.length - 2);
-            }
-            stems.push(core);
-        }
-        if (word.endsWith("وا") || word.endsWith("تم") || word.endsWith("نا")) stems.push(word.substring(0, word.length - 2));
-        if (word.endsWith("ت")) stems.push(word.substring(0, word.length - 1));
-        return stems;
-    }
-
-    function renderUI() {
-        const list = document.getElementById('list');
-        const q = document.getElementById('queryInput').value.toLowerCase().trim();
-        list.innerHTML = "";
-
-        const isSelModeClass = isSelectionMode ? 'selection-mode' : '';
-
-        if (activeTab === 'trans') {
-            if (subscriptionStatus === 'freemium') {
-                list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Блокнот доступен в ПРЕМИУМ</div>`;
-                return;
-            }
-            if (subscriptionStatus === 'guest') {
-                list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Войдите в аккаунт, чтобы использовать Блокнот</div>`;
-                return;
-            }
-
-            let filteredNotes = myNotes;
-            if (activeCollection !== 'Все') filteredNotes = filteredNotes.filter(n => (n.col || '') === activeCollection);
-            if (q) {
-                const lq = q.toLowerCase();
-                filteredNotes = filteredNotes.filter(n => n.ru.toLowerCase().includes(lq) || n.ar.toLowerCase().includes(lq));
-            }
-            filteredNotes.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
-
-            const allCols = new Set(['Все']);
-            myNotes.forEach(n => { if (n.col) allCols.add(n.col); });
-            if (allCols.size > 1 || activeCollection !== 'Все') {
-                const chipsContainer = document.createElement('div');
-                chipsContainer.className = 'collections-container';
-                chipsContainer.innerHTML = Array.from(allCols).map(c => `<button class="collection-chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeJsString(c)}')">${escapeHtml(c)}</button>`).join('');
-                list.appendChild(chipsContainer);
-            }
-
-            if (filteredNotes.length > 0) {
-                const controlsDiv = document.createElement('div');
-                controlsDiv.className = 'view-controls';
-                const selectBtn = document.createElement('button');
-                selectBtn.className = 'view-toggle-btn';
-                if (isSelectionMode) {
-                    selectBtn.style.background = 'var(--primary)';
-                    selectBtn.style.color = '#fff';
-                    selectBtn.innerHTML = 'Отменить выбор';
-                } else {
-                    selectBtn.innerHTML = '☑️ Выбрать записи';
-                }
-                selectBtn.onclick = toggleSelectionMode;
-                controlsDiv.appendChild(selectBtn);
-                list.appendChild(controlsDiv);
-            } else {
-                list.innerHTML += `<div style="text-align:center; color: var(--gray); padding: 20px;">Здесь пока нет записей</div>`;
-                return;
-            }
-
-            filteredNotes.forEach(n => {
-                const el = document.createElement('div');
-                const isSelected = selectedItems.has(n.id);
-                el.className = `item ${isSelModeClass} ${isSelected ? 'selected' : ''}`;
-
-                el.onclick = function() {
-                    if (isSelectionMode) toggleItemSelection(n.id);
-                    else this.classList.toggle('expanded');
-                };
-
-                el.innerHTML = `
-                    <div style="display:flex; align-items:center;">
-                        <div class="checkbox-overlay" style="position:relative; top:auto; left:auto; margin-bottom:auto; margin-top:5px;"></div>
-                        <div style="flex:1;">
-                            <div class="note-header">
-                                <div class="note-ru">${escapeHtml(n.ru)}</div>
-                                <div class="note-ar-hint">${escapeHtml(String(n.ar).substring(0, 70))}</div>
-                                <div class="note-expand-hint">Нажмите, чтобы раскрыть</div>
-                            </div>
-                            <div class="details" onclick="event.stopPropagation()">
-                                <div class="note-full-ru">${escapeHtml(n.ru)}</div>
-                                <span class="note-full-ar">${escapeHtml(n.ar)}</span>
-                                <div class="actions">
-                                    <button class="btn" onclick="speak('${escapeJsString(n.ar)}', event)">🔊</button>
-                                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${escapeJsString(n.id)}')">📁 В папку</button>
-                                    <button class="btn btn-red" onclick="event.stopPropagation(); selectedItems.clear(); selectedItems.add('${escapeJsString(n.id)}'); openBulkDelModal();">🗑</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                list.appendChild(el);
-            });
-            setTimeout(updateScrollButtons, 0);
-            return;
-        }
-
-        if (typeof dictBase === 'undefined') return;
-
-        const nQ = normalize(q);
-        const searchStems = getArabicStems(nQ);
-        let mappedPastTense = reverseVerbsMap[nQ];
-
-        let filtered = dictBase.filter(w => {
-            const favKey = findFavKeyForWord(w);
-            const isFav = !!favKey;
-
-            if (activeTab === 'fav') {
-                if (!isFav) return false;
-                if (activeCollection !== 'Все') {
-                    const col = favCollections[favKey] || '';
-                    if (col !== activeCollection) return false;
-                }
-            } else if (!q) return false;
-
-            const nWordAr = normalize(w.ar);
-            const nWordRu = w.ru.toLowerCase();
-            const nRoot = normalize(w.root || "");
-
-            if (nWordRu.includes(q)) return true;
-            if (mappedPastTense && nWordAr === mappedPastTense) return true;
-            for (let stem of searchStems) {
-                if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
-            }
-            return false;
-        });
-
-        if (q) {
-            filtered.sort((a, b) => {
-                const normAAr = normalize(a.ar);
-                const normBAr = normalize(b.ar);
-                const ruA = (a.short_ru || a.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                const ruB = (b.short_ru || b.ru).toLowerCase().replace(/^[\d\)\s]+/, '');
-                if (mappedPastTense) {
-                    if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
-                    if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
-                }
-                if (normAAr === nQ && normBAr !== nQ) return -1;
-                if (normBAr === nQ && normAAr !== nQ) return 1;
-                const startsRuA = ruA.startsWith(q);
-                const startsRuB = ruB.startsWith(q);
-                if (startsRuA && !startsRuB) return -1;
-                if (startsRuB && !startsRuA) return 1;
-                return a.ru.length - b.ru.length;
-            });
-        }
-
-        if (activeTab === 'fav') {
-            const favOrder = new Map(localFavs.map((key, index) => [key, index]));
-            filtered.sort((a, b) => {
-                const keyA = findFavKeyForWord(a);
-                const keyB = findFavKeyForWord(b);
-                const orderA = favOrder.has(keyA) ? favOrder.get(keyA) : Number.MAX_SAFE_INTEGER;
-                const orderB = favOrder.has(keyB) ? favOrder.get(keyB) : Number.MAX_SAFE_INTEGER;
-                return orderA - orderB;
-            });
-        }
-
-        currentRenderedWords = filtered.slice(0, 50);
-
-        if (activeTab === 'fav') {
-            if (subscriptionStatus === 'freemium') {
-                list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Избранное доступно в ПРЕМИУМ</div>`;
-                return;
-            }
-            if (subscriptionStatus === 'guest') {
-                list.innerHTML = `<div style="text-align:center; color: var(--gray); padding: 20px;">Войдите в аккаунт, чтобы использовать Избранное</div>`;
-                return;
-            }
-
-            const allCols = new Set(['Все']);
-            localFavs.forEach(key => {
-                let col = favCollections[key];
-                if (col) allCols.add(col);
-            });
-            if (!allCols.has(activeCollection)) activeCollection = 'Все';
-
-            if (allCols.size > 1 || activeCollection !== 'Все') {
-                const chipsContainer = document.createElement('div');
-                chipsContainer.className = 'collections-container';
-                chipsContainer.innerHTML = Array.from(allCols).map(c => `<button class="collection-chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeJsString(c)}')">${escapeHtml(c)}</button>`).join('');
-                list.appendChild(chipsContainer);
-            }
-
-            if (currentRenderedWords.length > 0) {
-                const controlsDiv = document.createElement('div');
-                controlsDiv.className = 'view-controls';
-
-                const toggleBtn = document.createElement('button');
-                toggleBtn.className = 'view-toggle-btn';
-                toggleBtn.innerHTML = viewMode === 'list' ? '🎴 Карточки' : '📄 Список';
-                toggleBtn.onclick = toggleViewMode;
-                controlsDiv.appendChild(toggleBtn);
-
-                const selectBtn = document.createElement('button');
-                selectBtn.className = 'view-toggle-btn';
-                if (isSelectionMode) {
-                    selectBtn.style.background = 'var(--primary)';
-                    selectBtn.style.color = '#fff';
-                    selectBtn.innerHTML = 'Отменить выбор';
-                } else {
-                    selectBtn.innerHTML = '☑️ Выбрать';
-                }
-                selectBtn.onclick = toggleSelectionMode;
-                controlsDiv.appendChild(selectBtn);
-
-                list.appendChild(controlsDiv);
-            } else {
-                list.innerHTML += `<div style="text-align:center; color: var(--gray); padding: 20px;">Здесь пока нет слов</div>`;
-                return;
-            }
-        }
-
-        if (activeTab === 'fav' && viewMode === 'grid') {
-            const gridContainer = document.createElement('div');
-            gridContainer.className = 'grid-view';
-
-            currentRenderedWords.forEach((w) => {
-                const itemKey = findFavKeyForWord(w) || makeFavKey(w.ar, w.ru);
-                const displayRu = favCustom[itemKey] || w.short_ru || w.ru.split(';')[0];
-                const isSelected = selectedItems.has(itemKey);
-
-                const card = document.createElement('div');
-                card.className = `g-card ${isSelModeClass} ${isSelected ? 'selected' : ''}`;
-                card.onclick = function() {
-                    if (isSelectionMode) toggleItemSelection(itemKey);
-                    else this.classList.toggle('flipped');
-                };
-
-                card.innerHTML = `
-                    <div class="checkbox-overlay"></div>
-                    <div class="g-inner">
-                        <div class="g-face g-front">
-                            <div class="g-ru">${escapeHtml(displayRu)}</div>
-                            <div class="g-hint">Коснись, чтобы перевернуть</div>
-                        </div>
-                        <div class="g-face g-back">
-                            <div class="g-ar">${escapeHtml(w.ar)}</div>
-                            <div style="display:flex; gap:6px; width:100%; margin-top:auto;">
-                                <button class="btn btn-green" style="padding:10px; border-radius:10px;" onclick="speak('${escapeJsString(w.ar)}', event)">🔊</button>
-                                <button class="btn" style="padding:10px; border-radius:10px; flex:2; font-size:11px; background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${escapeJsString(itemKey)}')">📁 В папку</button>
-                            </div>
-                        </div>
-                    </div>`;
-                gridContainer.appendChild(card);
-            });
-
-            list.appendChild(gridContainer);
-            setTimeout(updateScrollButtons, 0);
-            return;
-        }
-
-        currentRenderedWords.forEach((w, idx) => {
-            const favKey = findFavKeyForWord(w);
-            const itemKey = favKey || makeFavKey(w.ar, w.ru);
-            const active = !!favKey;
-            const displayRu = (active && favCustom[itemKey]) ? favCustom[itemKey] : (w.short_ru || w.ru.split(';')[0]);
-
-            let verbInfoHtml = '';
-            const cleanAr = normalize(w.ar);
-            if (normalizedVerbs[cleanAr]) {
-                verbInfoHtml = `<div class="verb-conjugation" onclick="event.stopPropagation()"><div>Настоящее время:</div><span>${escapeHtml(normalizedVerbs[cleanAr])}</span></div>`;
-            }
-
-            let actionHtml = '';
-            if (activeTab === 'dict') {
-                actionHtml = `<button class="btn btn-star ${active ? 'active' : ''}" onclick="handleDictFavClick(${idx}, event)">${active ? '★ Изменить перевод' : '☆ В избранное'}</button>`;
-            } else {
-                actionHtml = `
-                    <button class="btn" style="background:#fffbeb; border-color:#fde68a; color:#b45309;" onclick="event.stopPropagation(); openBulkColModal('${escapeJsString(itemKey)}')">📁 В папку</button>
-                    <button class="btn btn-red" style="flex: 0.3;" onclick="event.stopPropagation(); selectedItems.clear(); selectedItems.add('${escapeJsString(itemKey)}'); openBulkDelModal();">🗑</button>
-                `;
-            }
-
-            const isSelected = selectedItems.has(itemKey);
-            const el = document.createElement('div');
-            el.className = `item ${isSelModeClass} ${isSelected ? 'selected' : ''}`;
-
-            el.onclick = function() {
-                if (isSelectionMode) toggleItemSelection(itemKey);
-                else this.classList.toggle('expanded');
-            };
-
-            el.innerHTML = `
-                <div class="dict-row">
-                    <div class="checkbox-overlay" style="position:relative; top:auto; left:auto;"></div>
-                    <div class="dict-ru">${escapeHtml(displayRu)}</div>
-                    <div class="dict-ar">${escapeHtml(w.ar)}</div>
-                </div>
-                <div class="details" onclick="event.stopPropagation()">
-                    ${verbInfoHtml}
-                    <div style="white-space: pre-wrap; margin-bottom:12px; color:#444; font-size:15px; line-height: 1.5; user-select: text; -webkit-user-select: text;">${escapeHtml(w.ru)}</div>
-                    <div class="actions">
-                        <button class="btn" onclick="speak('${escapeJsString(w.ar)}', event)">🔊 Слушать</button>
-                        ${actionHtml}
-                    </div>
-                </div>`;
-            list.appendChild(el);
-        });
-
-        setTimeout(updateScrollButtons, 0);
-    }
-
-    function switchTab(t) {
-        if (t === 'trans' && !isPremiumFeatureAllowed()) return;
-        if (t === 'fav' && !isPremiumFeatureAllowed()) return;
-
-        isSelectionMode = false;
-        selectedItems.clear();
-        updateSelectionActionBar();
-
-        activeTab = t;
-        activeCollection = 'Все';
-        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        document.getElementById({ dict: 'tabDict', fav: 'tabFav', trans: 'tabTrans' }[t]).classList.add('active');
-        document.getElementById('searchSection').style.display = t === 'trans' ? 'none' : 'block';
-        document.getElementById('translatorSection').style.display = t === 'trans' ? 'block' : 'none';
-        document.getElementById('queryInput').value = '';
-        renderUI();
-    }
-
-    async function toggleAuth() {
+    if (word.endsWith('وا') || word.endsWith('تم') || word.endsWith('نا')) stems.push(word.substring(0, word.length - 2));
+    if (word.endsWith('ت')) stems.push(word.substring(0, word.length - 1));
+    return stems;
+  }
+
+  function speak(text, e) {
+    if (e) e.stopPropagation();
     try {
-        if (user) {
-            await auth.signOut();
-            return;
-        }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ar-SA';
+      window.speechSynthesis.speak(u);
+    } catch (_) {}
+  }
 
-        try {
-            await auth.signInWithPopup(provider);
-        } catch (popupError) {
-            console.error('Popup auth error:', popupError);
+  function getFavoriteByWord(w) {
+    const id = makeFavId(w.ar, w.ru);
+    return favorites.find(f => f.id === id) || null;
+  }
 
-            const popupBlockedCodes = [
-                'auth/popup-blocked',
-                'auth/popup-closed-by-user',
-                'auth/cancelled-popup-request',
-                'auth/operation-not-supported-in-this-environment'
-            ];
+  function getCollectionsForFavorites() {
+    const set = new Set(['Все']);
+    favorites.forEach(f => {
+      if (f.collection && String(f.collection).trim()) set.add(String(f.collection).trim());
+    });
+    return Array.from(set);
+  }
 
-            if (popupBlockedCodes.includes(popupError.code)) {
-                await auth.signInWithRedirect(provider);
-                return;
-            }
+  function getCollectionsForNotes() {
+    const set = new Set(['Все']);
+    notes.forEach(n => {
+      if (n.collection && String(n.collection).trim()) set.add(String(n.collection).trim());
+    });
+    return Array.from(set);
+  }
 
-            throw popupError;
-        }
-    } catch (e) {
-        console.error('Auth error:', e);
-        showMsg('Ошибка входа через Google');
+  function renderCollections() {
+    let cols = [];
+    if (activeTab === 'fav') cols = getCollectionsForFavorites();
+    else if (activeTab === 'notes') cols = getCollectionsForNotes();
+
+    if (!cols.length || activeTab === 'dict') {
+      chipsEl.style.display = 'none';
+      chipsEl.innerHTML = '';
+      return;
     }
-}
 
-    document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape') return;
-        closeFavModal();
-        closeColModal();
-        closeDelModal();
-        hidePaymentBlock();
-    });
+    if (!cols.includes(activeCollection)) activeCollection = 'Все';
 
-    ['favModal', 'colModal', 'delModal'].forEach(id => {
-        const modal = document.getElementById(id);
-        if (!modal) return;
-        modal.addEventListener('click', (e) => {
-            if (e.target !== modal) return;
-            if (id === 'favModal') closeFavModal();
-            if (id === 'colModal') closeColModal();
-            if (id === 'delModal') closeDelModal();
-        });
-    });
+    chipsEl.style.display = 'flex';
+    chipsEl.innerHTML = cols.map(c =>
+      `<button class="chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeJs(c)}')">${escapeHtml(c)}</button>`
+    ).join('');
+  }
 
-    window.addEventListener('beforeunload', stopLiveSync);
-    window.onload = () => {
-        if (typeof dictBase !== 'undefined') renderUI();
+  function selectCollection(name) {
+    activeCollection = name;
+    renderApp();
+  }
+
+  function openFavModal(idx) {
+    const w = currentRenderedWords[idx];
+    favModalWord = w;
+    const existing = getFavoriteByWord(w);
+    document.getElementById('favModalAr').innerText = w.ar;
+    document.getElementById('favModalRu').value = existing?.customRu || w.short_ru || String(w.ru || '').split(';')[0];
+    document.getElementById('favModalTitle').innerText = existing ? 'Изменить перевод' : 'В избранное';
+    document.getElementById('favModalWrap').style.display = 'flex';
+    setTimeout(() => document.getElementById('favModalRu').focus(), 50);
+  }
+
+  function closeFavModal() {
+    favModalWord = null;
+    document.getElementById('favModalWrap').style.display = 'none';
+  }
+
+  async function confirmFavModal() {
+    if (!user) {
+      showMsg('Сначала войдите через Google');
+      return;
+    }
+    if (!favModalWord) return;
+
+    const w = favModalWord;
+    const id = makeFavId(w.ar, w.ru);
+    const customRu = document.getElementById('favModalRu').value.trim() || w.short_ru || String(w.ru || '').split(';')[0];
+    const existing = getFavoriteByWord(w);
+
+    const payload = {
+      ar: w.ar,
+      ruSource: w.ru,
+      customRu,
+      collection: existing?.collection || '',
+      ts: existing?.ts || Date.now(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+
+    try {
+      await db.collection('users').doc(user.uid).collection('favorites').doc(id).set(payload, { merge: true });
+      closeFavModal();
+      showMsg(existing ? 'Перевод обновлён' : 'Добавлено в избранное');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка сохранения');
+    }
+  }
+
+  async function toggleFavoriteDirect(idx) {
+    if (!user) {
+      showMsg('Сначала войдите через Google');
+      return;
+    }
+    const w = currentRenderedWords[idx];
+    const existing = getFavoriteByWord(w);
+    if (existing) {
+      try {
+        await db.collection('users').doc(user.uid).collection('favorites').doc(existing.id).delete();
+        showMsg('Удалено из избранного');
+      } catch (e) {
+        console.error(e);
+        showMsg('Ошибка удаления');
+      }
+    } else {
+      openFavModal(idx);
+    }
+  }
+
+  function openFolderModal(mode, id, label) {
+    folderModalMode = mode;
+    folderModalTargetId = id;
+    document.getElementById('folderModalDesc').innerText = label;
+    document.getElementById('folderInput').value = '';
+    document.getElementById('folderModalWrap').style.display = 'flex';
+    setTimeout(() => document.getElementById('folderInput').focus(), 50);
+  }
+
+  function closeFolderModal() {
+    folderModalMode = null;
+    folderModalTargetId = null;
+    document.getElementById('folderModalWrap').style.display = 'none';
+  }
+
+  async function confirmFolderModal() {
+    const value = document.getElementById('folderInput').value.trim();
+    if (!user || !folderModalTargetId || !folderModalMode) {
+      closeFolderModal();
+      return;
+    }
+
+    try {
+      if (folderModalMode === 'fav') {
+        await db.collection('users').doc(user.uid).collection('favorites').doc(folderModalTargetId).update({
+          collection: value,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else if (folderModalMode === 'note') {
+        await db.collection('users').doc(user.uid).collection('notes').doc(folderModalTargetId).update({
+          collection: value,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      closeFolderModal();
+      showMsg('Папка сохранена');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка сохранения папки');
+    }
+  }
+
+  async function removeFavorite(id) {
+    if (!user) return;
+    try {
+      await db.collection('users').doc(user.uid).collection('favorites').doc(id).delete();
+      showMsg('Удалено из избранного');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка удаления');
+    }
+  }
+
+  async function removeFavoriteFromFolder(id) {
+    if (!user) return;
+    try {
+      await db.collection('users').doc(user.uid).collection('favorites').doc(id).update({
+        collection: '',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showMsg('Убрано из папки');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка изменения папки');
+    }
+  }
+
+  async function removeNote(id) {
+    if (!user) return;
+    try {
+      await db.collection('users').doc(user.uid).collection('notes').doc(id).delete();
+      showMsg('Запись удалена');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка удаления');
+    }
+  }
+
+  async function removeNoteFromFolder(id) {
+    if (!user) return;
+    try {
+      await db.collection('users').doc(user.uid).collection('notes').doc(id).update({
+        collection: '',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      showMsg('Убрано из папки');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка изменения папки');
+    }
+  }
+
+  async function saveNote() {
+    if (!user) {
+      showMsg('Сначала войдите через Google');
+      return;
+    }
+
+    const ar = document.getElementById('manualAr').value.trim();
+    const ru = document.getElementById('manualRu').value.trim();
+    if (!ar || !ru) {
+      showMsg('Заполните оба поля');
+      return;
+    }
+
+    const localTempId = 'temp_' + Date.now();
+    notes.unshift({
+      id: localTempId,
+      ar,
+      ru,
+      collection: '',
+      ts: Date.now(),
+      isLocalTemp: true
+    });
+    renderApp();
+
+    document.getElementById('manualAr').value = '';
+    document.getElementById('manualRu').value = '';
+    showMsg('Фраза добавлена');
+
+    try {
+      await db.collection('users').doc(user.uid).collection('notes').add({
+        ar,
+        ru,
+        collection: '',
+        ts: Date.now(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      notes = notes.filter(n => n.id !== localTempId);
+      renderApp();
+    } catch (e) {
+      console.error(e);
+      notes = notes.filter(n => n.id !== localTempId);
+      renderApp();
+      showMsg('Ошибка сохранения');
+    }
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    activeCollection = 'Все';
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.getElementById({ dict: 'tabDict', fav: 'tabFav', notes: 'tabNotes' }[tab]).classList.add('active');
+    document.getElementById('dictSection').style.display = tab === 'dict' ? 'block' : 'none';
+    document.getElementById('notesComposer').style.display = tab === 'notes' ? 'block' : 'none';
+    renderApp();
+  }
+
+  function renderDictionary() {
+    if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return '<div class="empty">База ещё не загружена</div>';
+
+    const q = document.getElementById('queryInput').value.toLowerCase().trim();
+    if (!q) return '<div class="empty">Начните вводить слово для поиска</div>';
+
+    const nQ = normalize(q);
+    const stems = getArabicStems(nQ);
+    const mappedPastTense = reverseVerbsMap[nQ];
+
+    const filtered = dictBase.filter(w => {
+      const nWordAr = normalize(w.ar);
+      const nRoot = normalize(w.root || '');
+      const nWordRu = String(w.ru || '').toLowerCase();
+
+      if (nWordRu.includes(q)) return true;
+      if (mappedPastTense && nWordAr === mappedPastTense) return true;
+      for (const stem of stems) {
+        if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
+      }
+      return false;
+    });
+
+    filtered.sort((a, b) => {
+      const normAAr = normalize(a.ar);
+      const normBAr = normalize(b.ar);
+      const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+      const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+      if (mappedPastTense) {
+        if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
+        if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
+      }
+      if (normAAr === nQ && normBAr !== nQ) return -1;
+      if (normBAr === nQ && normAAr !== nQ) return 1;
+      const startsRuA = ruA.startsWith(q);
+      const startsRuB = ruB.startsWith(q);
+      if (startsRuA && !startsRuB) return -1;
+      if (startsRuB && !startsRuA) return 1;
+      return String(a.ru || '').length - String(b.ru || '').length;
+    });
+
+    currentRenderedWords = filtered.slice(0, 50);
+
+    if (!currentRenderedWords.length) return '<div class="empty">Ничего не найдено</div>';
+
+    return currentRenderedWords.map((w, idx) => {
+      const fav = getFavoriteByWord(w);
+      const present = normalizedVerbs[normalize(w.ar)];
+      return `
+        <div class="item">
+          <div class="item-head">
+            <div class="item-left">
+              <div class="ru">${escapeHtml(w.short_ru || String(w.ru || '').split(';')[0] || '')}</div>
+              <div class="ar">${escapeHtml(w.ar)}</div>
+              <div class="hint">${escapeHtml(w.ru || '')}</div>
+            </div>
+          </div>
+          ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
+          <div class="actions">
+            <button class="btn" onclick="speak('${escapeJs(w.ar)}', event)">🔊 Слушать</button>
+            <button class="btn ${fav ? 'warn' : ''}" onclick="toggleFavoriteDirect(${idx})">${fav ? '★ Уже в избранном' : '☆ В избранное'}</button>
+            ${fav ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderFavorites() {
+    if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
+
+    let items = [...favorites];
+    if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
+    items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+
+    if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
+
+    return items.map(f => `
+      <div class="item">
+        <div class="item-head">
+          <div class="item-left">
+            <div class="ru">${escapeHtml(f.customRu || '')}</div>
+            <div class="ar">${escapeHtml(f.ar || '')}</div>
+            <div class="hint">${escapeHtml(f.ruSource || '')}</div>
+            ${f.collection ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
+          <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
+          ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
+          <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderNotes() {
+    if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
+
+    let items = [...notes];
+    if (activeCollection !== 'Все') items = items.filter(n => String(n.collection || '') === activeCollection);
+    items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
+
+    if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
+
+    return items.map(n => `
+      <div class="item">
+        <div class="item-head">
+          <div class="item-left">
+            <div class="ru">${escapeHtml(n.ru || '')}</div>
+            <div class="ar">${escapeHtml(n.ar || '')}</div>
+            ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn" onclick="speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
+          <button class="btn" onclick="openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
+          ${n.collection ? `<button class="btn warn" onclick="removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
+          <button class="btn danger" onclick="removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderApp() {
+    renderCollections();
+    if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
+    else if (activeTab === 'fav') listEl.innerHTML = renderFavorites();
+    else listEl.innerHTML = renderNotes();
+  }
+
+  function stopListeners() {
+    if (typeof unsubFavs === 'function') { unsubFavs(); unsubFavs = null; }
+    if (typeof unsubNotes === 'function') { unsubNotes(); unsubNotes = null; }
+  }
+
+  function startUserListeners() {
+    if (!user) return;
+
+    unsubFavs = db.collection('users').doc(user.uid).collection('favorites')
+      .onSnapshot((snap) => {
+        favorites = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+        renderApp();
+      }, (e) => {
+        console.error(e);
+        showMsg('Ошибка синхронизации избранного');
+      });
+
+    unsubNotes = db.collection('users').doc(user.uid).collection('notes')
+      .onSnapshot((snap) => {
+        const cloud = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+        const temp = notes.filter(n => n.isLocalTemp);
+        const merged = [...temp, ...cloud];
+        const map = new Map();
+        merged.forEach(n => map.set(n.id, n));
+        notes = Array.from(map.values());
+        renderApp();
+      }, (e) => {
+        console.error(e);
+        showMsg('Ошибка синхронизации блокнота');
+      });
+  }
+
+  async function toggleAuth() {
+    try {
+      if (user) {
+        await auth.signOut();
+        return;
+      }
+      try {
+        await auth.signInWithPopup(provider);
+      } catch (popupError) {
+        console.error('Popup auth error:', popupError);
+        const codes = [
+          'auth/popup-blocked',
+          'auth/popup-closed-by-user',
+          'auth/cancelled-popup-request',
+          'auth/operation-not-supported-in-this-environment'
+        ];
+        if (codes.includes(popupError.code)) {
+          await auth.signInWithRedirect(provider);
+          return;
+        }
+        throw popupError;
+      }
+    } catch (e) {
+      console.error('Auth error:', e);
+      showMsg('Ошибка входа через Google');
+    }
+  }
+
+  auth.getRedirectResult().catch((e) => {
+    console.error('Redirect auth error:', e);
+  });
+
+  auth.onAuthStateChanged((u) => {
+    stopListeners();
+    user = u;
+    favorites = [];
+    notes = notes.filter(n => n.isLocalTemp);
+
+    const btn = document.getElementById('authBtn');
+    const userLine = document.getElementById('userLine');
+
+    if (user) {
+      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
+      userLine.innerText = user.email || user.uid;
+      startUserListeners();
+    } else {
+      btn.innerText = '🌐 Войти через Google';
+      userLine.innerText = 'Не выполнен вход';
+    }
+    renderApp();
+  });
+
+  const initStartedAt = Date.now();
+  const initInterval = setInterval(() => {
+    if (typeof dictBase !== 'undefined' && Array.isArray(dictBase)) {
+      clearInterval(initInterval);
+      setStatus(`✅ База готова: ${dictBase.length} слов`, 'ok');
+
+      if (typeof verbsBase !== 'undefined') {
+        for (const pastTense in verbsBase) {
+          const presentTense = verbsBase[pastTense];
+          normalizedVerbs[normalize(pastTense)] = presentTense;
+          reverseVerbsMap[normalize(presentTense)] = normalize(pastTense);
+        }
+      }
+      renderApp();
+      return;
+    }
+
+    if (Date.now() - initStartedAt > 10000) {
+      clearInterval(initInterval);
+      setStatus('❌ Не удалось загрузить base.js или verbs.js', 'err');
+    }
+  }, 100);
+
+  ['favModalWrap', 'folderModalWrap'].forEach(id => {
+    const modal = document.getElementById(id);
+    modal.addEventListener('click', (e) => {
+      if (e.target !== modal) return;
+      if (id === 'favModalWrap') closeFavModal();
+      if (id === 'folderModalWrap') closeFolderModal();
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    closeFavModal();
+    closeFolderModal();
+  });
+
+  window.addEventListener('load', () => renderApp());
 </script>
 </body>
 </html>
