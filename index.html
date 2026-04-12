@@ -74,6 +74,9 @@
     .status.ok { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
     .status.wait { background: #fffbeb; border-color: #fde68a; color: var(--warn); }
     .status.err { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+    #syncIndicator {
+      transition: opacity .2s ease;
+    }
     .auth-row {
       display: flex;
       gap: 10px;
@@ -765,6 +768,7 @@
     </div>
 
     <div id="status" class="status wait">⏳ Подключение базы...</div>
+    <div id="syncIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">☁️ Проверка синхронизации...</div>
     <div id="userLine" class="user-line">Не выполнен вход</div>
 
     <div class="auth-row">
@@ -885,6 +889,8 @@
   let notes = [];
   let unsubFavs = null;
   let unsubNotes = null;
+  let favSnapshotPending = false;
+  let noteSnapshotPending = false;
   let favSelectionMode = false;
   let selectedFavoriteIds = new Set();
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
@@ -892,6 +898,7 @@
   let selectedNoteIds = new Set();
 
   const statusEl = document.getElementById('status');
+  const syncIndicatorEl = document.getElementById('syncIndicator');
   const listEl = document.getElementById('list');
   const chipsEl = document.getElementById('chips');
 
@@ -906,6 +913,39 @@
   function setStatus(text, cls) {
     statusEl.className = 'status ' + cls;
     statusEl.innerText = text;
+  }
+
+  function updateSyncIndicator() {
+    if (!syncIndicatorEl) return;
+
+    if (!user) {
+      syncIndicatorEl.className = 'status wait';
+      syncIndicatorEl.innerText = '☁️ Войдите в Google для синхронизации';
+      return;
+    }
+
+    const hasPending = favSnapshotPending || noteSnapshotPending;
+
+    if (!navigator.onLine && hasPending) {
+      syncIndicatorEl.className = 'status wait';
+      syncIndicatorEl.innerText = '📴 Нет сети. Изменения сохранены локально и ждут синхронизации';
+      return;
+    }
+
+    if (!navigator.onLine && !hasPending) {
+      syncIndicatorEl.className = 'status wait';
+      syncIndicatorEl.innerText = '📴 Нет сети. Последние данные доступны локально';
+      return;
+    }
+
+    if (hasPending) {
+      syncIndicatorEl.className = 'status wait';
+      syncIndicatorEl.innerText = '🔄 Синхронизация с облаком...';
+      return;
+    }
+
+    syncIndicatorEl.className = 'status ok';
+    syncIndicatorEl.innerText = '✅ Всё сохранено в облаке';
   }
 
   function escapeHtml(value) {
@@ -1673,6 +1713,9 @@
   function stopListeners() {
     if (typeof unsubFavs === 'function') { unsubFavs(); unsubFavs = null; }
     if (typeof unsubNotes === 'function') { unsubNotes(); unsubNotes = null; }
+    favSnapshotPending = false;
+    noteSnapshotPending = false;
+    updateSyncIndicator();
   }
 
   function startUserListeners() {
@@ -1680,24 +1723,32 @@
 
     unsubFavs = db.collection('users').doc(user.uid).collection('favorites')
       .onSnapshot((snap) => {
+        favSnapshotPending = !!snap.metadata.hasPendingWrites;
         favorites = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+        updateSyncIndicator();
         renderApp();
       }, (e) => {
         console.error(e);
+        favSnapshotPending = false;
+        updateSyncIndicator();
         showMsg('Ошибка синхронизации избранного');
       });
 
     unsubNotes = db.collection('users').doc(user.uid).collection('notes')
       .onSnapshot((snap) => {
+        noteSnapshotPending = !!snap.metadata.hasPendingWrites;
         const cloud = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
         const temp = notes.filter(n => n.isLocalTemp);
         const merged = [...temp, ...cloud];
         const map = new Map();
         merged.forEach(n => map.set(n.id, n));
         notes = Array.from(map.values());
+        updateSyncIndicator();
         renderApp();
       }, (e) => {
         console.error(e);
+        noteSnapshotPending = false;
+        updateSyncIndicator();
         showMsg('Ошибка синхронизации блокнота');
       });
   }
@@ -1751,6 +1802,7 @@
       btn.innerText = '🌐 Войти через Google';
       userLine.innerText = 'Не выполнен вход';
     }
+    updateSyncIndicator();
     renderApp();
   });
 
@@ -1792,7 +1844,12 @@
     closeFolderModal();
   });
 
-  window.addEventListener('load', () => renderApp());
+  window.addEventListener('online', updateSyncIndicator);
+  window.addEventListener('offline', updateSyncIndicator);
+  window.addEventListener('load', () => {
+    updateSyncIndicator();
+    renderApp();
+  });
 </script>
 </body>
 </html>
