@@ -886,6 +886,8 @@
   let unsubFavs = null;
   let unsubNotes = null;
   let activeTtsAudio = null;
+  let ttsVoices = [];
+  let ttsPrimed = false;
   let favSelectionMode = false;
   let selectedFavoriteIds = new Set();
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
@@ -968,104 +970,161 @@
     return stems;
   }
 
+  function refreshTtsVoices() {
+    try {
+      if ('speechSynthesis' in window && window.speechSynthesis.getVoices) {
+        const voices = window.speechSynthesis.getVoices() || [];
+        if (voices.length) ttsVoices = voices;
+      }
+    } catch (err) {
+      console.error('refreshTtsVoices error:', err);
+    }
+  }
+
+  function primeTts() {
+    if (ttsPrimed) return;
+    ttsPrimed = true;
+    try {
+      refreshTtsVoices();
+      if ('speechSynthesis' in window) {
+        const synth = window.speechSynthesis;
+        const unlock = new SpeechSynthesisUtterance(' ');
+        unlock.volume = 0;
+        unlock.rate = 1;
+        unlock.pitch = 1;
+        synth.cancel();
+        synth.speak(unlock);
+        setTimeout(() => {
+          try { synth.cancel(); } catch (_) {}
+        }, 60);
+      }
+    } catch (err) {
+      console.error('primeTts error:', err);
+    }
+  }
+
+  function getBestVoice(langPrefix) {
+    const voices = ttsVoices.length ? ttsVoices : (window.speechSynthesis?.getVoices?.() || []);
+    const lower = String(langPrefix || '').toLowerCase();
+
+    return voices.find(v => String(v.lang || '').toLowerCase() === lower + '-sa')
+      || voices.find(v => String(v.lang || '').toLowerCase().startsWith(lower))
+      || voices.find(v => /arab/i.test(String(v.name || '')) && lower === 'ar')
+      || voices.find(v => /russian|рус/i.test(String(v.name || '')) && lower === 'ru')
+      || null;
+  }
+
+  function stopActiveAudio() {
+    try {
+      if (activeTtsAudio) {
+        activeTtsAudio.pause();
+        activeTtsAudio.currentTime = 0;
+        activeTtsAudio = null;
+      }
+    } catch (_) {}
+  }
+
+  function playRemoteTts(value, lang) {
+    stopActiveAudio();
+    try {
+      const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob'
+        + '&tl=' + encodeURIComponent(lang)
+        + '&q=' + encodeURIComponent(value);
+      activeTtsAudio = new Audio(url);
+      activeTtsAudio.preload = 'auto';
+      activeTtsAudio.crossOrigin = 'anonymous';
+      activeTtsAudio.play().catch((err) => {
+        console.error('Remote TTS play error:', err);
+        showMsg('Озвучка не запустилась');
+      });
+    } catch (err) {
+      console.error('Remote TTS setup error:', err);
+      showMsg('Озвучка не поддерживается');
+    }
+  }
+
   function speak(text, e) {
     if (e) e.stopPropagation();
 
     const value = String(text || '').trim();
     if (!value) return;
 
+    primeTts();
+
     const hasArabic = /[\u0600-\u06FF]/.test(value);
     const lang = hasArabic ? 'ar' : 'ru';
     const synthLang = hasArabic ? 'ar-SA' : 'ru-RU';
 
-    function stopActiveAudio() {
-      try {
-        if (activeTtsAudio) {
-          activeTtsAudio.pause();
-          activeTtsAudio.currentTime = 0;
-          activeTtsAudio = null;
-        }
-      } catch (_) {}
-    }
-
-    function playRemoteTts() {
-      stopActiveAudio();
-      try {
-        const url = 'https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx'
-          + '&tl=' + encodeURIComponent(lang)
-          + '&q=' + encodeURIComponent(value);
-        activeTtsAudio = new Audio(url);
-        activeTtsAudio.preload = 'auto';
-        activeTtsAudio.play().catch((err) => {
-          console.error('Remote TTS play error:', err);
-          showMsg('Озвучка не запустилась');
-        });
-      } catch (err) {
-        console.error('Remote TTS setup error:', err);
-        showMsg('Озвучка не поддерживается');
-      }
-    }
-
-    function playSpeechSynthesis() {
-      if (!('speechSynthesis' in window)) {
-        playRemoteTts();
-        return;
-      }
-
-      try {
-        const synth = window.speechSynthesis;
-        synth.cancel();
-        synth.resume();
-
-        const utterance = new SpeechSynthesisUtterance(value);
-        utterance.lang = synthLang;
-        utterance.rate = 0.95;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-
-        const voices = synth.getVoices ? synth.getVoices() : [];
-        const preferredVoice = voices.find(v => String(v.lang || '').toLowerCase().startsWith(lang));
-        if (preferredVoice) utterance.voice = preferredVoice;
-
-        let started = false;
-        const failTimer = setTimeout(() => {
-          if (!started) {
-            try { synth.cancel(); } catch (_) {}
-            playRemoteTts();
-          }
-        }, 700);
-
-        utterance.onstart = () => {
-          started = true;
-          clearTimeout(failTimer);
-        };
-
-        utterance.onend = () => {
-          clearTimeout(failTimer);
-        };
-
-        utterance.onerror = (err) => {
-          clearTimeout(failTimer);
-          console.error('SpeechSynthesis error:', err);
-          playRemoteTts();
-        };
-
-        synth.speak(utterance);
-      } catch (err) {
-        console.error('SpeechSynthesis setup error:', err);
-        playRemoteTts();
-      }
-    }
-
     stopActiveAudio();
 
-    if (hasArabic) {
-      // На Android чаще стабильно работает прямой audio TTS при клике.
-      playRemoteTts();
+    if (!('speechSynthesis' in window)) {
+      playRemoteTts(value, lang);
       return;
     }
 
-    playSpeechSynthesis();
+    try {
+      const synth = window.speechSynthesis;
+      refreshTtsVoices();
+      synth.cancel();
+      synth.resume();
+
+      const utterance = new SpeechSynthesisUtterance(value);
+      utterance.lang = synthLang;
+      utterance.rate = hasArabic ? 0.9 : 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      const preferredVoice = getBestVoice(lang);
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      let started = false;
+      let attempts = 0;
+
+      const trySpeak = () => {
+        attempts += 1;
+        try {
+          synth.cancel();
+          synth.resume();
+          synth.speak(utterance);
+        } catch (err) {
+          console.error('speak attempt error:', err);
+          if (attempts >= 2) playRemoteTts(value, lang);
+        }
+      };
+
+      const failTimer = setTimeout(() => {
+        if (!started) {
+          if (attempts < 2) {
+            trySpeak();
+            setTimeout(() => {
+              if (!started) playRemoteTts(value, lang);
+            }, 900);
+          } else {
+            playRemoteTts(value, lang);
+          }
+        }
+      }, 900);
+
+      utterance.onstart = () => {
+        started = true;
+        clearTimeout(failTimer);
+      };
+
+      utterance.onend = () => {
+        clearTimeout(failTimer);
+      };
+
+      utterance.onerror = (err) => {
+        clearTimeout(failTimer);
+        console.error('SpeechSynthesis error:', err);
+        playRemoteTts(value, lang);
+      };
+
+      trySpeak();
+    } catch (err) {
+      console.error('Speak error:', err);
+      playRemoteTts(value, lang);
+    }
   }
 
   function getFavoriteByWord(w) {
@@ -1823,6 +1882,15 @@
 
   auth.getRedirectResult().catch((e) => {
     console.error('Redirect auth error:', e);
+  });
+
+  refreshTtsVoices();
+  if ('speechSynthesis' in window && 'onvoiceschanged' in window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = refreshTtsVoices;
+  }
+
+  ['click', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, primeTts, { once: true, passive: true });
   });
 
   auth.onAuthStateChanged((u) => {
