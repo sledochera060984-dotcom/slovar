@@ -272,6 +272,149 @@
       margin-bottom: 10px;
       line-height: 1.45;
     }
+
+    .item.collapsible { cursor: pointer; }
+    .item-details {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #e2e8f0;
+    }
+    .item.expanded .item-details { display: block; }
+    .fav-topbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .fav-topbar .btn { flex: 1; min-width: 140px; }
+    .selection-panel {
+      display: none;
+      background: #0f172a;
+      color: #fff;
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .selection-panel.active { display: block; }
+    .selection-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .selection-actions .btn {
+      border: none;
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+      min-width: 120px;
+    }
+    .selection-actions .btn.danger {
+      background: #dc2626;
+    }
+    .select-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .select-box {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--primary);
+      flex: 0 0 auto;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding-bottom: 30px;
+    }
+    .card-item {
+      min-height: 180px;
+      border: 1px solid #eef2f7;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+      position: relative;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 180px;
+      transition: transform .55s ease;
+      transform-style: preserve-3d;
+    }
+    .card-item.flipped .card-inner { transform: rotateY(180deg); }
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 18px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+      background: #f8fafc;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .card-star {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      color: #f59e0b;
+      font-size: 18px;
+      font-weight: 900;
+      z-index: 2;
+    }
+    .card-checkbox {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 3;
+      width: 22px;
+      height: 22px;
+      accent-color: var(--primary);
+    }
+    .card-front-text {
+      margin: auto;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.35;
+      color: #334155;
+      white-space: pre-wrap;
+    }
+    .card-hint {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 11px;
+      font-weight: 800;
+      margin-top: auto;
+      text-transform: uppercase;
+    }
+    .card-back .ar {
+      text-align: center;
+      font-size: 30px;
+    }
+    .folder-select {
+      width: 100%;
+      border: 2px solid #f1f5f9;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 15px;
+      margin-bottom: 10px;
+      background: #fff;
+      outline: none;
+    }
+
     .toast {
       display: none;
       position: fixed;
@@ -366,6 +509,17 @@
     </div>
 
     <div id="chips" class="chips" style="display:none;"></div>
+    <div id="favTopbar" class="fav-topbar" style="display:none;"></div>
+    <div id="selectionPanel" class="selection-panel">
+      <div style="font-weight:800;">Выбрано: <span id="selectedFavCount">0</span></div>
+      <select id="bulkFolderSelect" class="folder-select"></select>
+      <input id="bulkFolderInput" class="field" type="text" placeholder="Или введите новую папку">
+      <div class="selection-actions">
+        <button class="btn" onclick="applyBulkFolder()">📁 В папку</button>
+        <button class="btn danger" onclick="deleteSelectedFavorites()">🗑 Удалить</button>
+        <button class="btn" onclick="toggleFavoriteSelectionMode(false)">✖ Завершить</button>
+      </div>
+    </div>
     <div id="list" class="list"></div>
   </div>
 
@@ -434,6 +588,9 @@
   let notes = [];
   let unsubFavs = null;
   let unsubNotes = null;
+  let favSelectionMode = false;
+  let selectedFavoriteIds = new Set();
+  let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
 
   const statusEl = document.getElementById('status');
   const listEl = document.getElementById('list');
@@ -540,6 +697,91 @@
       if (n.collection && String(n.collection).trim()) set.add(String(n.collection).trim());
     });
     return Array.from(set);
+  }
+
+
+  function toggleFavoriteSelectionMode(forceValue = null) {
+    favSelectionMode = forceValue === null ? !favSelectionMode : !!forceValue;
+    if (!favSelectionMode) selectedFavoriteIds.clear();
+    renderBulkFolderOptions();
+    renderApp();
+  }
+
+  function toggleFavoriteSelected(id) {
+    if (selectedFavoriteIds.has(id)) selectedFavoriteIds.delete(id);
+    else selectedFavoriteIds.add(id);
+    renderSelectionPanel();
+    renderApp();
+  }
+
+  function renderSelectionPanel() {
+    const panel = document.getElementById('selectionPanel');
+    if (activeTab === 'fav' && favSelectionMode) {
+      panel.classList.add('active');
+      document.getElementById('selectedFavCount').innerText = String(selectedFavoriteIds.size);
+    } else {
+      panel.classList.remove('active');
+    }
+  }
+
+  function renderBulkFolderOptions() {
+    const sel = document.getElementById('bulkFolderSelect');
+    const cols = getCollectionsForFavorites().filter(x => x !== 'Все');
+    sel.innerHTML = '<option value="">Выберите существующую папку</option>' + cols.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  }
+
+  async function applyBulkFolder() {
+    if (!user) return;
+    const ids = Array.from(selectedFavoriteIds);
+    if (!ids.length) { showMsg('Сначала выберите слова'); return; }
+    const existing = document.getElementById('bulkFolderSelect').value.trim();
+    const typed = document.getElementById('bulkFolderInput').value.trim();
+    const folder = typed || existing;
+    if (!folder) { showMsg('Выберите или введите папку'); return; }
+
+    try {
+      const batch = db.batch();
+      ids.forEach(id => {
+        const ref = db.collection('users').doc(user.uid).collection('favorites').doc(id);
+        batch.update(ref, {
+          collection: folder,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      document.getElementById('bulkFolderInput').value = '';
+      document.getElementById('bulkFolderSelect').value = '';
+      showMsg('Папка сохранена');
+      toggleFavoriteSelectionMode(false);
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка массового сохранения');
+    }
+  }
+
+  async function deleteSelectedFavorites() {
+    if (!user) return;
+    const ids = Array.from(selectedFavoriteIds);
+    if (!ids.length) { showMsg('Сначала выберите слова'); return; }
+    try {
+      const batch = db.batch();
+      ids.forEach(id => {
+        const ref = db.collection('users').doc(user.uid).collection('favorites').doc(id);
+        batch.delete(ref);
+      });
+      await batch.commit();
+      showMsg('Удалено');
+      toggleFavoriteSelectionMode(false);
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка массового удаления');
+    }
+  }
+
+  function toggleFavoriteViewMode() {
+    favViewMode = favViewMode === 'list' ? 'cards' : 'list';
+    localStorage.setItem('arabrus_fav_view_mode', favViewMode);
+    renderApp();
   }
 
   function renderCollections() {
@@ -858,12 +1100,38 @@
 
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
 
+    if (favViewMode === 'cards') {
+      return `<div class="cards-grid">` + items.map(f => `
+        <div class="card-item" onclick="${favSelectionMode ? `toggleFavoriteSelected('${escapeJs(f.id)}')` : `this.classList.toggle('flipped')`}">
+          ${favSelectionMode ? `<input class="card-checkbox" type="checkbox" ${selectedFavoriteIds.has(f.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleFavoriteSelected('${escapeJs(f.id)}')">` : ''}
+          <div class="card-star">★</div>
+          <div class="card-inner">
+            <div class="card-face">
+              <div class="card-front-text">${escapeHtml(f.customRu || '')}</div>
+              <div class="card-hint">коснись, чтобы перевернуть</div>
+            </div>
+            <div class="card-face card-back">
+              <div class="ar">${escapeHtml(f.ar || '')}</div>
+              <div class="actions" style="width:100%; margin-top:14px;">
+                <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
+                <button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>
+                <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('') + `</div>`;
+    }
+
     return items.map(f => `
-      <div class="item collapsible" onclick="this.classList.toggle('expanded')">
+      <div class="item collapsible" onclick="${favSelectionMode ? `toggleFavoriteSelected('${escapeJs(f.id)}')` : `this.classList.toggle('expanded')`}">
         <div class="item-head">
-          <div class="item-left">
-            <div class="ru">${escapeHtml(f.customRu || '')}</div>
-            <div class="ar">${escapeHtml(f.ar || '')}</div>
+          <div class="select-line" style="width:100%;">
+            ${favSelectionMode ? `<input class="select-box" type="checkbox" ${selectedFavoriteIds.has(f.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleFavoriteSelected('${escapeJs(f.id)}')">` : ''}
+            <div class="item-left">
+              <div class="ru">${escapeHtml(f.customRu || '')}</div>
+              <div class="ar">${escapeHtml(f.ar || '')}</div>
+            </div>
           </div>
         </div>
 
@@ -883,7 +1151,6 @@
   }
 
   function renderNotes() {
-
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
 
     let items = [...notes];
@@ -893,7 +1160,7 @@
     if (!items.length) return '<div class="empty">В блокноте пока пусто</div>';
 
     return items.map(n => `
-      <div class="item">
+      <div class="item collapsible" onclick="this.classList.toggle('expanded')">
         <div class="item-head">
           <div class="item-left">
             <div class="ru">${escapeHtml(n.ru || '')}</div>
@@ -901,11 +1168,14 @@
             ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
           </div>
         </div>
-        <div class="actions">
-          <button class="btn" onclick="speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
-          <button class="btn" onclick="openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
-          ${n.collection ? `<button class="btn warn" onclick="removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
-          <button class="btn danger" onclick="removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
+
+        <div class="item-details" onclick="event.stopPropagation()">
+          <div class="actions">
+            <button class="btn" onclick="speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
+            <button class="btn" onclick="openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
+            ${n.collection ? `<button class="btn warn" onclick="removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
+            <button class="btn danger" onclick="removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
+          </div>
         </div>
       </div>
     `).join('');
@@ -913,6 +1183,20 @@
 
   function renderApp() {
     renderCollections();
+    renderSelectionPanel();
+
+    const topbar = document.getElementById('favTopbar');
+    if (activeTab === 'fav' && user) {
+      topbar.style.display = 'flex';
+      topbar.innerHTML = `
+        <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
+        <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
+      `;
+    } else {
+      topbar.style.display = 'none';
+      topbar.innerHTML = '';
+    }
+
     if (activeTab === 'dict') listEl.innerHTML = renderDictionary();
     else if (activeTab === 'fav') listEl.innerHTML = renderFavorites();
     else listEl.innerHTML = renderNotes();
