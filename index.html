@@ -293,6 +293,7 @@
     let favCustom = JSON.parse(localStorage.getItem('arabus_favs_custom')) || {}; 
     let favCollections = JSON.parse(localStorage.getItem('arabus_favs_collections')) || {}; 
     let favUpdatedAt = Number(localStorage.getItem('arabus_favs_updated_at')) || 0;
+    let pendingFavOps = JSON.parse(localStorage.getItem('arabus_fav_pending_ops')) || [];
     
     let myNotes = JSON.parse(localStorage.getItem('arabus_notes')) || []; 
     
@@ -326,12 +327,61 @@
     }
 
     function makeFavKey(ar, ru) { return `${String(ar ?? '')}::${String(ru ?? '')}`; }
+    function findFavKeyForWord(w) {
+        if (!w) return null;
+        const exactKey = makeFavKey(w.ar, w.ru);
+        if (localFavs.includes(exactKey)) return exactKey;
+        const arPrefix = `${String(w.ar ?? '')}::`;
+        return localFavs.find(key => typeof key === 'string' && key.startsWith(arPrefix)) || null;
+    }
 
     function persistFavsLocal() {
         localStorage.setItem('arabus_favs', JSON.stringify(localFavs));
         localStorage.setItem('arabus_favs_custom', JSON.stringify(favCustom));
         localStorage.setItem('arabus_favs_collections', JSON.stringify(favCollections));
         localStorage.setItem('arabus_favs_updated_at', String(favUpdatedAt || 0));
+    }
+
+    function persistFavOpsLocal() {
+        localStorage.setItem('arabus_fav_pending_ops', JSON.stringify(pendingFavOps));
+    }
+
+    function queueFavOp(op) {
+        pendingFavOps.push({ ...op, ts: Date.now() });
+        if (pendingFavOps.length > 1500) pendingFavOps = pendingFavOps.slice(-1500);
+        persistFavOpsLocal();
+    }
+
+    function applyFavOps(baseList, baseCustom, baseCollections, ops) {
+        const list = Array.isArray(baseList) ? [...baseList] : [];
+        const custom = { ...(baseCustom || {}) };
+        const collections = { ...(baseCollections || {}) };
+
+        ops.forEach(op => {
+            if (!op || !op.type || !op.key) return;
+            if (op.type === 'upsert') {
+                const ru = String(op.ru || '').trim();
+                const key = op.key;
+                const without = list.filter(v => v !== key);
+                without.unshift(key);
+                list.length = 0; list.push(...without);
+                if (ru) custom[key] = ru;
+            } else if (op.type === 'remove') {
+                const key = op.key;
+                const without = list.filter(v => v !== key);
+                list.length = 0; list.push(...without);
+                delete custom[key];
+                delete collections[key];
+            } else if (op.type === 'setCollection') {
+                const key = op.key;
+                const col = String(op.col || '').trim();
+                if (col) collections[key] = col; else delete collections[key];
+            } else if (op.type === 'clearCollection') {
+                delete collections[op.key];
+            }
+        });
+
+        return { list, custom, collections };
     }
 
     function stopLiveSync() {
@@ -415,17 +465,48 @@
                 return;
             }
 
-            const cloudUpdatedAt = Number(cloudRaw.updatedAt) || 0;
-            if (!initialFavSyncDone) {
+            const cloudList = Array.isArray(cloudRaw.list) ? cloudRaw.list : [];
+            const cloudCustom = cloudRaw.custom || {};
+            const cloudCollections = cloudRaw.collections || {};
+            const cloudUpdatedAt = Number(cloudRaw.clientUpdatedAt || cloudRaw.updatedAtMs) || 0;
+
+            // Для авторизованных пользователей облако — источник правды:
+            // это убирает конфликты между устройствами из-за локальных часов.
+            const cloudChanged =
+                JSON.stringify(localFavs) !== JSON.stringify(cloudList) ||
+                JSON.stringify(favCustom) !== JSON.stringify(cloudCustom) ||
+                JSON.stringify(favCollections) !== JSON.stringify(cloudCollections);
+
+            if (pendingFavOps.length > 0) {
+                const merged = applyFavOps(cloudList, cloudCustom, cloudCollections, pendingFavOps);
+                const mergedDiffersFromCloud =
+                    JSON.stringify(merged.list) !== JSON.stringify(cloudList) ||
+                    JSON.stringify(merged.custom) !== JSON.stringify(cloudCustom) ||
+                    JSON.stringify(merged.collections) !== JSON.stringify(cloudCollections);
+
+                localFavs = merged.list;
+                favCustom = merged.custom;
+                favCollections = merged.collections;
+                favUpdatedAt = Date.now();
+                persistFavsLocal();
+                renderUI();
+
+                if (mergedDiffersFromCloud) {
+                    saveFavsToCloud({ state: merged, clearPendingOpsOnSuccess: true });
+                } else {
+                    pendingFavOps = [];
+                    persistFavOpsLocal();
+                }
                 initialFavSyncDone = true;
-                if (localFavs.length > 0 && favUpdatedAt >= cloudUpdatedAt) { saveFavsToCloud(); return; }
+                return;
             }
 
-            if (cloudUpdatedAt > favUpdatedAt) {
-                localFavs = cloudRaw.list || [];
-                favCustom = cloudRaw.custom || {};
-                favCollections = cloudRaw.collections || {};
-                favUpdatedAt = cloudUpdatedAt;
+            initialFavSyncDone = true;
+            if (cloudChanged) {
+                localFavs = cloudList;
+                favCustom = cloudCustom;
+                favCollections = cloudCollections;
+                favUpdatedAt = cloudUpdatedAt || Date.now();
                 persistFavsLocal();
                 renderUI();
             }
@@ -562,8 +643,12 @@
         if (activeTab === 'fav') {
             if (singleColActionKey) {
                 if (col) favCollections[singleColActionKey] = col; else delete favCollections[singleColActionKey]; 
+                queueFavOp({ type: 'setCollection', key: singleColActionKey, col });
             } else {
-                selectedItems.forEach(key => { if (col) favCollections[key] = col; else delete favCollections[key]; });
+                selectedItems.forEach(key => {
+                    if (col) favCollections[key] = col; else delete favCollections[key];
+                    queueFavOp({ type: 'setCollection', key, col });
+                });
             }
             saveFavsToCloud();
         } 
@@ -628,8 +713,10 @@
                 if (activeCollection === 'Все') {
                     localFavs = localFavs.filter(v => v !== key);
                     delete favCustom[key]; delete favCollections[key];
+                    queueFavOp({ type: 'remove', key });
                 } else {
                     delete favCollections[key];
+                    queueFavOp({ type: 'clearCollection', key });
                 }
             });
             saveFavsToCloud();
@@ -672,13 +759,14 @@
 
         const w = currentRenderedWords[idx];
         const itemKey = makeFavKey(w.ar, w.ru);
-        const active = localFavs.includes(itemKey);
+        const existingFavKey = findFavKeyForWord(w);
+        const active = !!existingFavKey;
         
-        window.wordToAddKey = itemKey;
+        window.wordToAddKey = existingFavKey || itemKey;
         document.getElementById('favModalAr').innerText = w.ar;
 
         if (active) {
-            document.getElementById('favModalRu').value = favCustom[itemKey] || w.short_ru || w.ru.split(';')[0];
+            document.getElementById('favModalRu').value = favCustom[existingFavKey] || w.short_ru || w.ru.split(';')[0];
             document.getElementById('favModalTitle').innerText = 'Изменить перевод';
         } else {
             document.getElementById('favModalRu').value = w.short_ru || w.ru.split(';')[0];
@@ -696,20 +784,42 @@
         localFavs = localFavs.filter(v => v !== key);
         localFavs.unshift(key); 
         favCustom[key] = ru;
+        queueFavOp({ type: 'upsert', key, ru });
         
         closeFavModal(); renderUI(); saveFavsToCloud();
     }
 
     function closeFavModal() { document.getElementById('favModal').style.display = 'none'; window.wordToAddKey = null; }
 
-    function saveFavsToCloud() {
-        favUpdatedAt = Date.now(); 
+    function saveFavsToCloud(options = {}) {
+        const state = options.state || null;
+        const clearPendingOpsOnSuccess = !!options.clearPendingOpsOnSuccess;
+        const listToSave = state ? state.list : localFavs;
+        const customToSave = state ? state.custom : favCustom;
+        const collectionsToSave = state ? state.collections : favCollections;
+
+        favUpdatedAt = Date.now();
         persistFavsLocal();
         if (user) {
-            db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
-                .set({ list: localFavs, custom: favCustom, collections: favCollections, updatedAt: favUpdatedAt }, { merge: true })
+            const serverTs = firebase.firestore.FieldValue.serverTimestamp();
+            return db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('data').doc('favs')
+                .set({
+                    list: listToSave,
+                    custom: customToSave,
+                    collections: collectionsToSave,
+                    updatedAt: serverTs,
+                    updatedAtMs: favUpdatedAt,
+                    clientUpdatedAt: favUpdatedAt
+                }, { merge: true })
+                .then(() => {
+                    if (clearPendingOpsOnSuccess) {
+                        pendingFavOps = [];
+                        persistFavOpsLocal();
+                    }
+                })
                 .catch(e => { console.log(e); });
         }
+        return Promise.resolve();
     }
 
     function saveManualNote() {
@@ -724,6 +834,12 @@
         const newNote = { ar, ru, ts: Date.now(), col: '' };
 
         if (user) {
+            // Оптимистично показываем запись сразу, не дожидаясь round-trip до Firestore.
+            const optimisticNote = { id: 'pending_' + Date.now(), ...newNote };
+            myNotes.unshift(optimisticNote);
+            localStorage.setItem('arabus_notes', JSON.stringify(myNotes));
+            renderUI();
+
             db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('notes').add(newNote).catch(e => {});
         } else {
             newNote.id = 'note_' + Date.now();
@@ -873,13 +989,13 @@
         let mappedPastTense = reverseVerbsMap[nQ];
         
         let filtered = dictBase.filter(w => {
-            const itemKey = makeFavKey(w.ar, w.ru);
-            const isFav = localFavs.includes(itemKey);
+            const favKey = findFavKeyForWord(w);
+            const isFav = !!favKey;
             
             if (activeTab === 'fav') {
                 if (!isFav) return false;
                 if (activeCollection !== 'Все') {
-                    const col = favCollections[itemKey] || '';
+                    const col = favCollections[favKey] || '';
                     if (col !== activeCollection) return false;
                 }
             } else if (!q) return false; 
@@ -907,8 +1023,8 @@
         if (activeTab === 'fav') {
             const favOrder = new Map(localFavs.map((key, index) => [key, index]));
             filtered.sort((a, b) => {
-                const keyA = makeFavKey(a.ar, a.ru);
-                const keyB = makeFavKey(b.ar, b.ru);
+                const keyA = findFavKeyForWord(a);
+                const keyB = findFavKeyForWord(b);
                 const orderA = favOrder.has(keyA) ? favOrder.get(keyA) : Number.MAX_SAFE_INTEGER;
                 const orderB = favOrder.has(keyB) ? favOrder.get(keyB) : Number.MAX_SAFE_INTEGER;
                 return orderA - orderB;
@@ -958,7 +1074,7 @@
             const gridContainer = document.createElement('div');
             gridContainer.className = 'grid-view';
             currentRenderedWords.forEach((w, idx) => {
-                const itemKey = makeFavKey(w.ar, w.ru);
+                const itemKey = findFavKeyForWord(w) || makeFavKey(w.ar, w.ru);
                 const displayRu = favCustom[itemKey] || w.short_ru || w.ru.split(';')[0];
                 const isSelected = selectedItems.has(itemKey);
                 
@@ -993,8 +1109,9 @@
 
         // СПИСОК
         currentRenderedWords.forEach((w, idx) => {
-            const itemKey = makeFavKey(w.ar, w.ru);
-            const active = localFavs.includes(itemKey);
+            const favKey = findFavKeyForWord(w);
+            const itemKey = favKey || makeFavKey(w.ar, w.ru);
+            const active = !!favKey;
             const displayRu = (active && favCustom[itemKey]) ? favCustom[itemKey] : (w.short_ru || w.ru.split(';')[0]);
             
             let verbInfoHtml = '';
@@ -1084,6 +1201,3 @@
 </script>
 </body>
 </html>
-
-
-
