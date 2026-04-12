@@ -1207,23 +1207,36 @@
     }
 
     async function toggleAuth() {
+    try {
+        if (user) {
+            await auth.signOut();
+            return;
+        }
+
         try {
-            if (user) {
-                await auth.signOut();
+            await auth.signInWithPopup(provider);
+        } catch (popupError) {
+            console.error('Popup auth error:', popupError);
+
+            const popupBlockedCodes = [
+                'auth/popup-blocked',
+                'auth/popup-closed-by-user',
+                'auth/cancelled-popup-request',
+                'auth/operation-not-supported-in-this-environment'
+            ];
+
+            if (popupBlockedCodes.includes(popupError.code)) {
+                await auth.signInWithRedirect(provider);
                 return;
             }
 
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (isMobile) {
-                await auth.signInWithRedirect(provider);
-            } else {
-                await auth.signInWithPopup(provider);
-            }
-        } catch (e) {
-            console.error('Auth error:', e);
-            showMsg('Ошибка входа через Google');
+            throw popupError;
         }
+    } catch (e) {
+        console.error('Auth error:', e);
+        showMsg('Ошибка входа через Google');
     }
+}
 
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
