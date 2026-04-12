@@ -1,6 +1,7 @@
 {
-  "name": "Arabus Pro",
-  "short_name": "Arabus",
+  "name": "АРАБРУС",
+  "short_name": "arabrus",
+  "description": "Арабско-русский словарь для изучающих язык",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -10,7 +11,21 @@
       "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }
