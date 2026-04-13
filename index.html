@@ -1249,18 +1249,171 @@
     return stems;
   }
 
+  let currentTtsAudio = null;
+  let ttsUnlocked = false;
+  let cachedArabicVoice = null;
+
+  function stopTtsPlayback() {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (_) {}
+
+    try {
+      if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio.currentTime = 0;
+      }
+    } catch (_) {}
+
+    currentTtsAudio = null;
+  }
+
+  function getArabicVoice() {
+    try {
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (!voices.length) return null;
+
+      return (
+        voices.find(v => /^ar(-|$)/i.test(v.lang || '') && /google|arabic|العربية/i.test(v.name || '')) ||
+        voices.find(v => /^ar(-|$)/i.test(v.lang || '')) ||
+        voices.find(v => /arabic|العربية/i.test(v.name || '')) ||
+        null
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function unlockTts() {
+    if (ttsUnlocked) return;
+    ttsUnlocked = true;
+    try {
+      window.speechSynthesis.resume();
+    } catch (_) {}
+  }
+
+  document.addEventListener('click', unlockTts, { passive: true });
+  document.addEventListener('touchstart', unlockTts, { passive: true });
+
+  try {
+    if ('speechSynthesis' in window) {
+      cachedArabicVoice = getArabicVoice();
+      window.speechSynthesis.onvoiceschanged = function() {
+        cachedArabicVoice = getArabicVoice();
+      };
+    }
+  } catch (_) {}
+
+  function playGoogleTtsFallback(text) {
+    try {
+      const encoded = encodeURIComponent(String(text || '').trim());
+      const url =
+        'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ar&q=' + encoded;
+
+      currentTtsAudio = new Audio(url);
+      currentTtsAudio.preload = 'auto';
+
+      currentTtsAudio.onended = function() {
+        currentTtsAudio = null;
+      };
+
+      currentTtsAudio.onerror = function() {
+        currentTtsAudio = null;
+        showMsg('Озвучка недоступна');
+      };
+
+      currentTtsAudio.play().catch(function() {
+        currentTtsAudio = null;
+        showMsg('Озвучка не запустилась');
+      });
+    } catch (e) {
+      console.error('Google TTS fallback error:', e);
+      showMsg('Озвучка недоступна');
+    }
+  }
+
   function speak(text, e) {
     if (e) e.stopPropagation();
+
     if (!canUsePremiumFeatures()) {
       showActivationPrompt();
       return;
     }
+
+    const cleanText = String(text || '').trim();
+    if (!cleanText) {
+      showMsg('Нет текста для озвучки');
+      return;
+    }
+
+    unlockTts();
+    stopTtsPlayback();
+
+    const hasSpeechApi =
+      typeof window !== 'undefined' &&
+      'speechSynthesis' in window &&
+      typeof SpeechSynthesisUtterance !== 'undefined';
+
+    if (!hasSpeechApi) {
+      playGoogleTtsFallback(cleanText);
+      return;
+    }
+
+    let usedFallback = false;
+
+    function useFallbackOnce() {
+      if (usedFallback) return;
+      usedFallback = true;
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+      playGoogleTtsFallback(cleanText);
+    }
+
     try {
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      const voice = cachedArabicVoice || getArabicVoice();
+      cachedArabicVoice = voice || cachedArabicVoice;
+
+      utterance.lang = voice && voice.lang ? voice.lang : 'ar-SA';
+      if (voice) utterance.voice = voice;
+
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      const fallbackTimer = setTimeout(function() {
+        const speaking = !!window.speechSynthesis.speaking;
+        const pending = !!window.speechSynthesis.pending;
+        if (!speaking && !pending) useFallbackOnce();
+      }, 700);
+
+      utterance.onstart = function() {
+        clearTimeout(fallbackTimer);
+      };
+
+      utterance.onend = function() {
+        clearTimeout(fallbackTimer);
+      };
+
+      utterance.onerror = function(err) {
+        clearTimeout(fallbackTimer);
+        console.error('Speech synthesis error:', err);
+        useFallbackOnce();
+      };
+
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      window.speechSynthesis.speak(u);
-    } catch (_) {}
+      window.speechSynthesis.speak(utterance);
+
+      setTimeout(function() {
+        const speaking = !!window.speechSynthesis.speaking;
+        const pending = !!window.speechSynthesis.pending;
+        if (!speaking && !pending) useFallbackOnce();
+      }, 250);
+    } catch (err) {
+      console.error('Speak error:', err);
+      useFallbackOnce();
+    }
   }
 
   function getFavoriteByWord(w) {
@@ -1283,7 +1436,6 @@
     });
     return Array.from(set);
   }
-
 
   function toggleFavoriteSelectionMode(forceValue = null) {
     favSelectionMode = forceValue === null ? !favSelectionMode : !!forceValue;
@@ -1385,7 +1537,6 @@
     }
   }
 
-
   async function deleteSelectedFavorites() {
     if (!user) return;
     if (!canUsePremiumFeatures()) {
@@ -1414,7 +1565,6 @@
     localStorage.setItem('arabrus_fav_view_mode', favViewMode);
     renderApp();
   }
-
 
   function shortPreview(text, limit = 90) {
     const s = String(text || '').replace(/\s+/g, ' ').trim();
@@ -1516,7 +1666,6 @@
     localStorage.setItem('arabrus_note_view_mode', noteViewMode);
     renderApp();
   }
-
 
   function renderCollections() {
     let cols = [];
@@ -1875,8 +2024,6 @@
 
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
 
-    const inFolderView = activeCollection !== 'Все';
-
     if (favViewMode === 'cards') {
       return `<div class="cards-grid">` + items.map(f => `
         <div class="card-item" onclick="${favSelectionMode ? `toggleFavoriteSelected('${escapeJs(f.id)}')` : `this.classList.toggle('flipped')`}">
@@ -1891,7 +2038,7 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                ${inFolderView ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>` : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`}
+                <button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>
                 <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
               </div>
             </div>
@@ -1918,7 +2065,8 @@
 
           <div class="actions">
             <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
-            ${inFolderView ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : `<button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>`}
+            <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
+            ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
             <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
           </div>
         </div>
