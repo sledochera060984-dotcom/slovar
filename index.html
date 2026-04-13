@@ -43,25 +43,61 @@
       min-height: 80vh;
       padding: 16px;
     }
+    
+    /* --- ОБНОВЛЕННАЯ УМНАЯ ШАПКА --- */
     .header {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 12px;
       margin-bottom: 14px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 16px;
+      -webkit-tap-highlight-color: transparent;
     }
+    .header:active { background: #f1f5f9; }
     .header img {
       width: 42px;
       height: 42px;
       border-radius: 10px;
       box-shadow: 0 4px 10px rgba(39,174,96,0.2);
+      transition: all 0.3s ease;
     }
     .header h1 {
       margin: 0;
       color: var(--primary);
       font-size: 24px;
       font-weight: 800;
+      display: flex;
+      align-items: center;
+      transition: font-size 0.3s ease;
     }
+    
+    /* ТОЧКИ-ИНДИКАТОРЫ */
+    .dot-indicators {
+      display: none; /* Скрыты, пока панель открыта */
+      gap: 6px;
+      margin-left: 8px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #cbd5e1;
+    }
+    .dot.ok { background: var(--primary); box-shadow: 0 0 6px rgba(39,174,96,0.4); }
+    .dot.wait { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.4); }
+    .dot.err { background: var(--danger); box-shadow: 0 0 6px rgba(220,38,38,0.4); }
+
+    /* СТИЛИ КОМПАКТНОГО РЕЖИМА */
+    body.compact-header .dot-indicators { display: flex; }
+    body.compact-header .header { margin-bottom: 8px; }
+    body.compact-header .header img { width: 32px; height: 32px; }
+    body.compact-header .header h1 { font-size: 20px; }
+    body.compact-header #profilePanel { display: none; }
+    /* -------------------------------- */
+
     .status {
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -75,16 +111,11 @@
     .status.ok { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
     .status.wait { background: #fffbeb; border-color: #fde68a; color: var(--warn); }
     .status.err { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
-    #syncIndicator {
+    #syncIndicator, #trialIndicator {
       transition: opacity .2s ease;
     }
-    #trialIndicator {
-      transition: opacity .2s ease;
-      cursor: pointer;
-    }
-    #trialIndicator:hover {
-      filter: brightness(0.98);
-    }
+    #trialIndicator { cursor: pointer; }
+    #trialIndicator:hover { filter: brightness(0.98); }
     .lock-card {
       border: 1px dashed #cbd5e1;
       border-radius: 18px;
@@ -94,368 +125,72 @@
       color: var(--text);
       box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     }
-    .lock-card .lock-icon {
-      font-size: 36px;
-      margin-bottom: 8px;
-    }
-    .lock-card .lock-title {
-      font-size: 18px;
-      font-weight: 800;
-      margin-bottom: 8px;
-      color: #0f172a;
-    }
-    .lock-card .lock-text {
-      font-size: 14px;
-      line-height: 1.45;
-      color: var(--muted);
-      margin-bottom: 12px;
-      white-space: pre-wrap;
-    }
-    .btn.locked {
-      opacity: 0.92;
-    }
-    .auth-row {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
+    .lock-card .lock-icon { font-size: 36px; margin-bottom: 8px; }
+    .lock-card .lock-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; color: #0f172a; }
+    .lock-card .lock-text { font-size: 14px; line-height: 1.45; color: var(--muted); margin-bottom: 12px; white-space: pre-wrap; }
+    .btn.locked { opacity: 0.92; }
+    .auth-row { display: flex; gap: 10px; margin-bottom: 14px; }
     .btn, .auth-btn, .tab, .chip {
-      border: 1px solid var(--line);
-      background: #fff;
-      color: var(--text);
-      border-radius: 12px;
-      cursor: pointer;
-      font-weight: 700;
+      border: 1px solid var(--line); background: #fff; color: var(--text); border-radius: 12px; cursor: pointer; font-weight: 700;
     }
-    .auth-btn {
-      width: 100%;
-      padding: 12px;
-      font-size: 14px;
-    }
-    .tabs {
-      display: flex;
-      gap: 6px;
-      background: #f1f5f9;
-      border-radius: 14px;
-      padding: 4px;
-      margin-bottom: 14px;
-    }
-    .tab {
-      flex: 1;
-      padding: 10px 8px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-    }
-    .tab.active {
-      background: #fff;
-      color: var(--primary);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
+    .auth-btn { width: 100%; padding: 12px; font-size: 14px; }
+    .tabs { display: flex; gap: 6px; background: #f1f5f9; border-radius: 14px; padding: 4px; margin-bottom: 14px; }
+    .tab { flex: 1; padding: 10px 8px; border: none; background: transparent; color: var(--muted); font-size: 13px; }
+    .tab.active { background: #fff; color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .search, .field, textarea {
-      width: 100%;
-      border: 2px solid #f1f5f9;
-      border-radius: 14px;
-      padding: 14px 16px;
-      font-size: 16px;
-      outline: none;
-      background: #fff;
-      margin-bottom: 10px;
+      width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; padding: 14px 16px; font-size: 16px; outline: none; background: #fff; margin-bottom: 10px;
     }
-    .search:focus, .field:focus, textarea:focus {
-      border-color: var(--primary);
-    }
-    textarea {
-      resize: none;
-      min-height: 100px;
-    }
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .toolbar .btn {
-      flex: 1;
-      padding: 11px 10px;
-      font-size: 13px;
-    }
-    .btn.primary {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    .btn.warn {
-      background: #fffbeb;
-      color: var(--warn);
-      border-color: #fde68a;
-    }
-    .btn.danger {
-      background: #fef2f2;
-      color: var(--danger);
-      border-color: #fecaca;
-    }
-    .chips {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 10px;
-      margin-bottom: 6px;
-    }
+    .search:focus, .field:focus, textarea:focus { border-color: var(--primary); }
+    textarea { resize: none; min-height: 100px; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .toolbar .btn { flex: 1; padding: 11px 10px; font-size: 13px; }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.warn { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+    .btn.danger { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+    .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 6px; }
     .chips::-webkit-scrollbar { display: none; }
-    .chip {
-      white-space: nowrap;
-      padding: 8px 14px;
-      border-radius: 999px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .chip.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    .empty {
-      text-align: center;
-      color: var(--muted);
-      padding: 26px 10px;
-      font-size: 14px;
-    }
-    .list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding-bottom: 60px;
-    }
-    .item {
-      border: 1px solid #eef2f7;
-      border-radius: 16px;
-      padding: 14px;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-    }
+    .chip { white-space: nowrap; padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--muted); }
+    .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .empty { text-align: center; color: var(--muted); padding: 26px 10px; font-size: 14px; }
+    .list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 60px; }
+    .item { border: 1px solid #eef2f7; border-radius: 16px; padding: 14px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
     .item.collapsible { cursor: pointer; }
-    .item-details {
-      display: none;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px dashed #e2e8f0;
-    }
+    .item-details { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
     .item.expanded .item-details { display: block; }
-    .item-head {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      justify-content: space-between;
-    }
-    .item-left {
-      flex: 1;
-      min-width: 0;
-    }
-    .ru {
-      font-size: 15px;
-      font-weight: 700;
-      line-height: 1.45;
-      color: #334155;
-      margin-bottom: 6px;
-      white-space: pre-wrap;
-    }
-    .ar {
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--primary);
-      direction: rtl;
-      line-height: 1.25;
-      word-break: break-word;
-      text-align: right;
-    }
-    .hint {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-      white-space: pre-wrap;
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-      flex-wrap: wrap;
-    }
-    .actions .btn {
-      flex: 1;
-      min-width: 110px;
-      padding: 10px 8px;
-      font-size: 13px;
-    }
-    .verb-box {
-      background: #f1f5f9;
-      border-radius: 12px;
-      padding: 10px 12px;
-      margin-top: 10px;
-      margin-bottom: 2px;
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-      font-size: 14px;
-      color: #475569;
-    }
-    .verb-box span {
-      direction: rtl;
-      color: var(--primary);
-      font-size: 20px;
-      font-weight: 800;
-    }
-    .section-note {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 10px;
-      line-height: 1.45;
-    }
-    .fav-topbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 12px;
-      flex-wrap: wrap;
-    }
+    .item-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+    .item-left { flex: 1; min-width: 0; }
+    .ru { font-size: 15px; font-weight: 700; line-height: 1.45; color: #334155; margin-bottom: 6px; white-space: pre-wrap; }
+    .ar { font-size: 28px; font-weight: 800; color: var(--primary); direction: rtl; line-height: 1.25; word-break: break-word; text-align: right; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .actions .btn { flex: 1; min-width: 110px; padding: 10px 8px; font-size: 13px; }
+    .verb-box { background: #f1f5f9; border-radius: 12px; padding: 10px 12px; margin-top: 10px; margin-bottom: 2px; display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: 14px; color: #475569; }
+    .verb-box span { direction: rtl; color: var(--primary); font-size: 20px; font-weight: 800; }
+    .section-note { font-size: 13px; color: var(--muted); margin-bottom: 10px; line-height: 1.45; }
+    .fav-topbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
     .fav-topbar .btn { flex: 1; min-width: 140px; }
-    .selection-panel {
-      display: none;
-      background: #0f172a;
-      color: #fff;
-      border-radius: 16px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
+    .selection-panel { display: none; background: #0f172a; color: #fff; border-radius: 16px; padding: 12px; margin-bottom: 12px; }
     .selection-panel.active { display: block; }
-    .selection-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-    .selection-actions .btn {
-      border: none;
-      background: rgba(255,255,255,0.14);
-      color: #fff;
-      min-width: 120px;
-    }
-    .selection-actions .btn.danger {
-      background: #dc2626;
-    }
-    .select-line {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .select-box {
-      width: 22px;
-      height: 22px;
-      accent-color: var(--primary);
-      flex: 0 0 auto;
-    }
-    .cards-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      padding-bottom: 30px;
-    }
-    .card-item {
-      min-height: 180px;
-      border: 1px solid #eef2f7;
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-      position: relative;
-      perspective: 1000px;
-      cursor: pointer;
-    }
-    .card-inner {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      min-height: 180px;
-      transition: transform .55s ease;
-      transform-style: preserve-3d;
-    }
+    .selection-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .selection-actions .btn { border: none; background: rgba(255,255,255,0.14); color: #fff; min-width: 120px; }
+    .selection-actions .btn.danger { background: #dc2626; }
+    .select-line { display: flex; align-items: center; gap: 10px; }
+    .select-box { width: 22px; height: 22px; accent-color: var(--primary); flex: 0 0 auto; }
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding-bottom: 30px; }
+    .card-item { min-height: 180px; border: 1px solid #eef2f7; border-radius: 18px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.02); position: relative; perspective: 1000px; cursor: pointer; }
+    .card-inner { position: relative; width: 100%; height: 100%; min-height: 180px; transition: transform .55s ease; transform-style: preserve-3d; }
     .card-item.flipped .card-inner { transform: rotateY(180deg); }
-    .card-face {
-      position: absolute;
-      inset: 0;
-      backface-visibility: hidden;
-      border-radius: 18px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-    }
-    .card-back {
-      transform: rotateY(180deg);
-      background: #f8fafc;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-    }
-    .card-star {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      color: #f59e0b;
-      font-size: 18px;
-      font-weight: 900;
-      z-index: 2;
-    }
-    .card-checkbox {
-      position: absolute;
-      top: 12px;
-      left: 12px;
-      z-index: 3;
-      width: 22px;
-      height: 22px;
-      accent-color: var(--primary);
-    }
-    .card-front-text {
-      margin: auto;
-      text-align: center;
-      font-size: 15px;
-      font-weight: 800;
-      line-height: 1.35;
-      color: #334155;
-      white-space: pre-wrap;
-    }
-    .card-hint {
-      text-align: center;
-      color: #94a3b8;
-      font-size: 11px;
-      font-weight: 800;
-      margin-top: auto;
-      text-transform: uppercase;
-    }
-    .card-back .ar {
-      text-align: center;
-      font-size: 30px;
-    }
-    .folder-select {
-      width: 100%;
-      border: 2px solid #f1f5f9;
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-size: 15px;
-      margin-bottom: 10px;
-      background: #fff;
-      outline: none;
-    }
-
+    .card-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; background: #fff; }
+    .card-back { transform: rotateY(180deg); background: #f8fafc; justify-content: center; align-items: center; text-align: center; }
+    .card-star { position: absolute; top: 12px; right: 12px; color: #f59e0b; font-size: 18px; font-weight: 900; z-index: 2; }
+    .card-checkbox { position: absolute; top: 12px; left: 12px; z-index: 3; width: 22px; height: 22px; accent-color: var(--primary); }
+    .card-front-text { margin: auto; text-align: center; font-size: 15px; font-weight: 800; line-height: 1.35; color: #334155; white-space: pre-wrap; }
+    .card-hint { text-align: center; color: #94a3b8; font-size: 11px; font-weight: 800; margin-top: auto; text-transform: uppercase; }
+    .card-back .ar { text-align: center; font-size: 30px; }
+    .folder-select { width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; padding: 12px 14px; font-size: 15px; margin-bottom: 10px; background: #fff; outline: none; }
     .note-topbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
     .note-topbar .btn { flex:1; min-width:140px; }
-    .note-selection-panel {
-      display:none;
-      background:#0f172a;
-      color:#fff;
-      border-radius:16px;
-      padding:12px;
-      margin-bottom:12px;
-    }
+    .note-selection-panel { display:none; background:#0f172a; color:#fff; border-radius:16px; padding:12px; margin-bottom:12px; }
     .note-selection-panel.active { display:block; }
 
     /* Компактный режим для вкладки Избранное */
@@ -522,11 +257,7 @@
 
     /* Компактный режим при поиске в словаре */
     body.dict-searching .header,
-    body.dict-searching #status,
-    body.dict-searching #syncIndicator,
-    body.dict-searching #trialIndicator,
-    body.dict-searching .user-line,
-    body.dict-searching .auth-row {
+    body.dict-searching #profilePanel {
       display: none;
     }
     body.dict-searching .app { padding-top: 10px; }
@@ -589,18 +320,29 @@
 </head>
 <body>
   <div class="app">
-    <div class="header">
+    
+    <!-- Шапка кликабельная: скрывает и открывает профиль -->
+    <div class="header" onclick="toggleProfilePanel()" title="Нажмите, чтобы открыть или скрыть меню">
       <img src="icon.png" alt="Logo" onerror="this.style.display='none'">
-      <h1>АРАБРУС</h1>
+      <h1>
+        АРАБРУС
+        <div class="dot-indicators">
+          <div id="dotSync" class="dot wait" title="Синхронизация"></div>
+          <div id="dotPremium" class="dot wait" title="Подписка"></div>
+        </div>
+      </h1>
     </div>
 
-    <div id="status" class="status wait">⏳ Подключение базы...</div>
-    <div id="syncIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">☁️ Проверка синхронизации...</div>
-    <div id="trialIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">🎁 Проверка пробного периода...</div>
-    <div id="userLine" class="user-line">Не выполнен вход</div>
+    <!-- ВЕСЬ СТАТУС ЛЕЖИТ В ЭТОМ БЛОКЕ (ОН БУДЕТ СКРЫВАТЬСЯ) -->
+    <div id="profilePanel">
+      <div id="status" class="status wait">⏳ Подключение базы...</div>
+      <div id="syncIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">☁️ Проверка синхронизации...</div>
+      <div id="trialIndicator" class="status wait" style="padding:8px 10px; font-size:12px; margin-bottom:8px;">🎁 Проверка пробного периода...</div>
+      <div id="userLine" class="user-line">Не выполнен вход</div>
 
-    <div class="auth-row">
-      <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
+      <div class="auth-row">
+        <button id="authBtn" class="auth-btn" onclick="toggleAuth()">🌐 Войти через Google</button>
+      </div>
     </div>
 
     <div class="tabs">
@@ -627,7 +369,7 @@
       <input id="noteSearchInput" class="field" type="text" placeholder="Поиск по блокноту..." oninput="renderApp()">
       <button id="noteSelectBtn" class="btn" onclick="toggleNoteSelectionMode()"></button>
     </div>
-
+    
     <div id="selectionPanel" class="selection-panel">
       <div style="font-weight:800;">Выбрано: <span id="selectedFavCount">0</span></div>
       <select id="bulkFolderSelect" class="folder-select"></select>
@@ -639,7 +381,7 @@
         <button class="btn" onclick="toggleFavoriteSelectionMode(false)">✖ Завершить</button>
       </div>
     </div>
-
+    
     <div id="noteSelectionPanel" class="note-selection-panel">
       <div style="font-weight:800;">Выбрано записей: <span id="selectedNoteCount">0</span></div>
       <select id="bulkNoteFolderSelect" class="folder-select"></select>
@@ -650,7 +392,7 @@
         <button class="btn" onclick="toggleNoteSelectionMode(false)">✖ Завершить</button>
       </div>
     </div>
-
+    
     <div id="list" class="list"></div>
   </div>
 
@@ -679,7 +421,6 @@
     </div>
   </div>
 
-  <!-- Модалка для просьбы войти в аккаунт -->
   <div id="authModalWrap" class="modal-overlay">
     <div class="modal" style="text-align:center;">
       <h3 style="margin-bottom: 10px;">Требуется вход</h3>
@@ -702,6 +443,8 @@
     });
   }
 
+  // --- ВОТ ТУТ ВОЗВРАЩЕНЫ ТВОИ САМЫЕ ПЕРВЫЕ ОРИГИНАЛЬНЫЕ КЛЮЧИ ---
+  // Именно на них у тебя работает Google Вход!
   const firebaseConfig = {
     apiKey: "AIzaSyDDwIWq8VCk-ivjjCJJZoio-wGD2gU1rtE",
     authDomain: "arabus-dict-96c12.firebaseapp.com",
@@ -745,11 +488,18 @@
   let noteSelectionMode = false;
   let selectedNoteIds = new Set();
 
+  let isProfilePanelCollapsed = false;
+
   const statusEl = document.getElementById('status');
   const syncIndicatorEl = document.getElementById('syncIndicator');
   const trialIndicatorEl = document.getElementById('trialIndicator');
   const listEl = document.getElementById('list');
   const chipsEl = document.getElementById('chips');
+
+  function toggleProfilePanel() {
+    isProfilePanelCollapsed = !isProfilePanelCollapsed;
+    document.body.classList.toggle('compact-header', isProfilePanelCollapsed);
+  }
 
   function showMsg(text) {
     const t = document.getElementById('toast');
@@ -766,10 +516,12 @@
 
   function updateSyncIndicator() {
     if (!syncIndicatorEl) return;
+    const dot = document.getElementById('dotSync');
 
     if (!user) {
       syncIndicatorEl.className = 'status wait';
       syncIndicatorEl.innerText = '☁️ Войдите в Google для синхронизации';
+      if(dot) dot.className = 'dot';
       return;
     }
 
@@ -778,23 +530,27 @@
     if (!navigator.onLine && hasPending) {
       syncIndicatorEl.className = 'status wait';
       syncIndicatorEl.innerText = '📴 Нет сети. Изменения сохранены локально и ждут синхронизации';
+      if(dot) dot.className = 'dot wait';
       return;
     }
 
     if (!navigator.onLine && !hasPending) {
       syncIndicatorEl.className = 'status wait';
       syncIndicatorEl.innerText = '📴 Нет сети. Последние данные доступны локально';
+      if(dot) dot.className = 'dot wait';
       return;
     }
 
     if (hasPending) {
       syncIndicatorEl.className = 'status wait';
       syncIndicatorEl.innerText = '🔄 Синхронизация с облаком...';
+      if(dot) dot.className = 'dot wait';
       return;
     }
 
     syncIndicatorEl.className = 'status ok';
     syncIndicatorEl.innerText = '✅ Всё сохранено в облаке';
+    if(dot) dot.className = 'dot ok';
   }
 
   function getUserCreatedAtMs() {
@@ -803,14 +559,11 @@
     return Number.isFinite(ms) ? ms : 0;
   }
 
-  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПРОБЕРКИ ПРЕМИУМА ---
   function hasPaidAccess() {
     if (!user) return false;
-    // Если есть дата окончания, проверяем её
     if (userAccess?.premiumUntilMs) {
        return Date.now() <= userAccess.premiumUntilMs;
     }
-    // Если даты нет, но стоит галочка "бесконечный премиум"
     if (userAccess?.premiumActive) return true;
     return false;
   }
@@ -893,21 +646,20 @@
     `;
   }
 
-  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПЛАШКИ ---
   function updateTrialIndicator() {
     if (!trialIndicatorEl) return;
+    const dot = document.getElementById('dotPremium');
 
     if (!user) {
       trialIndicatorEl.className = 'status wait';
       trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 14 дней бесплатного доступа';
+      if(dot) dot.className = 'dot';
       return;
     }
 
-    // Если есть оплаченный доступ
     if (hasPaidAccess()) {
       trialIndicatorEl.className = 'status ok';
       if (userAccess && userAccess.premiumUntilMs) {
-        // Форматируем дату красиво
         const d = new Date(userAccess.premiumUntilMs);
         const day = d.getDate().toString().padStart(2, '0');
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
@@ -916,6 +668,7 @@
       } else {
         trialIndicatorEl.innerText = '💎 Премиум-доступ активен';
       }
+      if(dot) dot.className = 'dot ok';
       return;
     }
 
@@ -923,11 +676,13 @@
     if (trial.active) {
       trialIndicatorEl.className = 'status wait';
       trialIndicatorEl.innerText = `🎁 Бесплатный период активен: осталось ${trial.daysLeft} дн. Нажмите для активации позже`;
+      if(dot) dot.className = 'dot wait';
       return;
     }
 
     trialIndicatorEl.className = 'status err';
     trialIndicatorEl.innerText = '🔒 Пробный период закончился. Нажмите, чтобы написать мне';
+    if(dot) dot.className = 'dot err';
   }
 
   function escapeHtml(value) {
@@ -1852,24 +1607,22 @@
     updateTrialIndicator();
   }
 
-  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ДЛЯ ЧТЕНИЯ ДАТЫ ИЗ БАЗЫ ---
   function startUserListeners() {
     if (!user) return;
 
     unsubAccess = db.collection('users').doc(user.uid)
       .onSnapshot((doc) => {
         const data = doc.exists ? (doc.data() || {}) : {};
-
+        
         let premiumEndMs = 0;
         let isActive = !!(data.premiumActive || data.premium || data.isPremium);
 
-        // Проверяем, есть ли поле premiumUntil (наша дата 2026-05-13)
         if (data.premiumUntil) {
           if (typeof data.premiumUntil === 'string') {
             const parsedMs = new Date(data.premiumUntil).getTime();
             if (!isNaN(parsedMs)) {
               premiumEndMs = parsedMs;
-              isActive = true; // Если дата есть, считаем премиум активным
+              isActive = true; 
             }
           } else {
             premiumEndMs = Number(data.premiumUntil);
@@ -1967,9 +1720,22 @@
       btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
       userLine.innerText = user.email || user.uid;
       startUserListeners();
+
+      // АВТОМАТИЧЕСКИ СКРЫВАЕМ ПАНЕЛЬ ЧЕРЕЗ 2.5 СЕКУНДЫ ПОСЛЕ ВХОДА
+      setTimeout(() => {
+        if (user && !isProfilePanelCollapsed) {
+          toggleProfilePanel();
+        }
+      }, 2500);
+
     } else {
       btn.innerText = '🌐 Войти через Google';
       userLine.innerText = 'Не выполнен вход';
+      
+      // АВТОМАТИЧЕСКИ ОТКРЫВАЕМ ПАНЕЛЬ ПРИ ВЫХОДЕ ИЗ АККАУНТА
+      if (isProfilePanelCollapsed) {
+        toggleProfilePanel();
+      }
     }
     updateSyncIndicator();
     updateTrialIndicator();
@@ -2032,494 +1798,7 @@
     renderApp();
   });
 </script>
-
-<style>
-  .compact-auth-bar {
-    display: none;
-    align-items: center;
-    justify-content: flex-end;
-    margin: -4px 0 10px;
-  }
-
-  .compact-auth-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    color: #1e293b;
-    border-radius: 999px;
-    padding: 8px 12px;
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  }
-
-  .compact-auth-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 999px;
-    flex: 0 0 auto;
-    background: #94a3b8;
-    box-shadow: 0 0 0 3px rgba(148,163,184,0.12);
-  }
-
-  .compact-auth-dot.ok {
-    background: #16a34a;
-    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
-  }
-
-  .compact-auth-dot.warn {
-    background: #eab308;
-    box-shadow: 0 0 0 3px rgba(234,179,8,0.18);
-  }
-
-  .compact-auth-dot.err {
-    background: #dc2626;
-    box-shadow: 0 0 0 3px rgba(220,38,38,0.16);
-  }
-
-  .compact-auth-dot.sync {
-    background: #16a34a;
-    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
-    animation: compactPulse 1s infinite ease-in-out;
-  }
-
-  @keyframes compactPulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.15); opacity: .75; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-
-  .compact-auth-label {
-    line-height: 1;
-  }
-
-  .compact-auth-menu-icon {
-    font-size: 14px;
-    line-height: 1;
-  }
-
-  .compact-auth-modal {
-    max-width: 420px;
-    width: 100%;
-  }
-
-  .compact-auth-title {
-    margin: 0 0 14px;
-    text-align: center;
-    color: #0f172a;
-  }
-
-  .compact-auth-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 12px;
-    margin-bottom: 10px;
-    background: #fff;
-  }
-
-  .compact-auth-card small {
-    display: block;
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-    letter-spacing: .02em;
-  }
-
-  .compact-auth-main {
-    color: #0f172a;
-    font-size: 14px;
-    font-weight: 800;
-    line-height: 1.35;
-    word-break: break-word;
-  }
-
-  .compact-auth-sub {
-    color: #64748b;
-    font-size: 12px;
-    margin-top: 4px;
-    line-height: 1.35;
-  }
-
-  .compact-auth-status-line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .compact-auth-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 12px;
-    flex-wrap: wrap;
-  }
-
-  .compact-auth-actions .btn {
-    flex: 1;
-    min-width: 130px;
-  }
-
-  body.logged-in-compact .auth-row,
-  body.logged-in-compact #syncIndicator,
-  body.logged-in-compact #trialIndicator,
-  body.logged-in-compact #userLine {
-    display: none !important;
-  }
-
-  body.logged-in-compact #status.compact-hideable {
-    display: none !important;
-  }
-
-  body.logged-in-compact .header {
-    margin-bottom: 8px;
-  }
-
-  body.dict-searching .compact-auth-bar {
-    display: none !important;
-  }
-</style>
-
-<script>
-(function () {
-  function ready(fn) {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
-    else fn();
-  }
-
-  ready(function () {
-    const headerEl = document.querySelector('.header');
-    if (!headerEl) return;
-
-    let compactBar = document.getElementById('compactAuthBar');
-    if (!compactBar) {
-      compactBar = document.createElement('div');
-      compactBar.id = 'compactAuthBar';
-      compactBar.className = 'compact-auth-bar';
-      compactBar.innerHTML = `
-        <button id="compactAuthBtn" class="compact-auth-btn" type="button">
-          <span id="compactAuthDot" class="compact-auth-dot"></span>
-          <span id="compactAuthLabel" class="compact-auth-label">Статус</span>
-          <span class="compact-auth-menu-icon">☰</span>
-        </button>
-      `;
-      headerEl.insertAdjacentElement('afterend', compactBar);
-    }
-
-    let modalWrap = document.getElementById('compactAuthModalWrap');
-    if (!modalWrap) {
-      modalWrap = document.createElement('div');
-      modalWrap.id = 'compactAuthModalWrap';
-      modalWrap.className = 'modal-overlay';
-      modalWrap.innerHTML = `
-        <div class="modal compact-auth-modal">
-          <h3 class="compact-auth-title">Аккаунт и синхронизация</h3>
-
-          <div class="compact-auth-card">
-            <small>Пользователь</small>
-            <div id="compactAuthUser" class="compact-auth-main">—</div>
-            <div id="compactAuthUserSub" class="compact-auth-sub"></div>
-          </div>
-
-          <div class="compact-auth-card">
-            <small>Статус</small>
-            <div class="compact-auth-status-line">
-              <span id="compactAuthStatusDot" class="compact-auth-dot"></span>
-              <div>
-                <div id="compactAuthStatusMain" class="compact-auth-main">—</div>
-                <div id="compactAuthStatusSub" class="compact-auth-sub"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="compact-auth-card">
-            <small>Доступ</small>
-            <div id="compactAuthAccessMain" class="compact-auth-main">—</div>
-            <div id="compactAuthAccessSub" class="compact-auth-sub"></div>
-          </div>
-
-          <div class="compact-auth-actions">
-            <button id="compactAuthAccessBtn" class="btn primary" type="button">💎 Доступ</button>
-            <button id="compactAuthLogoutBtn" class="btn danger" type="button">🚪 Выйти</button>
-            <button id="compactAuthCloseBtn" class="btn" type="button">Закрыть</button>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(modalWrap);
-    }
-
-    const compactBtn = document.getElementById('compactAuthBtn');
-    const compactDot = document.getElementById('compactAuthDot');
-    const compactLabel = document.getElementById('compactAuthLabel');
-
-    const modalUser = document.getElementById('compactAuthUser');
-    const modalUserSub = document.getElementById('compactAuthUserSub');
-    const modalStatusDot = document.getElementById('compactAuthStatusDot');
-    const modalStatusMain = document.getElementById('compactAuthStatusMain');
-    const modalStatusSub = document.getElementById('compactAuthStatusSub');
-    const modalAccessMain = document.getElementById('compactAuthAccessMain');
-    const modalAccessSub = document.getElementById('compactAuthAccessSub');
-
-    const accessBtn = document.getElementById('compactAuthAccessBtn');
-    const logoutBtn = document.getElementById('compactAuthLogoutBtn');
-    const closeBtn = document.getElementById('compactAuthCloseBtn');
-
-    const statusEl = document.getElementById('status');
-    const syncEl = document.getElementById('syncIndicator');
-    const trialEl = document.getElementById('trialIndicator');
-    const authRow = document.querySelector('.auth-row');
-    const userLine = document.getElementById('userLine');
-
-    function isLoggedInNow() {
-      try { return typeof user !== 'undefined' && !!user; } catch (_) { return false; }
-    }
-
-    function getSyncState() {
-      try {
-        if (!isLoggedInNow()) {
-          return {
-            tone: 'warn',
-            short: 'Вход',
-            main: 'Требуется вход',
-            sub: 'Войдите через Google, чтобы включить синхронизацию'
-          };
-        }
-
-        const pending = !!(
-          (typeof favSnapshotPending !== 'undefined' && favSnapshotPending) ||
-          (typeof noteSnapshotPending !== 'undefined' && noteSnapshotPending)
-        );
-
-        if (!navigator.onLine && pending) {
-          return {
-            tone: 'warn',
-            short: 'Офлайн',
-            main: 'Нет сети',
-            sub: 'Изменения сохранены локально и ждут синхронизации'
-          };
-        }
-
-        if (!navigator.onLine) {
-          return {
-            tone: 'warn',
-            short: 'Офлайн',
-            main: 'Нет сети',
-            sub: 'Последние данные доступны локально'
-          };
-        }
-
-        if (pending) {
-          return {
-            tone: 'sync',
-            short: 'Синхр.',
-            main: 'Синхронизация',
-            sub: 'Данные отправляются в облако'
-          };
-        }
-
-        return {
-          tone: 'ok',
-          short: 'OK',
-          main: 'Синхронизировано',
-          sub: 'Всё сохранено в облаке'
-        };
-      } catch (_) {
-        return {
-          tone: 'warn',
-          short: 'Статус',
-          main: 'Статус обновляется',
-          sub: ''
-        };
-      }
-    }
-
-    function getAccessState() {
-      try {
-        if (!isLoggedInNow()) {
-          return {
-            main: 'Войдите в Google',
-            sub: 'После входа начнётся пробный период и включится синхронизация'
-          };
-        }
-
-        if (typeof hasPaidAccess === 'function' && hasPaidAccess()) {
-          if (typeof userAccess !== 'undefined' && userAccess && userAccess.premiumUntilMs) {
-            const d = new Date(userAccess.premiumUntilMs);
-            const day = String(d.getDate()).padStart(2, '0');
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const year = d.getFullYear();
-            return {
-              main: 'Премиум активен',
-              sub: 'Доступ до ' + day + '.' + month + '.' + year
-            };
-          }
-          return {
-            main: 'Премиум активен',
-            sub: 'Полный доступ включён'
-          };
-        }
-
-        if (typeof getTrialInfo === 'function') {
-          const trial = getTrialInfo();
-          if (trial && trial.active) {
-            return {
-              main: 'Пробный период активен',
-              sub: 'Осталось дней: ' + trial.daysLeft
-            };
-          }
-        }
-
-        return {
-          main: 'Пробный период закончился',
-          sub: 'Открой меню и нажми “Доступ”, чтобы написать тебе для активации'
-        };
-      } catch (_) {
-        return {
-          main: 'Доступ обновляется',
-          sub: ''
-        };
-      }
-    }
-
-    function updateVisibility() {
-      const logged = isLoggedInNow();
-      document.body.classList.toggle('logged-in-compact', logged);
-
-      if (compactBar) compactBar.style.display = logged ? 'flex' : 'none';
-      if (authRow) authRow.style.display = logged ? 'none' : 'flex';
-      if (userLine) userLine.style.display = logged ? 'none' : '';
-
-      if (syncEl) syncEl.style.display = logged ? 'none' : '';
-      if (trialEl) trialEl.style.display = logged ? 'none' : '';
-
-      if (statusEl) {
-        const hideable = statusEl.classList.contains('ok');
-        statusEl.classList.toggle('compact-hideable', logged && hideable);
-        if (logged && hideable) statusEl.style.display = 'none';
-        else statusEl.style.display = '';
-      }
-    }
-
-    function applyDot(el, tone) {
-      if (!el) return;
-      el.className = 'compact-auth-dot ' + tone;
-    }
-
-    function refreshCompactUi() {
-      updateVisibility();
-
-      const syncState = getSyncState();
-      const accessState = getAccessState();
-
-      applyDot(compactDot, syncState.tone);
-      applyDot(modalStatusDot, syncState.tone);
-
-      if (compactLabel) compactLabel.textContent = syncState.short;
-      if (modalStatusMain) modalStatusMain.textContent = syncState.main;
-      if (modalStatusSub) modalStatusSub.textContent = syncState.sub;
-
-      if (modalUser) {
-        if (isLoggedInNow()) {
-          try {
-            modalUser.textContent = user.displayName || user.email || 'Пользователь';
-            modalUserSub.textContent = user.email || '';
-          } catch (_) {
-            modalUser.textContent = 'Пользователь';
-            modalUserSub.textContent = '';
-          }
-        } else {
-          modalUser.textContent = 'Не выполнен вход';
-          modalUserSub.textContent = '';
-        }
-      }
-
-      if (modalAccessMain) modalAccessMain.textContent = accessState.main;
-      if (modalAccessSub) modalAccessSub.textContent = accessState.sub;
-    }
-
-    function openCompactMenu() {
-      refreshCompactUi();
-      modalWrap.style.display = 'flex';
-    }
-
-    function closeCompactMenu() {
-      modalWrap.style.display = 'none';
-    }
-
-    compactBtn.addEventListener('click', openCompactMenu);
-    closeBtn.addEventListener('click', closeCompactMenu);
-
-    modalWrap.addEventListener('click', function (e) {
-      if (e.target === modalWrap) closeCompactMenu();
-    });
-
-    accessBtn.addEventListener('click', function () {
-      closeCompactMenu();
-      try {
-        if (!isLoggedInNow()) {
-          if (typeof openAuthModal === 'function') openAuthModal();
-          else if (typeof toggleAuth === 'function') toggleAuth();
-          return;
-        }
-        if (typeof openActivationContact === 'function') openActivationContact();
-      } catch (_) {}
-    });
-
-    logoutBtn.addEventListener('click', function () {
-      closeCompactMenu();
-      try {
-        if (typeof toggleAuth === 'function' && isLoggedInNow()) toggleAuth();
-      } catch (_) {}
-    });
-
-    const originalUpdateSyncIndicator = typeof updateSyncIndicator === 'function' ? updateSyncIndicator : null;
-    if (originalUpdateSyncIndicator) {
-      updateSyncIndicator = function () {
-        const result = originalUpdateSyncIndicator.apply(this, arguments);
-        refreshCompactUi();
-        return result;
-      };
-    }
-
-    const originalUpdateTrialIndicator = typeof updateTrialIndicator === 'function' ? updateTrialIndicator : null;
-    if (originalUpdateTrialIndicator) {
-      updateTrialIndicator = function () {
-        const result = originalUpdateTrialIndicator.apply(this, arguments);
-        refreshCompactUi();
-        return result;
-      };
-    }
-
-    const originalRenderApp = typeof renderApp === 'function' ? renderApp : null;
-    if (originalRenderApp) {
-      renderApp = function () {
-        const result = originalRenderApp.apply(this, arguments);
-        refreshCompactUi();
-        return result;
-      };
-    }
-
-    const originalSetStatus = typeof setStatus === 'function' ? setStatus : null;
-    if (originalSetStatus) {
-      setStatus = function () {
-        const result = originalSetStatus.apply(this, arguments);
-        refreshCompactUi();
-        return result;
-      };
-    }
-
-    window.addEventListener('online', refreshCompactUi);
-    window.addEventListener('offline', refreshCompactUi);
-    document.addEventListener('visibilitychange', refreshCompactUi);
-
-    setInterval(refreshCompactUi, 1200);
-    refreshCompactUi();
-  });
-})();
-</script>
-
 </body>
 </html>
+
+
