@@ -803,11 +803,16 @@
     return Number.isFinite(ms) ? ms : 0;
   }
 
+  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПРОБЕРКИ ПРЕМИУМА ---
   function hasPaidAccess() {
     if (!user) return false;
-    if (!userAccess?.premiumActive) return false;
-    if (!userAccess?.premiumUntilMs) return true;
-    return Date.now() <= Number(userAccess.premiumUntilMs || 0);
+    // Если есть дата окончания, проверяем её
+    if (userAccess?.premiumUntilMs) {
+       return Date.now() <= userAccess.premiumUntilMs;
+    }
+    // Если даты нет, но стоит галочка "бесконечный премиум"
+    if (userAccess?.premiumActive) return true;
+    return false;
   }
 
   function getTrialInfo() {
@@ -888,6 +893,7 @@
     `;
   }
 
+  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПЛАШКИ ---
   function updateTrialIndicator() {
     if (!trialIndicatorEl) return;
 
@@ -897,9 +903,19 @@
       return;
     }
 
+    // Если есть оплаченный доступ
     if (hasPaidAccess()) {
       trialIndicatorEl.className = 'status ok';
-      trialIndicatorEl.innerText = '💎 Премиум-доступ активен';
+      if (userAccess && userAccess.premiumUntilMs) {
+        // Форматируем дату красиво
+        const d = new Date(userAccess.premiumUntilMs);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        trialIndicatorEl.innerText = `💎 Премиум-доступ активен до ${day}.${month}.${year}`;
+      } else {
+        trialIndicatorEl.innerText = '💎 Премиум-доступ активен';
+      }
       return;
     }
 
@@ -973,7 +989,6 @@
     return stems;
   }
 
-  // --- СТАРЫЙ, ПРОВЕРЕННЫЙ БЛОК ОЗВУЧКИ (С РАБОТОЙ ОФЛАЙН И ТАЙМЕРОМ) ---
   let currentTtsAudio = null;
   let ttsUnlocked = false;
   let cachedArabicVoice = null;
@@ -1114,7 +1129,6 @@
       useFallbackOnce();
     }
   }
-  // --- КОНЕЦ БЛОКА ОЗВУЧКИ ---
 
   function getFavoriteByWord(w) {
     const id = makeFavId(w.ar, w.ru);
@@ -1838,15 +1852,35 @@
     updateTrialIndicator();
   }
 
+  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ДЛЯ ЧТЕНИЯ ДАТЫ ИЗ БАЗЫ ---
   function startUserListeners() {
     if (!user) return;
 
     unsubAccess = db.collection('users').doc(user.uid)
       .onSnapshot((doc) => {
         const data = doc.exists ? (doc.data() || {}) : {};
+        
+        let premiumEndMs = 0;
+        let isActive = !!(data.premiumActive || data.premium || data.isPremium);
+
+        // Проверяем, есть ли поле premiumUntil (наша дата 2026-05-13)
+        if (data.premiumUntil) {
+          if (typeof data.premiumUntil === 'string') {
+            const parsedMs = new Date(data.premiumUntil).getTime();
+            if (!isNaN(parsedMs)) {
+              premiumEndMs = parsedMs;
+              isActive = true; // Если дата есть, считаем премиум активным
+            }
+          } else {
+            premiumEndMs = Number(data.premiumUntil);
+          }
+        } else if (data.premiumUntilMs || data.accessUntilMs) {
+          premiumEndMs = Number(data.premiumUntilMs || data.accessUntilMs || 0);
+        }
+
         userAccess = {
-          premiumActive: !!(data.premiumActive || data.premium || data.isPremium),
-          premiumUntilMs: Number(data.premiumUntilMs || data.premiumUntil || data.accessUntilMs || 0)
+          premiumActive: isActive,
+          premiumUntilMs: premiumEndMs
         };
         updateTrialIndicator();
         renderApp();
