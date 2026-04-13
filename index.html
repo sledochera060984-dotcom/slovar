@@ -312,7 +312,6 @@
       margin-bottom: 10px;
       line-height: 1.45;
     }
-
     .fav-topbar {
       display: flex;
       gap: 8px;
@@ -974,21 +973,71 @@
     return stems;
   }
 
-  // --- ОБНОВЛЕННАЯ ЛОГИКА ОЗВУЧКИ (TTS) ---
-  let fallbackAudio = new Audio(); // Глобальный объект, чтобы звук не блокировался браузером
+  // --- СТАРЫЙ, ПРОВЕРЕННЫЙ БЛОК ОЗВУЧКИ (С РАБОТОЙ ОФЛАЙН И ТАЙМЕРОМ) ---
+  let currentTtsAudio = null;
+  let ttsUnlocked = false;
+  let cachedArabicVoice = null;
+
+  function stopTtsPlayback() {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    try {
+      if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio.currentTime = 0;
+      }
+    } catch (_) {}
+    currentTtsAudio = null;
+  }
+
+  function getArabicVoice() {
+    try {
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (!voices.length) return null;
+      return (
+        voices.find(v => /^ar(-|$)/i.test(v.lang || '') && /google|arabic|العربية/i.test(v.name || '')) ||
+        voices.find(v => /^ar(-|$)/i.test(v.lang || '')) ||
+        voices.find(v => /arabic|العربية/i.test(v.name || '')) ||
+        null
+      );
+    } catch (_) { return null; }
+  }
+
+  function unlockTts() {
+    if (ttsUnlocked) return;
+    ttsUnlocked = true;
+    try { window.speechSynthesis.resume(); } catch (_) {}
+  }
+
+  document.addEventListener('click', unlockTts, { passive: true });
+  document.addEventListener('touchstart', unlockTts, { passive: true });
+
+  try {
+    if ('speechSynthesis' in window) {
+      cachedArabicVoice = getArabicVoice();
+      window.speechSynthesis.onvoiceschanged = function() {
+        cachedArabicVoice = getArabicVoice();
+      };
+    }
+  } catch (_) {}
 
   function playGoogleTtsFallback(text) {
     try {
       const encoded = encodeURIComponent(String(text || '').trim());
       const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ar&q=' + encoded;
-      
-      fallbackAudio.pause(); // Останавливаем прошлый звук, если он был
-      fallbackAudio.src = url;
-      fallbackAudio.play().catch(function(err) {
-        console.error('Ошибка резервной озвучки:', err);
-        showMsg('Ошибка сети при загрузке аудио');
+
+      currentTtsAudio = new Audio(url);
+      currentTtsAudio.preload = 'auto';
+      currentTtsAudio.onended = function() { currentTtsAudio = null; };
+      currentTtsAudio.onerror = function() {
+        currentTtsAudio = null;
+        showMsg('Озвучка недоступна');
+      };
+      currentTtsAudio.play().catch(function() {
+        currentTtsAudio = null;
+        showMsg('Озвучка не запустилась');
       });
     } catch (e) {
+      console.error('Google TTS fallback error:', e);
       showMsg('Озвучка недоступна');
     }
   }
@@ -996,50 +1045,76 @@
   function speak(text, e) {
     if (e) e.stopPropagation();
 
-    // Проверяем авторизацию и доступ
     if (!canUsePremiumFeatures()) {
       showActivationPrompt();
       return;
     }
 
     const cleanText = String(text || '').trim();
-    if (!cleanText) return;
+    if (!cleanText) {
+      showMsg('Нет текста для озвучки');
+      return;
+    }
 
-    // Проверяем, жив ли системный движок Android
-    const hasSpeechApi = 'speechSynthesis' in window;
-    const voices = hasSpeechApi ? window.speechSynthesis.getVoices() : [];
+    unlockTts();
+    stopTtsPlayback();
 
-    // УМНАЯ ПРОВЕРКА ДЛЯ LENOVO И СТАРЫХ УСТРОЙСТВ:
-    // Если голосов 0 (движок Android сломан или удален), 
-    // МГНОВЕННО запускаем скачивание MP3, чтобы браузер не заблокировал клик
-    if (!hasSpeechApi || voices.length === 0) {
+    const hasSpeechApi = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+
+    if (!hasSpeechApi) {
       playGoogleTtsFallback(cleanText);
       return;
     }
 
-    // Если все хорошо, пытаемся запустить обычный голос системы
+    let usedFallback = false;
+
+    function useFallbackOnce() {
+      if (usedFallback) return;
+      usedFallback = true;
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      playGoogleTtsFallback(cleanText);
+    }
+
     try {
-      window.speechSynthesis.cancel(); // Сброс зависших слов
-      
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'ar-SA';
-      utterance.rate = 0.85;
+      const voice = cachedArabicVoice || getArabicVoice();
+      cachedArabicVoice = voice || cachedArabicVoice;
 
-      const arVoice = voices.find(v => /^ar/.test(v.lang)) || voices.find(v => /arabic|العربية/i.test(v.name));
-      if (arVoice) utterance.voice = arVoice;
+      utterance.lang = voice && voice.lang ? voice.lang : 'ar-SA';
+      if (voice) utterance.voice = voice;
 
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      const fallbackTimer = setTimeout(function() {
+        const speaking = !!window.speechSynthesis.speaking;
+        const pending = !!window.speechSynthesis.pending;
+        if (!speaking && !pending) useFallbackOnce();
+      }, 700);
+
+      utterance.onstart = function() { clearTimeout(fallbackTimer); };
+      utterance.onend = function() { clearTimeout(fallbackTimer); };
+      utterance.onerror = function(err) {
+        clearTimeout(fallbackTimer);
+        console.error('Speech synthesis error:', err);
+        useFallbackOnce();
+      };
+
+      window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utterance);
 
-      // Пинок для залипающих браузеров
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
+      setTimeout(function() {
+        const speaking = !!window.speechSynthesis.speaking;
+        const pending = !!window.speechSynthesis.pending;
+        if (!speaking && !pending) useFallbackOnce();
+      }, 250);
     } catch (err) {
-      console.error('Ошибка системного движка:', err);
-      playGoogleTtsFallback(cleanText); // Если движок упал в процессе
+      console.error('Speak error:', err);
+      useFallbackOnce();
     }
   }
-  // --- КОНЕЦ ЛОГИКИ ОЗВУЧКИ ---
+  // --- КОНЕЦ БЛОКА ОЗВУЧКИ ---
 
   function getFavoriteByWord(w) {
     const id = makeFavId(w.ar, w.ru);
