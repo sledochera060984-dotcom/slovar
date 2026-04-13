@@ -215,20 +215,6 @@
       color: #fff;
       border-color: var(--primary);
     }
-    /* Tint non-default collection chips (folders) with a pale yellow background and warn text.
-       The special "Все" collection stays green via the `.chip.vse` style below.  Active chips
-       retain their green background due to `.chip.active`. */
-    .chip.other {
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      color: var(--warn);
-    }
-    /* Always keep the "Все" collection chip green even when not active. */
-    .chip.vse {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
     .empty {
       text-align: center;
       color: var(--muted);
@@ -762,26 +748,6 @@
   const statusEl = document.getElementById('status');
   const syncIndicatorEl = document.getElementById('syncIndicator');
   const trialIndicatorEl = document.getElementById('trialIndicator');
-
-  // Flag used to control dictionary search history.  When true a search
-  // history state has been pushed so the browser back button will clear
-  // the search instead of exiting the app.  See renderDictionary() and
-  // the popstate handler below.
-  window.dictSearchActive = false;
-  // Replace the initial history state with a marker for the dictionary home.
-  history.replaceState({ dictHome: true }, '');
-  // Handle browser back navigation to clear dictionary search.  When a search
-  // state is popped, this listener resets the search input, clears the
-  // cached results and re-renders the app.
-  window.addEventListener('popstate', (e) => {
-    if (e.state && e.state.dictSearch) {
-      const input = document.getElementById('queryInput');
-      if (input) input.value = '';
-      currentRenderedWords = [];
-      window.dictSearchActive = false;
-      renderApp();
-    }
-  });
   const listEl = document.getElementById('list');
   const chipsEl = document.getElementById('chips');
 
@@ -1409,7 +1375,7 @@
 
     chipsEl.style.display = 'flex';
     chipsEl.innerHTML = cols.map(c =>
-      `<button class="chip${c === activeCollection ? ' active' : ''}${c === 'Все' ? ' vse' : ' other'}" onclick="selectCollection('${escapeJs(c)}')">${escapeHtml(c)}</button>`
+      `<button class="chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeJs(c)}')">${escapeHtml(c)}</button>`
     ).join('');
   }
 
@@ -1646,50 +1612,7 @@
     if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return '<div class="empty">База ещё не загружена</div>';
 
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
-    // Manage browser history for dictionary searches.  When the query becomes
-    // non-empty we push a new history state so the back button clears the search.
-    if (q) {
-      if (!window.dictSearchActive) {
-        history.pushState({ dictSearch: true }, '');
-        window.dictSearchActive = true;
-      }
-    } else {
-      window.dictSearchActive = false;
-    }
-    // When the query is empty, return previously rendered words if any, so
-    // the user can still see their last results.  Otherwise show the default prompt.
-    if (!q) {
-      if (Array.isArray(currentRenderedWords) && currentRenderedWords.length > 0) {
-        return currentRenderedWords.map((w, idx) => {
-          const fav = getFavoriteByWord(w);
-          const present = normalizedVerbs[normalize(w.ar)];
-          const locked = isPremiumLocked();
-          return `
-            <div class="item collapsible" onclick="this.classList.toggle('expanded')">
-              <div class="item-head">
-                <div class="item-left">
-                  <div class="ru">${escapeHtml(w.short_ru || String(w.ru || '').split(';')[0] || '')}</div>
-                  <div class="ar">${escapeHtml(w.ar)}</div>
-                  ${present ? `<div class="hint">Настоящее время: <b>${escapeHtml(present)}</b></div>` : ''}
-                  ${fav ? `<div class="hint">⭐ Уже в избранном</div>` : ''}
-                </div>
-              </div>
-
-              <div class="item-details" onclick="event.stopPropagation()">
-                <div class="hint">${escapeHtml(w.ru || '')}</div>
-                ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
-                <div class="actions">
-                  <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? "showActivationPrompt()" : `speak('${escapeJs(w.ar)}', event)`}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
-                  <button class="btn ${locked ? 'locked' : (fav ? 'warn' : '')}" onclick="${locked ? "showActivationPrompt()" : `toggleFavoriteDirect(${idx})`}">${locked ? '🔒 Избранное' : (fav ? '★ Уже в избранном' : '☆ В избранное')}</button>
-                  ${fav && !locked ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-      return '<div class="empty">Начните вводить слово для поиска</div>';
-    }
+    if (!q) return '<div class="empty">Начните вводить слово для поиска</div>';
 
     const nQ = normalize(q);
     const stems = getArabicStems(nQ);
@@ -1765,21 +1688,7 @@
     if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
     let items = [...favorites];
-    // Filter by active collection
     if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
-    // Apply search query filter for favourites.  We read the query from the
-    // `favSearchInput` field and compare against Russian, Arabic, source and
-    // collection fields (case-insensitive).  Empty query leaves the list unchanged.
-    const favQuery = (document.getElementById('favSearchInput')?.value || '').trim().toLowerCase();
-    if (favQuery) {
-      items = items.filter(f =>
-        String(f.customRu || '').toLowerCase().includes(favQuery) ||
-        String(f.ar || '').toLowerCase().includes(favQuery) ||
-        String(f.ruSource || '').toLowerCase().includes(favQuery) ||
-        String(f.collection || '').toLowerCase().includes(favQuery)
-      );
-    }
-    // Sort by timestamp descending
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
@@ -1798,11 +1707,7 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                ${
-                  f.collection
-                    ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
-                    : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`
-                }
+                <button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>
                 <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
               </div>
             </div>
@@ -1836,14 +1741,6 @@
         </div>
       </div>
     `).join('');
-  }
-
-  // Clear the favourites search input and re-render the app.  Called by the ✖ button in
-  // the favourites search bar.
-  function clearFavSearch() {
-    const input = document.getElementById('favSearchInput');
-    if (input) input.value = '';
-    renderApp();
   }
 
   function renderNotes() {
@@ -1919,13 +1816,7 @@
 
     if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
-      const favQueryVal = (document.getElementById('favSearchInput')?.value || '');
-      // Build a search bar with a clear button alongside view/selection mode toggles.
       topbar.innerHTML = `
-        <div class="fav-search" style="flex:1; position:relative; display:flex; align-items:center;">
-          <input id="favSearchInput" class="field" type="text" placeholder="Поиск по избранному..." value="${escapeHtml(favQueryVal)}" oninput="renderApp()" style="padding-right:32px;">
-          <span class="clear-fav-btn" onclick="clearFavSearch()" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:18px;">✖</span>
-        </div>
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
       `;
