@@ -1,12 +1,13 @@
 {
   "id": "com.arabrus.app",
-  "name": "ARABRUS",
-  "short_name": "ARABRUS",
-  "start_url": "/",
+  "name": "АРАБРУС",
+  "short_name": "АРАБРУС",
+  "start_url": "/slovar/",
+  "scope": "/slovar/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-  "description": "Arabic-Russian Dictionary",
+  "description": "Арабско-русский словарь",
   "icons": [
     {
       "src": "icons/192x192.png",
