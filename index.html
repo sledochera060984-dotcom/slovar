@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -203,21 +204,27 @@
     }
     .chips::-webkit-scrollbar { display: none; }
     .chip {
-      /* Chips represent collections in favourites/notes.  By default
-         they were rendered with no background which made them look
-         “colourless”.  To make them more visible we tint them the same
-         way as warn buttons: a very light yellow with a subtle border.
-         The text colour uses the warn colour from the palette. */
       white-space: nowrap;
       padding: 8px 14px;
       border-radius: 999px;
       font-size: 13px;
+      color: var(--muted);
+    }
+    .chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    /* Tint non-default collection chips (folders) with a pale yellow background and warn text.
+       The special "Все" collection stays green via the `.chip.vse` style below.  Active chips
+       retain their green background due to `.chip.active`. */
+    .chip.other {
       background: #fffbeb;
       border: 1px solid #fde68a;
       color: var(--warn);
     }
-    .chip.active {
-      /* Active chips keep the primary green background */
+    /* Always keep the "Все" collection chip green even when not active. */
+    .chip.vse {
       background: var(--primary);
       color: #fff;
       border-color: var(--primary);
@@ -319,15 +326,6 @@
       margin-bottom: 10px;
       line-height: 1.45;
     }
-
-    .item.collapsible { cursor: pointer; }
-    .item-details {
-      display: none;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px dashed #e2e8f0;
-    }
-    .item.expanded .item-details { display: block; }
     .fav-topbar {
       display: flex;
       gap: 8px;
@@ -378,12 +376,9 @@
     }
     .card-item {
       min-height: 180px;
-      /* Favourite cards were previously pure white which made
-         collections blend together.  Use a light yellow tint and
-         matching border similar to warn buttons. */
-      border: 1px solid #fde68a;
+      border: 1px solid #eef2f7;
       border-radius: 18px;
-      background: #fffbeb;
+      background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.02);
       position: relative;
       perspective: 1000px;
@@ -406,8 +401,7 @@
       padding: 16px;
       display: flex;
       flex-direction: column;
-      /* Use the same pale yellow tint as the card container */
-      background: #fffbeb;
+      background: #fff;
     }
     .card-back {
       transform: rotateY(180deg);
@@ -466,7 +460,6 @@
       outline: none;
     }
 
-
     .note-topbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
     .note-topbar .btn { flex:1; min-width:140px; }
     .note-selection-panel {
@@ -478,276 +471,68 @@
       margin-bottom:12px;
     }
     .note-selection-panel.active { display:block; }
-    .folder-select {
-      width:100%;
-      border:2px solid #f1f5f9;
-      border-radius:14px;
-      padding:12px 14px;
-      font-size:15px;
-      margin-bottom:10px;
-      background:#fff;
-      outline:none;
-    }
-
 
     /* Компактный режим для вкладки Избранное */
-    body.compact-favs .header {
-      margin-bottom: 6px;
-    }
-    body.compact-favs .header img {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-    }
-    body.compact-favs .header h1 {
-      font-size: 18px;
-    }
-    body.compact-favs .status {
-      padding: 8px 10px;
-      font-size: 12px;
-      margin-bottom: 6px;
-      border-radius: 12px;
-    }
-    body.compact-favs .user-line {
-      display: none;
-    }
-    body.compact-favs .auth-row {
-      margin-bottom: 8px;
-    }
-    body.compact-favs .auth-btn {
-      padding: 9px 12px;
-      font-size: 13px;
-      min-height: 40px;
-    }
-    body.compact-favs .tabs {
-      margin-bottom: 8px;
-      padding: 3px;
-      gap: 4px;
-    }
-    body.compact-favs .tab {
-      padding: 8px 6px;
-      font-size: 12px;
-    }
-    body.compact-favs .chips {
-      margin-bottom: 6px;
-      padding-bottom: 6px;
-    }
-    body.compact-favs .chip {
-      padding: 6px 10px;
-      font-size: 12px;
-    }
-    body.compact-favs #favTopbar {
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    body.compact-favs #favTopbar .btn {
-      min-height: 36px;
-      padding: 8px 10px;
-      font-size: 12px;
-    }
-    body.compact-favs #selectionPanel {
-      padding: 10px;
-      margin-bottom: 8px;
-      border-radius: 12px;
-    }
+    body.compact-favs .header { margin-bottom: 6px; }
+    body.compact-favs .header img { width: 34px; height: 34px; border-radius: 8px; }
+    body.compact-favs .header h1 { font-size: 18px; }
+    body.compact-favs .status { padding: 8px 10px; font-size: 12px; margin-bottom: 6px; border-radius: 12px; }
+    body.compact-favs .user-line { display: none; }
+    body.compact-favs .auth-row { margin-bottom: 8px; }
+    body.compact-favs .auth-btn { padding: 9px 12px; font-size: 13px; min-height: 40px; }
+    body.compact-favs .tabs { margin-bottom: 8px; padding: 3px; gap: 4px; }
+    body.compact-favs .tab { padding: 8px 6px; font-size: 12px; }
+    body.compact-favs .chips { margin-bottom: 6px; padding-bottom: 6px; }
+    body.compact-favs .chip { padding: 6px 10px; font-size: 12px; }
+    body.compact-favs #favTopbar { gap: 6px; margin-bottom: 8px; }
+    body.compact-favs #favTopbar .btn { min-height: 36px; padding: 8px 10px; font-size: 12px; }
+    body.compact-favs #selectionPanel { padding: 10px; margin-bottom: 8px; border-radius: 12px; }
     body.compact-favs #selectionPanel .folder-select,
-    body.compact-favs #selectionPanel .field {
-      margin-bottom: 8px;
-      padding: 10px 12px;
-      font-size: 14px;
-    }
-    body.compact-favs #selectionPanel .selection-actions .btn {
-      min-height: 34px;
-      padding: 7px 10px;
-      font-size: 12px;
-    }
-    body.compact-favs #list {
-      gap: 6px;
-      padding-bottom: 16px;
-    }
-    body.compact-favs #list .item {
-      padding: 9px 10px;
-      border-radius: 12px;
-    }
-    body.compact-favs #list .item-head {
-      gap: 8px;
-    }
-    body.compact-favs #list .ru {
-      font-size: 13px;
-      line-height: 1.15;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    body.compact-favs #list .ar {
-      font-size: 22px;
-      line-height: 1.0;
-    }
-    body.compact-favs #list .hint {
-      font-size: 11px;
-      line-height: 1.2;
-      margin-top: 2px;
-    }
-    body.compact-favs #list .item-details {
-      margin-top: 8px;
-      padding-top: 8px;
-    }
-    body.compact-favs #list .actions {
-      margin-top: 8px;
-      gap: 6px;
-    }
-    body.compact-favs #list .actions .btn {
-      min-height: 34px;
-      padding: 7px 8px;
-      font-size: 12px;
-    }
+    body.compact-favs #selectionPanel .field { margin-bottom: 8px; padding: 10px 12px; font-size: 14px; }
+    body.compact-favs #selectionPanel .selection-actions .btn { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+    body.compact-favs #list { gap: 6px; padding-bottom: 16px; }
+    body.compact-favs #list .item { padding: 9px 10px; border-radius: 12px; }
+    body.compact-favs #list .item-head { gap: 8px; }
+    body.compact-favs #list .ru { font-size: 13px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    body.compact-favs #list .ar { font-size: 22px; line-height: 1.0; }
+    body.compact-favs #list .hint { font-size: 11px; line-height: 1.2; margin-top: 2px; }
+    body.compact-favs #list .item-details { margin-top: 8px; padding-top: 8px; }
+    body.compact-favs #list .actions { margin-top: 8px; gap: 6px; }
+    body.compact-favs #list .actions .btn { min-height: 34px; padding: 7px 8px; font-size: 12px; }
 
+    .note-topbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .note-topbar .field { flex: 1; margin-bottom: 0; padding: 10px 12px; font-size: 14px; }
+    .note-topbar .btn { min-width: 130px; min-height: 40px; font-size: 12px; padding: 8px 10px; }
 
-    .note-topbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-      align-items: center;
-    }
-    .note-topbar .field {
-      flex: 1;
-      margin-bottom: 0;
-      padding: 10px 12px;
-      font-size: 14px;
-    }
-    .note-topbar .btn {
-      min-width: 130px;
-      min-height: 40px;
-      font-size: 12px;
-      padding: 8px 10px;
-    }
-
-    body.compact-notes .header {
-      margin-bottom: 6px;
-    }
-    body.compact-notes .header img {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-    }
-    body.compact-notes .header h1 {
-      font-size: 18px;
-    }
-    body.compact-notes .status {
-      padding: 8px 10px;
-      font-size: 12px;
-      margin-bottom: 6px;
-      border-radius: 12px;
-    }
-    body.compact-notes .user-line {
-      display: none;
-    }
-    body.compact-notes .auth-row {
-      margin-bottom: 8px;
-    }
-    body.compact-notes .auth-btn {
-      padding: 9px 12px;
-      font-size: 13px;
-      min-height: 40px;
-    }
-    body.compact-notes .tabs {
-      margin-bottom: 8px;
-      padding: 3px;
-      gap: 4px;
-    }
-    body.compact-notes .tab {
-      padding: 8px 6px;
-      font-size: 12px;
-    }
-    body.compact-notes #notesComposer {
-      margin-bottom: 8px;
-    }
-    body.compact-notes #notesComposer .field {
-      margin-bottom: 6px;
-      padding: 10px 12px;
-      font-size: 14px;
-    }
-    body.compact-notes #notesComposer .toolbar {
-      margin-bottom: 6px;
-    }
-    body.compact-notes #notesComposer .btn {
-      min-height: 38px;
-      padding: 8px 10px;
-      font-size: 12px;
-    }
-    body.compact-notes .chips {
-      margin-bottom: 6px;
-      padding-bottom: 6px;
-    }
-    body.compact-notes .chip {
-      padding: 6px 10px;
-      font-size: 12px;
-    }
-    body.compact-notes #noteTopbar {
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    body.compact-notes #noteSelectionPanel {
-      padding: 10px;
-      margin-bottom: 8px;
-      border-radius: 12px;
-    }
+    body.compact-notes .header { margin-bottom: 6px; }
+    body.compact-notes .header img { width: 34px; height: 34px; border-radius: 8px; }
+    body.compact-notes .header h1 { font-size: 18px; }
+    body.compact-notes .status { padding: 8px 10px; font-size: 12px; margin-bottom: 6px; border-radius: 12px; }
+    body.compact-notes .user-line { display: none; }
+    body.compact-notes .auth-row { margin-bottom: 8px; }
+    body.compact-notes .auth-btn { padding: 9px 12px; font-size: 13px; min-height: 40px; }
+    body.compact-notes .tabs { margin-bottom: 8px; padding: 3px; gap: 4px; }
+    body.compact-notes .tab { padding: 8px 6px; font-size: 12px; }
+    body.compact-notes #notesComposer { margin-bottom: 8px; }
+    body.compact-notes #notesComposer .field { margin-bottom: 6px; padding: 10px 12px; font-size: 14px; }
+    body.compact-notes #notesComposer .toolbar { margin-bottom: 6px; }
+    body.compact-notes #notesComposer .btn { min-height: 38px; padding: 8px 10px; font-size: 12px; }
+    body.compact-notes .chips { margin-bottom: 6px; padding-bottom: 6px; }
+    body.compact-notes .chip { padding: 6px 10px; font-size: 12px; }
+    body.compact-notes #noteTopbar { gap: 6px; margin-bottom: 8px; }
+    body.compact-notes #noteSelectionPanel { padding: 10px; margin-bottom: 8px; border-radius: 12px; }
     body.compact-notes #noteSelectionPanel .folder-select,
-    body.compact-notes #noteSelectionPanel .field {
-      margin-bottom: 8px;
-      padding: 10px 12px;
-      font-size: 14px;
-    }
-    body.compact-notes #noteSelectionPanel .selection-actions .btn {
-      min-height: 34px;
-      padding: 7px 10px;
-      font-size: 12px;
-    }
-    body.compact-notes #list {
-      gap: 6px;
-      padding-bottom: 16px;
-    }
-    body.compact-notes #list .item {
-      padding: 9px 10px;
-      border-radius: 12px;
-    }
-    body.compact-notes .note-preview-ru {
-      font-size: 13px;
-      line-height: 1.15;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    body.compact-notes .note-preview-ar {
-      font-size: 20px;
-      line-height: 1.0;
-      direction: rtl;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 2px;
-    }
-    body.compact-notes #list .item-details {
-      margin-top: 8px;
-      padding-top: 8px;
-    }
-    body.compact-notes #list .actions {
-      margin-top: 8px;
-      gap: 6px;
-    }
-    body.compact-notes #list .actions .btn {
-      min-height: 34px;
-      padding: 7px 8px;
-      font-size: 12px;
-    }
+    body.compact-notes #noteSelectionPanel .field { margin-bottom: 8px; padding: 10px 12px; font-size: 14px; }
+    body.compact-notes #noteSelectionPanel .selection-actions .btn { min-height: 34px; padding: 7px 10px; font-size: 12px; }
+    body.compact-notes #list { gap: 6px; padding-bottom: 16px; }
+    body.compact-notes #list .item { padding: 9px 10px; border-radius: 12px; }
+    body.compact-notes .note-preview-ru { font-size: 13px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    body.compact-notes .note-preview-ar { font-size: 20px; line-height: 1.0; direction: rtl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+    body.compact-notes #list .item-details { margin-top: 8px; padding-top: 8px; }
+    body.compact-notes #list .actions { margin-top: 8px; gap: 6px; }
+    body.compact-notes #list .actions .btn { min-height: 34px; padding: 7px 8px; font-size: 12px; }
 
-
-    .note-item.expanded .item-head {
-      display: none;
-    }
-
+    .note-item.expanded .item-head { display: none; }
 
     /* Компактный режим при поиске в словаре */
     body.dict-searching .header,
@@ -758,87 +543,22 @@
     body.dict-searching .auth-row {
       display: none;
     }
-    body.dict-searching .app {
-      padding-top: 10px;
-    }
-    body.dict-searching .tabs {
-      margin-bottom: 8px;
-      padding: 3px;
-      gap: 4px;
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: #f1f5f9;
-    }
-    body.dict-searching .tab {
-      padding: 8px 6px;
-      font-size: 12px;
-    }
-    body.dict-searching #dictSection {
-      margin-bottom: 6px;
-      position: sticky;
-      top: 44px;
-      z-index: 19;
-      background: #fff;
-      padding-bottom: 4px;
-    }
-    body.dict-searching .search {
-      margin-bottom: 6px;
-      padding: 12px 14px;
-      font-size: 15px;
-      border-radius: 12px;
-    }
-    body.dict-searching #list {
-      gap: 6px;
-      padding-bottom: 16px;
-    }
-    body.dict-searching #list .item {
-      padding: 9px 10px;
-      border-radius: 12px;
-    }
-    body.dict-searching #list .item-head {
-      gap: 8px;
-    }
-    body.dict-searching #list .ru {
-      font-size: 13px;
-      line-height: 1.15;
-      display: -webkit-box;
-      -webkit-line-clamp: 1;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      margin-bottom: 4px;
-    }
-    body.dict-searching #list .ar {
-      font-size: 22px;
-      line-height: 1.0;
-    }
-    body.dict-searching #list .hint {
-      font-size: 11px;
-      line-height: 1.2;
-      margin-top: 2px;
-    }
-    body.dict-searching #list .verb-box {
-      margin-top: 8px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      font-size: 12px;
-    }
-    body.dict-searching #list .verb-box span {
-      font-size: 18px;
-    }
-    body.dict-searching #list .item-details {
-      margin-top: 8px;
-      padding-top: 8px;
-    }
-    body.dict-searching #list .actions {
-      margin-top: 8px;
-      gap: 6px;
-    }
-    body.dict-searching #list .actions .btn {
-      min-height: 34px;
-      padding: 7px 8px;
-      font-size: 12px;
-    }
+    body.dict-searching .app { padding-top: 10px; }
+    body.dict-searching .tabs { margin-bottom: 8px; padding: 3px; gap: 4px; position: sticky; top: 0; z-index: 20; background: #f1f5f9; }
+    body.dict-searching .tab { padding: 8px 6px; font-size: 12px; }
+    body.dict-searching #dictSection { margin-bottom: 6px; position: sticky; top: 44px; z-index: 19; background: #fff; padding-bottom: 4px; }
+    body.dict-searching .search { margin-bottom: 6px; padding: 12px 14px; font-size: 15px; border-radius: 12px; }
+    body.dict-searching #list { gap: 6px; padding-bottom: 16px; }
+    body.dict-searching #list .item { padding: 9px 10px; border-radius: 12px; }
+    body.dict-searching #list .item-head { gap: 8px; }
+    body.dict-searching #list .ru { font-size: 13px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
+    body.dict-searching #list .ar { font-size: 22px; line-height: 1.0; }
+    body.dict-searching #list .hint { font-size: 11px; line-height: 1.2; margin-top: 2px; }
+    body.dict-searching #list .verb-box { margin-top: 8px; padding: 8px 10px; border-radius: 10px; font-size: 12px; }
+    body.dict-searching #list .verb-box span { font-size: 18px; }
+    body.dict-searching #list .item-details { margin-top: 8px; padding-top: 8px; }
+    body.dict-searching #list .actions { margin-top: 8px; gap: 6px; }
+    body.dict-searching #list .actions .btn { min-height: 34px; padding: 7px 8px; font-size: 12px; }
 
     .toast {
       display: none;
@@ -875,29 +595,10 @@
       padding: 22px;
       box-shadow: 0 22px 44px rgba(0,0,0,0.18);
     }
-    .modal h3 {
-      margin: 0 0 10px;
-      text-align: center;
-    }
-    .modal .ar-preview {
-      font-size: 30px;
-      font-weight: 800;
-      color: var(--primary);
-      direction: rtl;
-      text-align: center;
-      margin-bottom: 14px;
-    }
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .user-line {
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 10px;
-    }
+    .modal h3 { margin: 0 0 10px; text-align: center; }
+    .modal .ar-preview { font-size: 30px; font-weight: 800; color: var(--primary); direction: rtl; text-align: center; margin-bottom: 14px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 8px; }
+    .user-line { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -940,6 +641,7 @@
       <input id="noteSearchInput" class="field" type="text" placeholder="Поиск по блокноту..." oninput="renderApp()">
       <button id="noteSelectBtn" class="btn" onclick="toggleNoteSelectionMode()"></button>
     </div>
+
     <div id="selectionPanel" class="selection-panel">
       <div style="font-weight:800;">Выбрано: <span id="selectedFavCount">0</span></div>
       <select id="bulkFolderSelect" class="folder-select"></select>
@@ -951,6 +653,7 @@
         <button class="btn" onclick="toggleFavoriteSelectionMode(false)">✖ Завершить</button>
       </div>
     </div>
+
     <div id="noteSelectionPanel" class="note-selection-panel">
       <div style="font-weight:800;">Выбрано записей: <span id="selectedNoteCount">0</span></div>
       <select id="bulkNoteFolderSelect" class="folder-select"></select>
@@ -961,6 +664,7 @@
         <button class="btn" onclick="toggleNoteSelectionMode(false)">✖ Завершить</button>
       </div>
     </div>
+
     <div id="list" class="list"></div>
   </div>
 
@@ -985,6 +689,20 @@
       <div class="modal-actions">
         <button class="btn primary" onclick="confirmFolderModal()">💾 Сохранить</button>
         <button class="btn" onclick="closeFolderModal()">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модалка для просьбы войти в аккаунт -->
+  <div id="authModalWrap" class="modal-overlay">
+    <div class="modal" style="text-align:center;">
+      <h3 style="margin-bottom: 10px;">Требуется вход</h3>
+      <p style="color: var(--muted); font-size: 14px; margin-bottom: 20px; line-height: 1.4;">
+        Пожалуйста, войдите в аккаунт Google, чтобы слушать озвучку и сохранять слова.
+      </p>
+      <div class="toolbar" style="margin-bottom: 0;">
+        <button class="btn primary" onclick="closeAuthModal(); toggleAuth();">🌐 Войти через Google</button>
+        <button class="btn" onclick="closeAuthModal()">Отмена</button>
       </div>
     </div>
   </div>
@@ -1044,6 +762,26 @@
   const statusEl = document.getElementById('status');
   const syncIndicatorEl = document.getElementById('syncIndicator');
   const trialIndicatorEl = document.getElementById('trialIndicator');
+
+  // Flag used to control dictionary search history.  When true a search
+  // history state has been pushed so the browser back button will clear
+  // the search instead of exiting the app.  See renderDictionary() and
+  // the popstate handler below.
+  window.dictSearchActive = false;
+  // Replace the initial history state with a marker for the dictionary home.
+  history.replaceState({ dictHome: true }, '');
+  // Handle browser back navigation to clear dictionary search.  When a search
+  // state is popped, this listener resets the search input, clears the
+  // cached results and re-renders the app.
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.dictSearch) {
+      const input = document.getElementById('queryInput');
+      if (input) input.value = '';
+      currentRenderedWords = [];
+      window.dictSearchActive = false;
+      renderApp();
+    }
+  });
   const listEl = document.getElementById('list');
   const chipsEl = document.getElementById('chips');
 
@@ -1099,11 +837,16 @@
     return Number.isFinite(ms) ? ms : 0;
   }
 
+  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПРОБЕРКИ ПРЕМИУМА ---
   function hasPaidAccess() {
     if (!user) return false;
-    if (!userAccess?.premiumActive) return false;
-    if (!userAccess?.premiumUntilMs) return true;
-    return Date.now() <= Number(userAccess.premiumUntilMs || 0);
+    // Если есть дата окончания, проверяем её
+    if (userAccess?.premiumUntilMs) {
+       return Date.now() <= userAccess.premiumUntilMs;
+    }
+    // Если даты нет, но стоит галочка "бесконечный премиум"
+    if (userAccess?.premiumActive) return true;
+    return false;
   }
 
   function getTrialInfo() {
@@ -1130,6 +873,14 @@
     return !!user && !canUsePremiumFeatures();
   }
 
+  function openAuthModal() {
+    document.getElementById('authModalWrap').style.display = 'flex';
+  }
+
+  function closeAuthModal() {
+    document.getElementById('authModalWrap').style.display = 'none';
+  }
+
   function openActivationContact() {
     const subject = encodeURIComponent('Активация доступа Arabus Pro');
     const body = encodeURIComponent(
@@ -1149,7 +900,7 @@
 
   function showActivationPrompt() {
     if (!user) {
-      showMsg('Сначала войдите через Google');
+      openAuthModal();
       return;
     }
     if (hasPaidAccess()) return;
@@ -1176,6 +927,7 @@
     `;
   }
 
+  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПЛАШКИ ---
   function updateTrialIndicator() {
     if (!trialIndicatorEl) return;
 
@@ -1185,9 +937,19 @@
       return;
     }
 
+    // Если есть оплаченный доступ
     if (hasPaidAccess()) {
       trialIndicatorEl.className = 'status ok';
-      trialIndicatorEl.innerText = '💎 Премиум-доступ активен';
+      if (userAccess && userAccess.premiumUntilMs) {
+        // Форматируем дату красиво
+        const d = new Date(userAccess.premiumUntilMs);
+        const day = d.getDate().toString().padStart(2, '0');
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const year = d.getFullYear();
+        trialIndicatorEl.innerText = `💎 Премиум-доступ активен до ${day}.${month}.${year}`;
+      } else {
+        trialIndicatorEl.innerText = '💎 Премиум-доступ активен';
+      }
       return;
     }
 
@@ -1261,18 +1023,145 @@
     return stems;
   }
 
+  let currentTtsAudio = null;
+  let ttsUnlocked = false;
+  let cachedArabicVoice = null;
+
+  function stopTtsPlayback() {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    try {
+      if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio.currentTime = 0;
+      }
+    } catch (_) {}
+    currentTtsAudio = null;
+  }
+
+  function getArabicVoice() {
+    try {
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (!voices.length) return null;
+      return (
+        voices.find(v => /^ar(-|$)/i.test(v.lang || '') && /google|arabic|العربية/i.test(v.name || '')) ||
+        voices.find(v => /^ar(-|$)/i.test(v.lang || '')) ||
+        voices.find(v => /arabic|العربية/i.test(v.name || '')) ||
+        null
+      );
+    } catch (_) { return null; }
+  }
+
+  function unlockTts() {
+    if (ttsUnlocked) return;
+    ttsUnlocked = true;
+    try { window.speechSynthesis.resume(); } catch (_) {}
+  }
+
+  document.addEventListener('click', unlockTts, { passive: true });
+  document.addEventListener('touchstart', unlockTts, { passive: true });
+
+  try {
+    if ('speechSynthesis' in window) {
+      cachedArabicVoice = getArabicVoice();
+      window.speechSynthesis.onvoiceschanged = function() {
+        cachedArabicVoice = getArabicVoice();
+      };
+    }
+  } catch (_) {}
+
+  function playGoogleTtsFallback(text) {
+    try {
+      const encoded = encodeURIComponent(String(text || '').trim());
+      const url = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=ar&q=' + encoded;
+
+      currentTtsAudio = new Audio(url);
+      currentTtsAudio.preload = 'auto';
+      currentTtsAudio.onended = function() { currentTtsAudio = null; };
+      currentTtsAudio.onerror = function() {
+        currentTtsAudio = null;
+        showMsg('Озвучка недоступна');
+      };
+      currentTtsAudio.play().catch(function() {
+        currentTtsAudio = null;
+        showMsg('Озвучка не запустилась');
+      });
+    } catch (e) {
+      console.error('Google TTS fallback error:', e);
+      showMsg('Озвучка недоступна');
+    }
+  }
+
   function speak(text, e) {
     if (e) e.stopPropagation();
+
     if (!canUsePremiumFeatures()) {
       showActivationPrompt();
       return;
     }
+
+    const cleanText = String(text || '').trim();
+    if (!cleanText) {
+      showMsg('Нет текста для озвучки');
+      return;
+    }
+
+    unlockTts();
+    stopTtsPlayback();
+
+    const hasSpeechApi = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+
+    if (!hasSpeechApi) {
+      playGoogleTtsFallback(cleanText);
+      return;
+    }
+
+    let usedFallback = false;
+
+    function useFallbackOnce() {
+      if (usedFallback) return;
+      usedFallback = true;
+      try { window.speechSynthesis.cancel(); } catch (_) {}
+      playGoogleTtsFallback(cleanText);
+    }
+
     try {
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      const voice = cachedArabicVoice || getArabicVoice();
+      cachedArabicVoice = voice || cachedArabicVoice;
+
+      utterance.lang = voice && voice.lang ? voice.lang : 'ar-SA';
+      if (voice) utterance.voice = voice;
+
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      const fallbackTimer = setTimeout(function() {
+        const speaking = !!window.speechSynthesis.speaking;
+        const pending = !!window.speechSynthesis.pending;
+        if (!speaking && !pending) useFallbackOnce();
+      }, 700);
+
+      utterance.onstart = function() { clearTimeout(fallbackTimer); };
+      utterance.onend = function() { clearTimeout(fallbackTimer); };
+      utterance.onerror = function(err) {
+        clearTimeout(fallbackTimer);
+        console.error('Speech synthesis error:', err);
+        useFallbackOnce();
+      };
+
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ar-SA';
-      window.speechSynthesis.speak(u);
-    } catch (_) {}
+      window.speechSynthesis.speak(utterance);
+
+      setTimeout(function() {
+        const speaking = !!window.speechSynthesis.speaking;
+        const pending = !!window.speechSynthesis.pending;
+        if (!speaking && !pending) useFallbackOnce();
+      }, 250);
+    } catch (err) {
+      console.error('Speak error:', err);
+      useFallbackOnce();
+    }
   }
 
   function getFavoriteByWord(w) {
@@ -1295,7 +1184,6 @@
     });
     return Array.from(set);
   }
-
 
   function toggleFavoriteSelectionMode(forceValue = null) {
     favSelectionMode = forceValue === null ? !favSelectionMode : !!forceValue;
@@ -1339,11 +1227,8 @@
   }
 
   async function applyBulkFolder() {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
     const existing = document.getElementById('bulkFolderSelect').value.trim();
@@ -1372,11 +1257,8 @@
   }
 
   async function removeSelectedFavoritesFromFolder() {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
     try {
@@ -1397,13 +1279,9 @@
     }
   }
 
-
   async function deleteSelectedFavorites() {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
     try {
@@ -1426,7 +1304,6 @@
     localStorage.setItem('arabrus_fav_view_mode', favViewMode);
     renderApp();
   }
-
 
   function shortPreview(text, limit = 90) {
     const s = String(text || '').replace(/\s+/g, ' ').trim();
@@ -1471,11 +1348,8 @@
   }
 
   async function applyBulkNoteFolder() {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     const ids = Array.from(selectedNoteIds);
     if (!ids.length) { showMsg('Сначала выберите записи'); return; }
     const existing = document.getElementById('bulkNoteFolderSelect').value.trim();
@@ -1501,11 +1375,8 @@
   }
 
   async function deleteSelectedNotes() {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     const ids = Array.from(selectedNoteIds);
     if (!ids.length) { showMsg('Сначала выберите записи'); return; }
     try {
@@ -1523,13 +1394,6 @@
     }
   }
 
-  function toggleNoteViewMode() {
-    noteViewMode = noteViewMode === 'list' ? 'cards' : 'list';
-    localStorage.setItem('arabrus_note_view_mode', noteViewMode);
-    renderApp();
-  }
-
-
   function renderCollections() {
     let cols = [];
     if (activeTab === 'fav') cols = getCollectionsForFavorites();
@@ -1545,7 +1409,7 @@
 
     chipsEl.style.display = 'flex';
     chipsEl.innerHTML = cols.map(c =>
-      `<button class="chip ${c === activeCollection ? 'active' : ''}" onclick="selectCollection('${escapeJs(c)}')">${escapeHtml(c)}</button>`
+      `<button class="chip${c === activeCollection ? ' active' : ''}${c === 'Все' ? ' vse' : ' other'}" onclick="selectCollection('${escapeJs(c)}')">${escapeHtml(c)}</button>`
     ).join('');
   }
 
@@ -1571,14 +1435,8 @@
   }
 
   async function confirmFavModal() {
-    if (!user) {
-      showMsg('Сначала войдите через Google');
-      return;
-    }
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     if (!favModalWord) return;
 
     const w = favModalWord;
@@ -1606,9 +1464,9 @@
   }
 
   async function toggleFavoriteDirect(idx) {
-    if (!user) {
-      showMsg('Сначала войдите через Google');
-      return;
+    if (!user) { 
+      openAuthModal(); 
+      return; 
     }
     if (!canUsePremiumFeatures()) {
       showActivationPrompt();
@@ -1678,11 +1536,8 @@
   }
 
   async function removeFavorite(id) {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     try {
       await db.collection('users').doc(user.uid).collection('favorites').doc(id).delete();
       showMsg('Удалено из избранного');
@@ -1693,11 +1548,8 @@
   }
 
   async function removeFavoriteFromFolder(id) {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     try {
       await db.collection('users').doc(user.uid).collection('favorites').doc(id).update({
         collection: '',
@@ -1711,11 +1563,8 @@
   }
 
   async function removeNote(id) {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     try {
       await db.collection('users').doc(user.uid).collection('notes').doc(id).delete();
       showMsg('Запись удалена');
@@ -1726,11 +1575,8 @@
   }
 
   async function removeNoteFromFolder(id) {
-    if (!user) return;
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     try {
       await db.collection('users').doc(user.uid).collection('notes').doc(id).update({
         collection: '',
@@ -1744,14 +1590,8 @@
   }
 
   async function saveNote() {
-    if (!user) {
-      showMsg('Сначала войдите через Google');
-      return;
-    }
-    if (!canUsePremiumFeatures()) {
-      showActivationPrompt();
-      return;
-    }
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
 
     const ar = document.getElementById('manualAr').value.trim();
     const ru = document.getElementById('manualRu').value.trim();
@@ -1806,11 +1646,19 @@
     if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return '<div class="empty">База ещё не загружена</div>';
 
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
+    // Manage browser history for dictionary searches.  When the query becomes
+    // non-empty we push a new history state so the back button clears the search.
+    if (q) {
+      if (!window.dictSearchActive) {
+        history.pushState({ dictSearch: true }, '');
+        window.dictSearchActive = true;
+      }
+    } else {
+      window.dictSearchActive = false;
+    }
+    // When the query is empty, return previously rendered words if any, so
+    // the user can still see their last results.  Otherwise show the default prompt.
     if (!q) {
-      // When the query is empty we show previously rendered words if any.  If
-      // the user has recently searched for something, currentRenderedWords
-      // holds the 50 most recent results.  Re-render them here so the list
-      // does not disappear when the search field is cleared.
       if (Array.isArray(currentRenderedWords) && currentRenderedWords.length > 0) {
         return currentRenderedWords.map((w, idx) => {
           const fav = getFavoriteByWord(w);
@@ -1831,8 +1679,8 @@
                 <div class="hint">${escapeHtml(w.ru || '')}</div>
                 ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
                 <div class="actions">
-                  <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? 'showActivationPrompt()' : "speak('" + '${escapeJs(w.ar)}' + "', event)"}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
-                  <button class="btn ${locked ? 'locked' : (fav ? 'warn' : '')}" onclick="${locked ? 'showActivationPrompt()' : 'toggleFavoriteDirect(' + idx + ')'}">${locked ? '🔒 Избранное' : (fav ? '★ Уже в избранном' : '☆ В избранное')}</button>
+                  <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? "showActivationPrompt()" : `speak('${escapeJs(w.ar)}', event)`}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
+                  <button class="btn ${locked ? 'locked' : (fav ? 'warn' : '')}" onclick="${locked ? "showActivationPrompt()" : `toggleFavoriteDirect(${idx})`}">${locked ? '🔒 Избранное' : (fav ? '★ Уже в избранном' : '☆ В избранное')}</button>
                   ${fav && !locked ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
                 </div>
               </div>
@@ -1902,8 +1750,8 @@
             <div class="hint">${escapeHtml(w.ru || '')}</div>
             ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
             <div class="actions">
-              <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? "showActivationPrompt()" : "speak('" + '${escapeJs(w.ar)}' + "', event)"}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
-              <button class="btn ${locked ? 'locked' : (fav ? 'warn' : '')}" onclick="${locked ? "showActivationPrompt()" : "toggleFavoriteDirect(" + idx + ")"}">${locked ? '🔒 Избранное' : (fav ? '★ Уже в избранном' : '☆ В избранное')}</button>
+              <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? "showActivationPrompt()" : `speak('${escapeJs(w.ar)}', event)`}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
+              <button class="btn ${locked ? 'locked' : (fav ? 'warn' : '')}" onclick="${locked ? "showActivationPrompt()" : `toggleFavoriteDirect(${idx})`}">${locked ? '🔒 Избранное' : (fav ? '★ Уже в избранном' : '☆ В избранное')}</button>
               ${fav && !locked ? `<button class="btn" onclick="openFavModal(${idx})">✏️ Изменить перевод</button>` : ''}
             </div>
           </div>
@@ -1917,13 +1765,11 @@
     if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
     let items = [...favorites];
+    // Filter by active collection
     if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
-
-    // Apply search filter in favourites.  The search input lives in the
-    // favourites topbar (id=favSearchInput) and allows users to
-    // quickly find items across all collections.  The value is trimmed
-    // and converted to lower case.  We match against customRu, ar,
-    // ruSource and collection fields.
+    // Apply search query filter for favourites.  We read the query from the
+    // `favSearchInput` field and compare against Russian, Arabic, source and
+    // collection fields (case-insensitive).  Empty query leaves the list unchanged.
     const favQuery = (document.getElementById('favSearchInput')?.value || '').trim().toLowerCase();
     if (favQuery) {
       items = items.filter(f =>
@@ -1933,6 +1779,7 @@
         String(f.collection || '').toLowerCase().includes(favQuery)
       );
     }
+    // Sort by timestamp descending
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
@@ -1951,9 +1798,10 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                ${f.collection ?
-                  `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>` :
-                  `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`
+                ${
+                  f.collection
+                    ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
+                    : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`
                 }
                 <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
               </div>
@@ -1990,14 +1838,11 @@
     `).join('');
   }
 
-  // Clear the favourites search input.  Invoked by the ✖ button next to
-  // the search bar.  Resets the input value and re-renders the app.
+  // Clear the favourites search input and re-render the app.  Called by the ✖ button in
+  // the favourites search bar.
   function clearFavSearch() {
     const input = document.getElementById('favSearchInput');
-    if (input) {
-      input.value = '';
-    }
-    // Trigger a re-render so the list resets and the clear button hides
+    if (input) input.value = '';
     renderApp();
   }
 
@@ -2075,7 +1920,7 @@
     if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
       const favQueryVal = (document.getElementById('favSearchInput')?.value || '');
-      // Build a search bar for favourites with a clear button and two mode buttons.
+      // Build a search bar with a clear button alongside view/selection mode toggles.
       topbar.innerHTML = `
         <div class="fav-search" style="flex:1; position:relative; display:flex; align-items:center;">
           <input id="favSearchInput" class="field" type="text" placeholder="Поиск по избранному..." value="${escapeHtml(favQueryVal)}" oninput="renderApp()" style="padding-right:32px;">
@@ -2116,15 +1961,35 @@
     updateTrialIndicator();
   }
 
+  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ДЛЯ ЧТЕНИЯ ДАТЫ ИЗ БАЗЫ ---
   function startUserListeners() {
     if (!user) return;
 
     unsubAccess = db.collection('users').doc(user.uid)
       .onSnapshot((doc) => {
         const data = doc.exists ? (doc.data() || {}) : {};
+
+        let premiumEndMs = 0;
+        let isActive = !!(data.premiumActive || data.premium || data.isPremium);
+
+        // Проверяем, есть ли поле premiumUntil (наша дата 2026-05-13)
+        if (data.premiumUntil) {
+          if (typeof data.premiumUntil === 'string') {
+            const parsedMs = new Date(data.premiumUntil).getTime();
+            if (!isNaN(parsedMs)) {
+              premiumEndMs = parsedMs;
+              isActive = true; // Если дата есть, считаем премиум активным
+            }
+          } else {
+            premiumEndMs = Number(data.premiumUntil);
+          }
+        } else if (data.premiumUntilMs || data.accessUntilMs) {
+          premiumEndMs = Number(data.premiumUntilMs || data.accessUntilMs || 0);
+        }
+
         userAccess = {
-          premiumActive: !!(data.premiumActive || data.premium || data.isPremium),
-          premiumUntilMs: Number(data.premiumUntilMs || data.premiumUntil || data.accessUntilMs || 0)
+          premiumActive: isActive,
+          premiumUntilMs: premiumEndMs
         };
         updateTrialIndicator();
         renderApp();
@@ -2243,12 +2108,13 @@
     }
   }, 100);
 
-  ['favModalWrap', 'folderModalWrap'].forEach(id => {
+  ['favModalWrap', 'folderModalWrap', 'authModalWrap'].forEach(id => {
     const modal = document.getElementById(id);
     modal.addEventListener('click', (e) => {
       if (e.target !== modal) return;
       if (id === 'favModalWrap') closeFavModal();
       if (id === 'folderModalWrap') closeFolderModal();
+      if (id === 'authModalWrap') closeAuthModal();
     });
   });
 
@@ -2256,11 +2122,12 @@
     if (e.key !== 'Escape') return;
     closeFavModal();
     closeFolderModal();
+    closeAuthModal();
   });
 
   trialIndicatorEl?.addEventListener('click', () => {
     if (!user) {
-      showMsg('Сначала войдите через Google');
+      openAuthModal();
       return;
     }
     openActivationContact();
@@ -2274,5 +2141,494 @@
     renderApp();
   });
 </script>
+
+<style>
+  .compact-auth-bar {
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+    margin: -4px 0 10px;
+  }
+
+  .compact-auth-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .compact-auth-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    background: #94a3b8;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12);
+  }
+
+  .compact-auth-dot.ok {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
+  }
+
+  .compact-auth-dot.warn {
+    background: #eab308;
+    box-shadow: 0 0 0 3px rgba(234,179,8,0.18);
+  }
+
+  .compact-auth-dot.err {
+    background: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.16);
+  }
+
+  .compact-auth-dot.sync {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
+    animation: compactPulse 1s infinite ease-in-out;
+  }
+
+  @keyframes compactPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: .75; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .compact-auth-label {
+    line-height: 1;
+  }
+
+  .compact-auth-menu-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .compact-auth-modal {
+    max-width: 420px;
+    width: 100%;
+  }
+
+  .compact-auth-title {
+    margin: 0 0 14px;
+    text-align: center;
+    color: #0f172a;
+  }
+
+  .compact-auth-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+
+  .compact-auth-card small {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    letter-spacing: .02em;
+  }
+
+  .compact-auth-main {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .compact-auth-sub {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 4px;
+    line-height: 1.35;
+  }
+
+  .compact-auth-status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .compact-auth-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .compact-auth-actions .btn {
+    flex: 1;
+    min-width: 130px;
+  }
+
+  body.logged-in-compact .auth-row,
+  body.logged-in-compact #syncIndicator,
+  body.logged-in-compact #trialIndicator,
+  body.logged-in-compact #userLine {
+    display: none !important;
+  }
+
+  body.logged-in-compact #status.compact-hideable {
+    display: none !important;
+  }
+
+  body.logged-in-compact .header {
+    margin-bottom: 8px;
+  }
+
+  body.dict-searching .compact-auth-bar {
+    display: none !important;
+  }
+</style>
+
+<script>
+(function () {
+  function ready(fn) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  }
+
+  ready(function () {
+    const headerEl = document.querySelector('.header');
+    if (!headerEl) return;
+
+    let compactBar = document.getElementById('compactAuthBar');
+    if (!compactBar) {
+      compactBar = document.createElement('div');
+      compactBar.id = 'compactAuthBar';
+      compactBar.className = 'compact-auth-bar';
+      compactBar.innerHTML = `
+        <button id="compactAuthBtn" class="compact-auth-btn" type="button">
+          <span id="compactAuthDot" class="compact-auth-dot"></span>
+          <span id="compactAuthLabel" class="compact-auth-label">Статус</span>
+          <span class="compact-auth-menu-icon">☰</span>
+        </button>
+      `;
+      headerEl.insertAdjacentElement('afterend', compactBar);
+    }
+
+    let modalWrap = document.getElementById('compactAuthModalWrap');
+    if (!modalWrap) {
+      modalWrap = document.createElement('div');
+      modalWrap.id = 'compactAuthModalWrap';
+      modalWrap.className = 'modal-overlay';
+      modalWrap.innerHTML = `
+        <div class="modal compact-auth-modal">
+          <h3 class="compact-auth-title">Аккаунт и синхронизация</h3>
+
+          <div class="compact-auth-card">
+            <small>Пользователь</small>
+            <div id="compactAuthUser" class="compact-auth-main">—</div>
+            <div id="compactAuthUserSub" class="compact-auth-sub"></div>
+          </div>
+
+          <div class="compact-auth-card">
+            <small>Статус</small>
+            <div class="compact-auth-status-line">
+              <span id="compactAuthStatusDot" class="compact-auth-dot"></span>
+              <div>
+                <div id="compactAuthStatusMain" class="compact-auth-main">—</div>
+                <div id="compactAuthStatusSub" class="compact-auth-sub"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="compact-auth-card">
+            <small>Доступ</small>
+            <div id="compactAuthAccessMain" class="compact-auth-main">—</div>
+            <div id="compactAuthAccessSub" class="compact-auth-sub"></div>
+          </div>
+
+          <div class="compact-auth-actions">
+            <button id="compactAuthAccessBtn" class="btn primary" type="button">💎 Доступ</button>
+            <button id="compactAuthLogoutBtn" class="btn danger" type="button">🚪 Выйти</button>
+            <button id="compactAuthCloseBtn" class="btn" type="button">Закрыть</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalWrap);
+    }
+
+    const compactBtn = document.getElementById('compactAuthBtn');
+    const compactDot = document.getElementById('compactAuthDot');
+    const compactLabel = document.getElementById('compactAuthLabel');
+
+    const modalUser = document.getElementById('compactAuthUser');
+    const modalUserSub = document.getElementById('compactAuthUserSub');
+    const modalStatusDot = document.getElementById('compactAuthStatusDot');
+    const modalStatusMain = document.getElementById('compactAuthStatusMain');
+    const modalStatusSub = document.getElementById('compactAuthStatusSub');
+    const modalAccessMain = document.getElementById('compactAuthAccessMain');
+    const modalAccessSub = document.getElementById('compactAuthAccessSub');
+
+    const accessBtn = document.getElementById('compactAuthAccessBtn');
+    const logoutBtn = document.getElementById('compactAuthLogoutBtn');
+    const closeBtn = document.getElementById('compactAuthCloseBtn');
+
+    const statusEl = document.getElementById('status');
+    const syncEl = document.getElementById('syncIndicator');
+    const trialEl = document.getElementById('trialIndicator');
+    const authRow = document.querySelector('.auth-row');
+    const userLine = document.getElementById('userLine');
+
+    function isLoggedInNow() {
+      try { return typeof user !== 'undefined' && !!user; } catch (_) { return false; }
+    }
+
+    function getSyncState() {
+      try {
+        if (!isLoggedInNow()) {
+          return {
+            tone: 'warn',
+            short: 'Вход',
+            main: 'Требуется вход',
+            sub: 'Войдите через Google, чтобы включить синхронизацию'
+          };
+        }
+
+        const pending = !!(
+          (typeof favSnapshotPending !== 'undefined' && favSnapshotPending) ||
+          (typeof noteSnapshotPending !== 'undefined' && noteSnapshotPending)
+        );
+
+        if (!navigator.onLine && pending) {
+          return {
+            tone: 'warn',
+            short: 'Офлайн',
+            main: 'Нет сети',
+            sub: 'Изменения сохранены локально и ждут синхронизации'
+          };
+        }
+
+        if (!navigator.onLine) {
+          return {
+            tone: 'warn',
+            short: 'Офлайн',
+            main: 'Нет сети',
+            sub: 'Последние данные доступны локально'
+          };
+        }
+
+        if (pending) {
+          return {
+            tone: 'sync',
+            short: 'Синхр.',
+            main: 'Синхронизация',
+            sub: 'Данные отправляются в облако'
+          };
+        }
+
+        return {
+          tone: 'ok',
+          short: 'OK',
+          main: 'Синхронизировано',
+          sub: 'Всё сохранено в облаке'
+        };
+      } catch (_) {
+        return {
+          tone: 'warn',
+          short: 'Статус',
+          main: 'Статус обновляется',
+          sub: ''
+        };
+      }
+    }
+
+    function getAccessState() {
+      try {
+        if (!isLoggedInNow()) {
+          return {
+            main: 'Войдите в Google',
+            sub: 'После входа начнётся пробный период и включится синхронизация'
+          };
+        }
+
+        if (typeof hasPaidAccess === 'function' && hasPaidAccess()) {
+          if (typeof userAccess !== 'undefined' && userAccess && userAccess.premiumUntilMs) {
+            const d = new Date(userAccess.premiumUntilMs);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return {
+              main: 'Премиум активен',
+              sub: 'Доступ до ' + day + '.' + month + '.' + year
+            };
+          }
+          return {
+            main: 'Премиум активен',
+            sub: 'Полный доступ включён'
+          };
+        }
+
+        if (typeof getTrialInfo === 'function') {
+          const trial = getTrialInfo();
+          if (trial && trial.active) {
+            return {
+              main: 'Пробный период активен',
+              sub: 'Осталось дней: ' + trial.daysLeft
+            };
+          }
+        }
+
+        return {
+          main: 'Пробный период закончился',
+          sub: 'Открой меню и нажми “Доступ”, чтобы написать тебе для активации'
+        };
+      } catch (_) {
+        return {
+          main: 'Доступ обновляется',
+          sub: ''
+        };
+      }
+    }
+
+    function updateVisibility() {
+      const logged = isLoggedInNow();
+      document.body.classList.toggle('logged-in-compact', logged);
+
+      if (compactBar) compactBar.style.display = logged ? 'flex' : 'none';
+      if (authRow) authRow.style.display = logged ? 'none' : 'flex';
+      if (userLine) userLine.style.display = logged ? 'none' : '';
+
+      if (syncEl) syncEl.style.display = logged ? 'none' : '';
+      if (trialEl) trialEl.style.display = logged ? 'none' : '';
+
+      if (statusEl) {
+        const hideable = statusEl.classList.contains('ok');
+        statusEl.classList.toggle('compact-hideable', logged && hideable);
+        if (logged && hideable) statusEl.style.display = 'none';
+        else statusEl.style.display = '';
+      }
+    }
+
+    function applyDot(el, tone) {
+      if (!el) return;
+      el.className = 'compact-auth-dot ' + tone;
+    }
+
+    function refreshCompactUi() {
+      updateVisibility();
+
+      const syncState = getSyncState();
+      const accessState = getAccessState();
+
+      applyDot(compactDot, syncState.tone);
+      applyDot(modalStatusDot, syncState.tone);
+
+      if (compactLabel) compactLabel.textContent = syncState.short;
+      if (modalStatusMain) modalStatusMain.textContent = syncState.main;
+      if (modalStatusSub) modalStatusSub.textContent = syncState.sub;
+
+      if (modalUser) {
+        if (isLoggedInNow()) {
+          try {
+            modalUser.textContent = user.displayName || user.email || 'Пользователь';
+            modalUserSub.textContent = user.email || '';
+          } catch (_) {
+            modalUser.textContent = 'Пользователь';
+            modalUserSub.textContent = '';
+          }
+        } else {
+          modalUser.textContent = 'Не выполнен вход';
+          modalUserSub.textContent = '';
+        }
+      }
+
+      if (modalAccessMain) modalAccessMain.textContent = accessState.main;
+      if (modalAccessSub) modalAccessSub.textContent = accessState.sub;
+    }
+
+    function openCompactMenu() {
+      refreshCompactUi();
+      modalWrap.style.display = 'flex';
+    }
+
+    function closeCompactMenu() {
+      modalWrap.style.display = 'none';
+    }
+
+    compactBtn.addEventListener('click', openCompactMenu);
+    closeBtn.addEventListener('click', closeCompactMenu);
+
+    modalWrap.addEventListener('click', function (e) {
+      if (e.target === modalWrap) closeCompactMenu();
+    });
+
+    accessBtn.addEventListener('click', function () {
+      closeCompactMenu();
+      try {
+        if (!isLoggedInNow()) {
+          if (typeof openAuthModal === 'function') openAuthModal();
+          else if (typeof toggleAuth === 'function') toggleAuth();
+          return;
+        }
+        if (typeof openActivationContact === 'function') openActivationContact();
+      } catch (_) {}
+    });
+
+    logoutBtn.addEventListener('click', function () {
+      closeCompactMenu();
+      try {
+        if (typeof toggleAuth === 'function' && isLoggedInNow()) toggleAuth();
+      } catch (_) {}
+    });
+
+    const originalUpdateSyncIndicator = typeof updateSyncIndicator === 'function' ? updateSyncIndicator : null;
+    if (originalUpdateSyncIndicator) {
+      updateSyncIndicator = function () {
+        const result = originalUpdateSyncIndicator.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    const originalUpdateTrialIndicator = typeof updateTrialIndicator === 'function' ? updateTrialIndicator : null;
+    if (originalUpdateTrialIndicator) {
+      updateTrialIndicator = function () {
+        const result = originalUpdateTrialIndicator.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    const originalRenderApp = typeof renderApp === 'function' ? renderApp : null;
+    if (originalRenderApp) {
+      renderApp = function () {
+        const result = originalRenderApp.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    const originalSetStatus = typeof setStatus === 'function' ? setStatus : null;
+    if (originalSetStatus) {
+      setStatus = function () {
+        const result = originalSetStatus.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    window.addEventListener('online', refreshCompactUi);
+    window.addEventListener('offline', refreshCompactUi);
+    document.addEventListener('visibilitychange', refreshCompactUi);
+
+    setInterval(refreshCompactUi, 1200);
+    refreshCompactUi();
+  });
+})();
+</script>
+
 </body>
 </html>
