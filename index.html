@@ -209,11 +209,14 @@
       border-radius: 999px;
       font-size: 13px;
       color: var(--muted);
+      background: #f8fafc;
+      border-color: #e2e8f0;
     }
     .chip.active {
       background: var(--primary);
       color: #fff;
       border-color: var(--primary);
+      box-shadow: 0 6px 16px rgba(39,174,96,0.22);
     }
     .empty {
       text-align: center;
@@ -1687,8 +1690,9 @@
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
     if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
+    const inFolderView = activeCollection !== 'Все';
     let items = [...favorites];
-    if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
+    if (inFolderView) items = items.filter(f => String(f.collection || '') === activeCollection);
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
@@ -1707,7 +1711,9 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                <button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>
+                ${inFolderView
+                  ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
+                  : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`}
                 <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
               </div>
             </div>
@@ -1734,8 +1740,9 @@
 
           <div class="actions">
             <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
-            ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
+            ${inFolderView
+              ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>`
+              : `<button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>`}
             <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
           </div>
         </div>
