@@ -6,7 +6,7 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.arabrus.app",
+      "package_name": "io.github.sledochera060984_dotcom.twa",
       "sha256_cert_fingerprints": [
         "3C:36:15:55:83:99:17:78:ED:0E:41:C1:E9:B7:0F:03:61:40:F7:B5:CD:FE:DB:D6:11:A6:0F:47:A8:25:FF:E4"
       ]
