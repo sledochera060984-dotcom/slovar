@@ -783,6 +783,18 @@
     </div>
   </div>
 
+  <div id="noteEditModalWrap" class="modal-overlay">
+    <div class="modal">
+      <h3 id="noteEditModalTitle">Изменить перевод</h3>
+      <div id="noteEditModalAr" class="ar-preview"></div>
+      <input id="noteEditModalRu" class="field" type="text" placeholder="Ваш перевод">
+      <div class="modal-actions">
+        <button class="btn primary" onclick="confirmNoteEditModal()">💾 Сохранить</button>
+        <button class="btn" onclick="closeNoteEditModal()">Отмена</button>
+      </div>
+    </div>
+  </div>
+
   <div id="folderModalWrap" class="modal-overlay">
     <div class="modal">
       <h3>Папка</h3>
@@ -878,6 +890,7 @@
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
   let noteSelectionMode = false;
   let selectedNoteIds = new Set();
+  let currentEditingNoteId = null;
   let currentColorFavoriteId = null;
   let favoriteLongPressTimer = null;
   let favoriteLongPressTriggered = false;
@@ -1763,6 +1776,67 @@
     }
   }
 
+  function openFavoriteEditModal(id) {
+    const fav = favorites.find(x => x.id === id);
+    if (!fav) {
+      showMsg('Слово не найдено');
+      return;
+    }
+    favModalWord = {
+      ar: fav.ar || '',
+      ru: fav.ruSource || '',
+      short_ru: fav.customRu || ''
+    };
+    document.getElementById('favModalAr').innerText = fav.ar || '';
+    document.getElementById('favModalRu').value = fav.customRu || '';
+    document.getElementById('favModalTitle').innerText = 'Изменить перевод';
+    document.getElementById('favModalWrap').style.display = 'flex';
+    setTimeout(() => document.getElementById('favModalRu').focus(), 50);
+  }
+
+  function openNoteEditModal(id) {
+    const note = notes.find(x => x.id === id);
+    if (!note) {
+      showMsg('Запись не найдена');
+      return;
+    }
+    currentEditingNoteId = id;
+    document.getElementById('noteEditModalAr').innerText = note.ar || '';
+    document.getElementById('noteEditModalRu').value = note.ru || '';
+    document.getElementById('noteEditModalTitle').innerText = 'Изменить перевод';
+    document.getElementById('noteEditModalWrap').style.display = 'flex';
+    setTimeout(() => document.getElementById('noteEditModalRu').focus(), 50);
+  }
+
+  function closeNoteEditModal() {
+    currentEditingNoteId = null;
+    document.getElementById('noteEditModalWrap').style.display = 'none';
+  }
+
+  async function confirmNoteEditModal() {
+    if (!user) { openAuthModal(); return; }
+    if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
+    if (!currentEditingNoteId) return;
+
+    const ru = document.getElementById('noteEditModalRu').value.trim();
+    if (!ru) {
+      showMsg('Введите перевод');
+      return;
+    }
+
+    try {
+      await db.collection('users').doc(user.uid).collection('notes').doc(currentEditingNoteId).update({
+        ru,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      closeNoteEditModal();
+      showMsg('Перевод обновлён');
+    } catch (e) {
+      console.error(e);
+      showMsg('Ошибка сохранения');
+    }
+  }
+
   function openFolderModal(mode, id, label) {
     folderModalMode = mode;
     folderModalTargetId = id;
@@ -2055,6 +2129,7 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
+                <button class="btn" onclick="event.stopPropagation(); openFavoriteEditModal('${escapeJs(f.id)}')">✏️ Перевод</button>
                 ${(isSpecificFolder || f.collection)
                   ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
                   : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`
@@ -2100,6 +2175,7 @@
 
           <div class="actions">
             <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
+            <button class="btn" onclick="openFavoriteEditModal('${escapeJs(f.id)}')">✏️ Изменить перевод</button>
             ${(isSpecificFolder || f.collection)
               ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>`
               : `<button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>`
@@ -2151,10 +2227,10 @@
           <div class="ar">${escapeHtml(n.ar || '')}</div>
           <div class="actions">
             <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
-            ${isSpecificFolder
+            <button class="btn" onclick="event.stopPropagation(); openNoteEditModal('${escapeJs(n.id)}')">✏️ Изменить перевод</button>
+            ${(isSpecificFolder || n.collection)
               ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>`
-              : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
-                 ${n.collection ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать</button>` : ''}`
+              : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>`
             }
             <button class="btn danger" onclick="event.stopPropagation(); removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
           </div>
@@ -2375,11 +2451,12 @@
     }
   }, 100);
 
-  ['favModalWrap', 'folderModalWrap', 'markColorModalWrap', 'authModalWrap'].forEach(id => {
+  ['favModalWrap', 'noteEditModalWrap', 'folderModalWrap', 'markColorModalWrap', 'authModalWrap'].forEach(id => {
     const modal = document.getElementById(id);
     modal.addEventListener('click', (e) => {
       if (e.target !== modal) return;
       if (id === 'favModalWrap') closeFavModal();
+      if (id === 'noteEditModalWrap') closeNoteEditModal();
       if (id === 'folderModalWrap') closeFolderModal();
       if (id === 'markColorModalWrap') closeMarkColorModal();
       if (id === 'authModalWrap') closeAuthModal();
@@ -2389,6 +2466,7 @@
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     closeFavModal();
+    closeNoteEditModal();
     closeFolderModal();
     closeAuthModal();
     closeMarkColorModal();
