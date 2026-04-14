@@ -119,7 +119,7 @@
       gap: 10px;
       margin-bottom: 14px;
     }
-    .btn, .auth-btn, .tab, .chip {
+    .btn, .auth-btn, .tab {
       border: 1px solid var(--line);
       background: #fff;
       color: var(--text);
@@ -203,18 +203,25 @@
       margin-bottom: 6px;
     }
     .chips::-webkit-scrollbar { display: none; }
+    
     .chip {
       white-space: nowrap;
       padding: 8px 14px;
       border-radius: 999px;
       font-size: 13px;
-      color: var(--muted);
+      font-weight: 700;
+      color: #475569;
+      background: #e2e8f0; 
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
     .chip.active {
       background: var(--primary);
       color: #fff;
-      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
     }
+
     .empty {
       text-align: center;
       color: var(--muted);
@@ -275,13 +282,17 @@
       margin-top: 4px;
       white-space: pre-wrap;
     }
-    .dict-meaning {
-      font-size: 14px;
-      line-height: 1.5;
-      color: #475569;
-      margin-bottom: 8px;
+    
+    /* Новый стиль для полного перевода при раскрытии словаря */
+    .full-translation {
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: #334155;
+      margin-bottom: 12px;
       white-space: pre-wrap;
+      word-break: break-word;
     }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -547,7 +558,6 @@
     body.dict-searching #list .ru { font-size: 13px; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
     body.dict-searching #list .ar { font-size: 22px; line-height: 1.0; }
     body.dict-searching #list .hint { font-size: 11px; line-height: 1.2; margin-top: 2px; }
-    body.dict-searching #list .dict-meaning { font-size: 13px; line-height: 1.4; margin-bottom: 6px; }
     body.dict-searching #list .verb-box { margin-top: 8px; padding: 8px 10px; border-radius: 10px; font-size: 12px; }
     body.dict-searching #list .verb-box span { font-size: 18px; }
     body.dict-searching #list .item-details { margin-top: 8px; padding-top: 8px; }
@@ -811,14 +821,11 @@
     return Number.isFinite(ms) ? ms : 0;
   }
 
-  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПРОБЕРКИ ПРЕМИУМА ---
   function hasPaidAccess() {
     if (!user) return false;
-    // Если есть дата окончания, проверяем её
     if (userAccess?.premiumUntilMs) {
        return Date.now() <= userAccess.premiumUntilMs;
     }
-    // Если даты нет, но стоит галочка "бесконечный премиум"
     if (userAccess?.premiumActive) return true;
     return false;
   }
@@ -901,7 +908,6 @@
     `;
   }
 
-  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ПЛАШКИ ---
   function updateTrialIndicator() {
     if (!trialIndicatorEl) return;
 
@@ -911,11 +917,9 @@
       return;
     }
 
-    // Если есть оплаченный доступ
     if (hasPaidAccess()) {
       trialIndicatorEl.className = 'status ok';
       if (userAccess && userAccess.premiumUntilMs) {
-        // Форматируем дату красиво
         const d = new Date(userAccess.premiumUntilMs);
         const day = d.getDate().toString().padStart(2, '0');
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
@@ -1678,7 +1682,7 @@
           </div>
 
           <div class="item-details" onclick="event.stopPropagation()">
-            <div class="dict-meaning">${escapeHtml(w.ru || '')}</div>
+            <div class="full-translation">${escapeHtml(w.ru || '')}</div>
             ${present ? `<div class="verb-box"><div>Настоящее время</div><span>${escapeHtml(present)}</span></div>` : ''}
             <div class="actions">
               <button class="btn ${locked ? 'locked' : ''}" onclick="${locked ? "showActivationPrompt()" : `speak('${escapeJs(w.ar)}', event)`}">${locked ? '🔒 Озвучка' : '🔊 Слушать'}</button>
@@ -1696,7 +1700,9 @@
     if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
     let items = [...favorites];
-    if (activeCollection !== 'Все') items = items.filter(f => String(f.collection || '') === activeCollection);
+    const isSpecificFolder = activeCollection !== 'Все';
+    
+    if (isSpecificFolder) items = items.filter(f => String(f.collection || '') === activeCollection);
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
     if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
@@ -1715,7 +1721,10 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                <button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>
+                ${isSpecificFolder
+                  ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
+                  : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`
+                }
                 <button class="btn danger" onclick="event.stopPropagation(); removeFavorite('${escapeJs(f.id)}')">🗑</button>
               </div>
             </div>
@@ -1737,13 +1746,16 @@
         </div>
 
         <div class="item-details" onclick="event.stopPropagation()">
-          <div class="hint">${escapeHtml(f.ruSource || '')}</div>
-          ${f.collection ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
+          <div class="full-translation">${escapeHtml(f.ruSource || '')}</div>
+          ${f.collection && !isSpecificFolder ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
 
           <div class="actions">
             <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
-            ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>` : ''}
+            ${isSpecificFolder
+              ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>`
+              : `<button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
+                 ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать</button>` : ''}`
+            }
             <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
           </div>
         </div>
@@ -1757,8 +1769,9 @@
 
     let items = [...notes];
     const noteQuery = (document.getElementById('noteSearchInput')?.value || '').trim().toLowerCase();
+    const isSpecificFolder = activeCollection !== 'Все';
 
-    if (activeCollection !== 'Все') items = items.filter(n => String(n.collection || '') === activeCollection);
+    if (isSpecificFolder) items = items.filter(n => String(n.collection || '') === activeCollection);
     if (noteQuery) {
       items = items.filter(n =>
         String(n.ru || '').toLowerCase().includes(noteQuery) ||
@@ -1779,7 +1792,7 @@
             <div class="item-left">
               <div class="ru note-preview-ru">${escapeHtml(shortPreview(n.ru || '', 120))}</div>
               <div class="ar note-preview-ar">${escapeHtml(shortPreview(n.ar || '', 56))}</div>
-              ${n.collection ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
+              ${n.collection && !isSpecificFolder ? `<div class="hint">📁 ${escapeHtml(n.collection)}</div>` : ''}
             </div>
           </div>
         </div>
@@ -1789,8 +1802,11 @@
           <div class="ar">${escapeHtml(n.ar || '')}</div>
           <div class="actions">
             <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
-            ${n.collection ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>` : ''}
+            ${isSpecificFolder
+              ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>`
+              : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>
+                 ${n.collection ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать</button>` : ''}`
+            }
             <button class="btn danger" onclick="event.stopPropagation(); removeNote('${escapeJs(n.id)}')">🗑 Удалить</button>
           </div>
         </div>
@@ -1860,7 +1876,6 @@
     updateTrialIndicator();
   }
 
-  // --- ИЗМЕНЕННАЯ ФУНКЦИЯ ДЛЯ ЧТЕНИЯ ДАТЫ ИЗ БАЗЫ ---
   function startUserListeners() {
     if (!user) return;
 
@@ -1871,13 +1886,12 @@
         let premiumEndMs = 0;
         let isActive = !!(data.premiumActive || data.premium || data.isPremium);
 
-        // Проверяем, есть ли поле premiumUntil (наша дата 2026-05-13)
         if (data.premiumUntil) {
           if (typeof data.premiumUntil === 'string') {
             const parsedMs = new Date(data.premiumUntil).getTime();
             if (!isNaN(parsedMs)) {
               premiumEndMs = parsedMs;
-              isActive = true; // Если дата есть, считаем премиум активным
+              isActive = true; 
             }
           } else {
             premiumEndMs = Number(data.premiumUntil);
@@ -2531,3 +2545,5 @@
 
 </body>
 </html>
+
+
