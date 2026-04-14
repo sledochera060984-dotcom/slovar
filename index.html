@@ -362,6 +362,20 @@
       word-break: break-word;
     }
 
+    .fav-press-target {
+      touch-action: pan-y;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .fav-press-target .btn,
+    .fav-press-target input,
+    .fav-press-target textarea,
+    .fav-press-target select {
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -785,7 +799,7 @@
   <div id="markColorModalWrap" class="modal-overlay">
     <div class="modal">
       <h3>Пометка сложности</h3>
-      <div class="section-note" style="text-align:center; margin-bottom:12px;">Долгое нажатие по слову открывает это меню.</div>
+      <div class="section-note" style="text-align:center; margin-bottom:12px;">Удерживайте слово примерно 0.8 сек. При прокрутке меню не откроется.</div>
       <div class="mark-color-preview">
         <span id="markColorPreviewDot" class="fav-color-dot" style="background:#cbd5e1; box-shadow:none;"></span>
         <div id="markColorPreviewText" class="mark-color-preview-text">Выберите цвет для слова</div>
@@ -867,6 +881,13 @@
   let currentColorFavoriteId = null;
   let favoriteLongPressTimer = null;
   let favoriteLongPressTriggered = false;
+  let favoriteLongPressSuppressUntil = 0;
+  let favoriteLongPressState = {
+    id: null,
+    startX: 0,
+    startY: 0,
+    moved: false
+  };
 
   const statusEl = document.getElementById('status');
   const syncIndicatorEl = document.getElementById('syncIndicator');
@@ -908,28 +929,75 @@
     return '';
   }
 
-  function startFavoriteLongPress(id, e) {
+  function isFavoriteControlTarget(target) {
+    return !!(target && target.closest('button, input, select, textarea, label, a'));
+  }
+
+  function getEventPoint(event) {
+    const point = (event?.touches && event.touches[0])
+      || (event?.changedTouches && event.changedTouches[0])
+      || event
+      || { clientX: 0, clientY: 0 };
+    return {
+      x: Number(point.clientX || 0),
+      y: Number(point.clientY || 0)
+    };
+  }
+
+  function startFavoriteLongPress(id, event) {
     if (favSelectionMode) return;
+    if (isFavoriteControlTarget(event?.target)) return;
+
     favoriteLongPressTriggered = false;
     clearTimeout(favoriteLongPressTimer);
+
+    const point = getEventPoint(event);
+    favoriteLongPressState = {
+      id,
+      startX: point.x,
+      startY: point.y,
+      moved: false
+    };
+
     favoriteLongPressTimer = setTimeout(() => {
+      if (!favoriteLongPressState.id || favoriteLongPressState.id !== id || favoriteLongPressState.moved) return;
       favoriteLongPressTriggered = true;
+      favoriteLongPressSuppressUntil = Date.now() + 900;
+      favoriteLongPressTimer = null;
+      favoriteLongPressState = { id: null, startX: 0, startY: 0, moved: false };
       openMarkColorModal(id);
-      try { if (navigator.vibrate) navigator.vibrate(25); } catch (_) {}
-    }, 420);
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (_) {}
+    }, 780);
+  }
+
+  function moveFavoriteLongPress(event) {
+    if (!favoriteLongPressState.id) return;
+    const point = getEventPoint(event);
+    const dx = Math.abs(point.x - favoriteLongPressState.startX);
+    const dy = Math.abs(point.y - favoriteLongPressState.startY);
+    if (dx > 14 || dy > 14) {
+      favoriteLongPressState.moved = true;
+      cancelFavoriteLongPress();
+    }
   }
 
   function cancelFavoriteLongPress() {
     clearTimeout(favoriteLongPressTimer);
+    favoriteLongPressTimer = null;
+    favoriteLongPressState = { id: null, startX: 0, startY: 0, moved: false };
   }
 
   function handleFavoriteItemPress(action, id, el, event) {
-    if (favoriteLongPressTriggered) {
+    if (Date.now() < favoriteLongPressSuppressUntil || favoriteLongPressTriggered) {
       favoriteLongPressTriggered = false;
       if (event) {
         event.preventDefault();
         event.stopPropagation();
       }
+      return false;
+    }
+
+    if (isFavoriteControlTarget(event?.target)) {
       return false;
     }
 
@@ -952,6 +1020,7 @@
   }
 
   function openMarkColorModal(id) {
+
     currentColorFavoriteId = id;
     const fav = favorites.find(x => x.id === id);
     const textEl = document.getElementById('markColorPreviewText');
@@ -975,6 +1044,7 @@
   }
 
   function closeMarkColorModal() {
+    cancelFavoriteLongPress();
     currentColorFavoriteId = null;
     document.getElementById('markColorModalWrap').style.display = 'none';
   }
@@ -1958,11 +2028,14 @@
         const colorClass = getFavoriteColorClass(f);
         const actionMode = favSelectionMode ? 'select' : 'flip';
         return `
-        <div class="card-item ${colorClass}"
+        <div class="card-item ${colorClass} fav-press-target"
+             oncontextmenu="return false"
              onmousedown="startFavoriteLongPress('${escapeJs(f.id)}', event)"
              onmouseup="cancelFavoriteLongPress()"
+             onmousemove="moveFavoriteLongPress(event)"
              onmouseleave="cancelFavoriteLongPress()"
              ontouchstart="startFavoriteLongPress('${escapeJs(f.id)}', event)"
+             ontouchmove="moveFavoriteLongPress(event)"
              ontouchend="cancelFavoriteLongPress()"
              ontouchcancel="cancelFavoriteLongPress()"
              onclick="return handleFavoriteItemPress('${actionMode}', '${escapeJs(f.id)}', this, event)">
@@ -1999,11 +2072,14 @@
       const colorClass = getFavoriteColorClass(f);
       const actionMode = favSelectionMode ? 'select' : 'expand';
       return `
-      <div class="item collapsible ${colorClass}"
+      <div class="item collapsible ${colorClass} fav-press-target"
+           oncontextmenu="return false"
            onmousedown="startFavoriteLongPress('${escapeJs(f.id)}', event)"
            onmouseup="cancelFavoriteLongPress()"
+           onmousemove="moveFavoriteLongPress(event)"
            onmouseleave="cancelFavoriteLongPress()"
            ontouchstart="startFavoriteLongPress('${escapeJs(f.id)}', event)"
+           ontouchmove="moveFavoriteLongPress(event)"
            ontouchend="cancelFavoriteLongPress()"
            ontouchcancel="cancelFavoriteLongPress()"
            onclick="return handleFavoriteItemPress('${actionMode}', '${escapeJs(f.id)}', this, event)">
