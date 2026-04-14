@@ -342,10 +342,20 @@
     .fav-topbar {
       display: flex;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       flex-wrap: wrap;
     }
     .fav-topbar .btn { flex: 1; min-width: 140px; }
+    .fav-searchbar {
+      display: none;
+      margin-bottom: 10px;
+    }
+    .fav-searchbar .fav-search-input {
+      width: 100%;
+      margin-bottom: 0;
+      padding: 12px 14px;
+      font-size: 15px;
+    }
     .selection-panel {
       display: none;
       background: #0f172a;
@@ -497,8 +507,10 @@
     body.compact-favs .tab { padding: 8px 6px; font-size: 12px; }
     body.compact-favs .chips { margin-bottom: 6px; padding-bottom: 6px; }
     body.compact-favs .chip { padding: 6px 10px; font-size: 12px; }
-    body.compact-favs #favTopbar { gap: 6px; margin-bottom: 8px; }
+    body.compact-favs #favTopbar { gap: 6px; margin-bottom: 6px; }
     body.compact-favs #favTopbar .btn { min-height: 36px; padding: 8px 10px; font-size: 12px; }
+    body.compact-favs #favSearchBar { margin-bottom: 8px; }
+    body.compact-favs #favSearchBar .fav-search-input { padding: 10px 12px; font-size: 14px; border-radius: 12px; }
     body.compact-favs #selectionPanel { padding: 10px; margin-bottom: 8px; border-radius: 12px; }
     body.compact-favs #selectionPanel .folder-select,
     body.compact-favs #selectionPanel .field { margin-bottom: 8px; padding: 10px 12px; font-size: 14px; }
@@ -651,6 +663,9 @@
 
     <div id="chips" class="chips" style="display:none;"></div>
     <div id="favTopbar" class="fav-topbar" style="display:none;"></div>
+    <div id="favSearchBar" class="fav-searchbar" style="display:none;">
+      <input id="favSearchInput" class="field fav-search-input" type="text" placeholder="Поиск по избранному..." oninput="renderApp()">
+    </div>
     <div id="noteTopbar" class="note-topbar" style="display:none;">
       <input id="noteSearchInput" class="field" type="text" placeholder="Поиск по блокноту..." oninput="renderApp()">
       <button id="noteSelectBtn" class="btn" onclick="toggleNoteSelectionMode()"></button>
@@ -790,6 +805,13 @@
   function setStatus(text, cls) {
     statusEl.className = 'status ' + cls;
     statusEl.innerText = text;
+  }
+
+  function clearAllSearchInputs() {
+    ['queryInput', 'favSearchInput', 'noteSearchInput'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
   }
 
   function updateSyncIndicator() {
@@ -1205,10 +1227,13 @@
       document.getElementById('selectedFavCount').innerText = String(selectedFavoriteIds.size);
 
       const inFolderView = activeCollection !== 'Все';
-      selectEl.style.display = inFolderView ? 'none' : '';
-      inputEl.style.display = inFolderView ? 'none' : '';
-      addBtn.style.display = inFolderView ? 'none' : '';
-      removeBtn.style.display = inFolderView ? '' : 'none';
+      const selectedItems = favorites.filter(f => selectedFavoriteIds.has(f.id));
+      const hasSelectedInFolder = selectedItems.some(f => String(f.collection || '').trim());
+
+      selectEl.style.display = (!inFolderView && !hasSelectedInFolder) ? '' : 'none';
+      inputEl.style.display = (!inFolderView && !hasSelectedInFolder) ? '' : 'none';
+      addBtn.style.display = (!inFolderView && !hasSelectedInFolder) ? '' : 'none';
+      removeBtn.style.display = (inFolderView || hasSelectedInFolder) ? '' : 'none';
     } else {
       panel.classList.remove('active');
     }
@@ -1225,6 +1250,11 @@
     if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     const ids = Array.from(selectedFavoriteIds);
     if (!ids.length) { showMsg('Сначала выберите слова'); return; }
+    const selectedItems = favorites.filter(f => ids.includes(f.id));
+    if (selectedItems.some(f => String(f.collection || '').trim())) {
+      showMsg('Сначала уберите слово из папки');
+      return;
+    }
     const existing = document.getElementById('bulkFolderSelect').value.trim();
     const typed = document.getElementById('bulkFolderInput').value.trim();
     const folder = typed || existing;
@@ -1628,6 +1658,7 @@
   }
 
   function switchTab(tab) {
+    if (activeTab !== tab) clearAllSearchInputs();
     activeTab = tab;
     activeCollection = 'Все';
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -1717,11 +1748,28 @@
 
     let items = [...favorites];
     const isSpecificFolder = activeCollection !== 'Все';
+    const favQuery = (document.getElementById('favSearchInput')?.value || '').trim().toLowerCase();
+    const favQueryNormalized = normalize(favQuery);
 
     if (isSpecificFolder) items = items.filter(f => String(f.collection || '') === activeCollection);
+    if (favQuery) {
+      items = items.filter(f => {
+        const ar = String(f.ar || '').toLowerCase();
+        const ru = String(f.customRu || '').toLowerCase();
+        const ruSource = String(f.ruSource || '').toLowerCase();
+        const collection = String(f.collection || '').toLowerCase();
+        return (
+          ru.includes(favQuery) ||
+          ruSource.includes(favQuery) ||
+          collection.includes(favQuery) ||
+          ar.includes(favQuery) ||
+          normalize(ar).includes(favQueryNormalized)
+        );
+      });
+    }
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
 
-    if (!items.length) return '<div class="empty">В избранном пока пусто</div>';
+    if (!items.length) return `<div class="empty">${favQuery ? 'Ничего не найдено в избранном' : 'В избранном пока пусто'}</div>`;
 
     if (favViewMode === 'cards') {
       return `<div class="cards-grid">` + items.map(f => `
@@ -1737,7 +1785,7 @@
               <div class="ar">${escapeHtml(f.ar || '')}</div>
               <div class="actions" style="width:100%; margin-top:14px;">
                 <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
-                ${isSpecificFolder
+                ${(isSpecificFolder || f.collection)
                   ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
                   : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁</button>`
                 }
@@ -1767,10 +1815,9 @@
 
           <div class="actions">
             <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
-            ${isSpecificFolder
+            ${(isSpecificFolder || f.collection)
               ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать из папки</button>`
-              : `<button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>
-                 ${f.collection ? `<button class="btn warn" onclick="removeFavoriteFromFolder('${escapeJs(f.id)}')">📂 Убрать</button>` : ''}`
+              : `<button class="btn" onclick="openFolderModal('fav', '${escapeJs(f.id)}', 'Укажите папку для слова')">📁 В папку</button>`
             }
             <button class="btn danger" onclick="removeFavorite('${escapeJs(f.id)}')">🗑 Удалить</button>
           </div>
@@ -1844,6 +1891,7 @@
     document.body.classList.toggle('dict-searching', dictSearching);
 
     const topbar = document.getElementById('favTopbar');
+    const favSearchBar = document.getElementById('favSearchBar');
     const noteTopbar = document.getElementById('noteTopbar');
     const noteSelectBtn = document.getElementById('noteSelectBtn');
     const notesComposer = document.getElementById('notesComposer');
@@ -1856,6 +1904,7 @@
 
     if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
+      favSearchBar.style.display = 'block';
       topbar.innerHTML = `
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
@@ -1863,6 +1912,7 @@
     } else {
       topbar.style.display = 'none';
       topbar.innerHTML = '';
+      favSearchBar.style.display = 'none';
     }
 
     if (activeTab === 'notes' && user && !locked) {
