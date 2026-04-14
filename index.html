@@ -785,9 +785,9 @@
 
   <div id="noteEditModalWrap" class="modal-overlay">
     <div class="modal">
-      <h3 id="noteEditModalTitle">Изменить перевод</h3>
-      <div id="noteEditModalAr" class="ar-preview"></div>
-      <input id="noteEditModalRu" class="field" type="text" placeholder="Ваш перевод">
+      <h3 id="noteEditModalTitle">Редактировать запись</h3>
+      <input id="noteEditModalArInput" class="field" type="text" placeholder="Арабский текст" dir="rtl" style="text-align:right; font-size:22px; font-weight:800; color: var(--primary);">
+      <input id="noteEditModalRu" class="field" type="text" placeholder="Перевод на русский">
       <div class="modal-actions">
         <button class="btn primary" onclick="confirmNoteEditModal()">💾 Сохранить</button>
         <button class="btn" onclick="closeNoteEditModal()">Отмена</button>
@@ -1060,6 +1060,151 @@
     cancelFavoriteLongPress();
     currentColorFavoriteId = null;
     document.getElementById('markColorModalWrap').style.display = 'none';
+  }
+
+  function closeAnyOpenModal() {
+    const modalIds = [
+      'favModalWrap',
+      'noteEditModalWrap',
+      'folderModalWrap',
+      'markColorModalWrap',
+      'authModalWrap',
+      'compactAuthModalWrap'
+    ];
+
+    for (const id of modalIds) {
+      const el = document.getElementById(id);
+      if (!el || el.style.display !== 'flex') continue;
+
+      if (id === 'favModalWrap') closeFavModal();
+      else if (id === 'noteEditModalWrap') closeNoteEditModal();
+      else if (id === 'folderModalWrap') closeFolderModal();
+      else if (id === 'markColorModalWrap') closeMarkColorModal();
+      else if (id === 'authModalWrap') closeAuthModal();
+      else if (id === 'compactAuthModalWrap') el.style.display = 'none';
+
+      return true;
+    }
+    return false;
+  }
+
+  function closeExpandedItemsAndScrollTop() {
+    let changed = false;
+
+    document.querySelectorAll('#list .item.expanded').forEach((el) => {
+      el.classList.remove('expanded');
+      changed = true;
+    });
+
+    document.querySelectorAll('#list .card-item.flipped').forEach((el) => {
+      el.classList.remove('flipped');
+      changed = true;
+    });
+
+    if (changed) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    return changed;
+  }
+
+  function clearActiveInputs() {
+    let changed = false;
+
+    if (activeTab === 'dict') {
+      const queryEl = document.getElementById('queryInput');
+      if (queryEl && queryEl.value) {
+        queryEl.value = '';
+        changed = true;
+      }
+    } else if (activeTab === 'fav') {
+      const favSearchEl = document.getElementById('favSearchInput');
+      if (favSearchEl && favSearchEl.value) {
+        favSearchEl.value = '';
+        changed = true;
+      }
+    } else if (activeTab === 'notes') {
+      const noteSearchEl = document.getElementById('noteSearchInput');
+      const manualArEl = document.getElementById('manualAr');
+      const manualRuEl = document.getElementById('manualRu');
+
+      if (noteSearchEl && noteSearchEl.value) {
+        noteSearchEl.value = '';
+        changed = true;
+      }
+
+      if (manualArEl && manualArEl.value) {
+        manualArEl.value = '';
+        changed = true;
+      }
+
+      if (manualRuEl && manualRuEl.value) {
+        manualRuEl.value = '';
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    return changed;
+  }
+
+  function closeSelectionModes() {
+    if (favSelectionMode) {
+      toggleFavoriteSelectionMode(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    }
+
+    if (noteSelectionMode) {
+      toggleNoteSelectionMode(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    }
+
+    return false;
+  }
+
+  function goToDictionaryHome() {
+    if (activeTab !== 'dict' || activeCollection !== 'Все') {
+      switchTab('dict');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return true;
+    }
+
+    return false;
+  }
+
+  function handleAppBackAction() {
+    if (closeAnyOpenModal()) return true;
+    if (closeSelectionModes()) return true;
+    if (closeExpandedItemsAndScrollTop()) return true;
+    if (clearActiveInputs()) return true;
+    if (goToDictionaryHome()) return true;
+    return false;
+  }
+
+  function installBackButtonHandler() {
+    if (window.__arabrusBackHandlerInstalled) return;
+    window.__arabrusBackHandlerInstalled = true;
+
+    try {
+      history.pushState({ arabrusBackGuard: Date.now() }, '');
+    } catch (_) {}
+
+    window.addEventListener('popstate', () => {
+      const handled = handleAppBackAction();
+      if (!handled) return;
+
+      setTimeout(() => {
+        try {
+          history.pushState({ arabrusBackGuard: Date.now() }, '');
+        } catch (_) {}
+      }, 0);
+    });
   }
 
   async function confirmMarkColor(color) {
@@ -1801,15 +1946,17 @@
       return;
     }
     currentEditingNoteId = id;
-    document.getElementById('noteEditModalAr').innerText = note.ar || '';
+    document.getElementById('noteEditModalArInput').value = note.ar || '';
     document.getElementById('noteEditModalRu').value = note.ru || '';
-    document.getElementById('noteEditModalTitle').innerText = 'Изменить перевод';
+    document.getElementById('noteEditModalTitle').innerText = 'Редактировать запись';
     document.getElementById('noteEditModalWrap').style.display = 'flex';
-    setTimeout(() => document.getElementById('noteEditModalRu').focus(), 50);
+    setTimeout(() => document.getElementById('noteEditModalArInput').focus(), 50);
   }
 
   function closeNoteEditModal() {
     currentEditingNoteId = null;
+    document.getElementById('noteEditModalArInput').value = '';
+    document.getElementById('noteEditModalRu').value = '';
     document.getElementById('noteEditModalWrap').style.display = 'none';
   }
 
@@ -1818,19 +1965,21 @@
     if (!canUsePremiumFeatures()) { showActivationPrompt(); return; }
     if (!currentEditingNoteId) return;
 
+    const ar = document.getElementById('noteEditModalArInput').value.trim();
     const ru = document.getElementById('noteEditModalRu').value.trim();
-    if (!ru) {
-      showMsg('Введите перевод');
+    if (!ar || !ru) {
+      showMsg('Заполните арабский и русский текст');
       return;
     }
 
     try {
       await db.collection('users').doc(user.uid).collection('notes').doc(currentEditingNoteId).update({
+        ar,
         ru,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       closeNoteEditModal();
-      showMsg('Перевод обновлён');
+      showMsg('Запись обновлена');
     } catch (e) {
       console.error(e);
       showMsg('Ошибка сохранения');
@@ -2227,7 +2376,7 @@
           <div class="ar">${escapeHtml(n.ar || '')}</div>
           <div class="actions">
             <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
-            <button class="btn" onclick="event.stopPropagation(); openNoteEditModal('${escapeJs(n.id)}')">✏️ Изменить перевод</button>
+            <button class="btn" onclick="event.stopPropagation(); openNoteEditModal('${escapeJs(n.id)}')">✏️ Редактировать</button>
             ${(isSpecificFolder || n.collection)
               ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>`
               : `<button class="btn" onclick="event.stopPropagation(); openFolderModal('note', '${escapeJs(n.id)}', 'Укажите папку для записи')">📁 В папку</button>`
@@ -2486,6 +2635,7 @@
     updateSyncIndicator();
     updateTrialIndicator();
     renderApp();
+    installBackButtonHandler();
   });
 </script>
 
