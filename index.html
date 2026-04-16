@@ -1188,12 +1188,13 @@
       return;
     }
 
-    const localTempId = 'temp_' + Date.now();
+    const createdTs = Date.now();
+    const localTempId = 'temp_' + createdTs;
     notes.unshift({
       id: localTempId,
       ar,
       ru,
-      ts: Date.now(),
+      ts: createdTs,
       isLocalTemp: true
     });
     renderApp();
@@ -1203,13 +1204,18 @@
     showMsg('Фраза добавлена');
 
     try {
-      await db.collection('users').doc(user.uid).collection('notes').add({
+      const createdRef = await db.collection('users').doc(user.uid).collection('notes').add({
         ar,
         ru,
-        ts: Date.now(),
+        ts: createdTs,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      notes = notes.filter(n => n.id !== localTempId);
+
+      notes = notes.map(n => n.id === localTempId ? {
+        ...n,
+        id: createdRef.id,
+        isLocalTemp: false
+      } : n);
       renderApp();
     } catch (e) {
       console.error(e);
@@ -1230,27 +1236,34 @@
       return;
     }
 
-    const localTempId = 'temp_read_' + Date.now();
+    const createdTs = Date.now();
+    const localTempId = 'temp_read_' + createdTs;
     notes.unshift({
       id: localTempId,
       ar: safeAr,
       ru: safeRu,
       section: sectionTitle,
-      ts: Date.now(),
+      ts: createdTs,
       isLocalTemp: true
     });
     renderApp();
     showMsg('Фраза добавлена в блокнот');
 
     try {
-      await db.collection('users').doc(user.uid).collection('notes').add({
+      const createdRef = await db.collection('users').doc(user.uid).collection('notes').add({
         ar: safeAr,
         ru: safeRu,
         section: sectionTitle,
-        ts: Date.now(),
+        ts: createdTs,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      notes = notes.filter(n => n.id !== localTempId);
+
+      notes = notes.map(n => n.id === localTempId ? {
+        ...n,
+        id: createdRef.id,
+        isLocalTemp: false,
+        section: sectionTitle
+      } : n);
       renderApp();
     } catch (e) {
       console.error(e);
