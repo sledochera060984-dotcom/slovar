@@ -870,6 +870,25 @@ body.dict-searching .reading-box {
   display: none !important;
 }
 
+
+
+/* Restore compact logged-in header */
+body.logged-in-compact .auth-row,
+body.logged-in-compact #syncIndicator,
+body.logged-in-compact #trialIndicator,
+body.logged-in-compact #userLine {
+  display: none !important;
+}
+body.logged-in-compact #status.compact-hideable {
+  display: none !important;
+}
+body.logged-in-compact .header {
+  margin-bottom: 8px;
+}
+body.dict-searching .reading-box {
+  display: none !important;
+}
+
   </style>
 </head>
 <body>
@@ -1090,6 +1109,20 @@ body.dict-searching .reading-box {
   function setStatus(text, cls) {
     statusEl.className = 'status ' + cls;
     statusEl.innerText = text;
+    updateCompactLoginUi();
+  }
+
+
+
+  function updateCompactLoginUi() {
+    const logged = !!user;
+    document.body.classList.toggle('logged-in-compact', logged);
+    if (statusEl) {
+      const hideable = statusEl.classList.contains('ok');
+      statusEl.classList.toggle('compact-hideable', logged && hideable);
+      if (logged && hideable) statusEl.style.display = 'none';
+      else statusEl.style.display = '';
+    }
   }
 
   function clearAllSearchInputs() {
@@ -1115,6 +1148,10 @@ body.dict-searching .reading-box {
 
   function isFavoriteControlTarget(target) {
     return !!(target && target.closest('button, input, select, textarea, label, a'));
+  }
+
+  function isReadingControlTarget(target) {
+    return !!(target && target.closest('.reading-translation-actions button, button, input, select, textarea, label, a'));
   }
 
   function getEventPoint(event) {
@@ -2150,12 +2187,11 @@ body.dict-searching .reading-box {
     const ar = document.getElementById('manualAr').value.trim();
     const ru = document.getElementById('manualRu').value.trim();
     if (!ar || !ru) { showMsg('Заполните оба поля'); return; }
-    const id = makeNoteId(ar, ru, '');
     try {
-      await db.collection('users').doc(user.uid).collection('notes').doc(id).set({
+      await db.collection('users').doc(user.uid).collection('notes').add({
         ar, ru, collection: '', ts: Date.now(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      });
       document.getElementById('manualAr').value = '';
       document.getElementById('manualRu').value = '';
       showMsg('Фраза добавлена');
@@ -2255,10 +2291,9 @@ body.dict-searching .reading-box {
   }
 
   function startReadingPress(id, event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
+    if (isReadingControlTarget(event?.target)) return;
+    const isTouchEvent = !!(event?.touches || event?.changedTouches);
+    if (event && isTouchEvent) event.preventDefault();
     const point = getEventPoint(event);
     clearTimeout(readingPressTimer);
     readingPressState = { id, startX: point.x, startY: point.y, moved: false };
@@ -2299,15 +2334,14 @@ body.dict-searching .reading-box {
     const safeRu = String(ru || '').trim();
     if (!safeAr || !safeRu) { showMsg('Нет фразы для сохранения'); return; }
     const folder = collection || 'Чтение';
-    const id = makeNoteId(safeAr, safeRu, folder);
     try {
-      await db.collection('users').doc(user.uid).collection('notes').doc(id).set({
+      await db.collection('users').doc(user.uid).collection('notes').add({
         ar: safeAr,
         ru: safeRu,
         collection: folder,
         ts: Date.now(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
+      });
       showMsg('Фраза добавлена в блокнот');
     } catch (e) {
       console.error(e);
@@ -2343,8 +2377,8 @@ body.dict-searching .reading-box {
                 <span class="reading-translation">
                   <div class="reading-translation-text">${escapeHtml(segment.ru)}</div>
                   <div class="reading-translation-actions">
-                    <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(segment.ar)}', event)">🔊</button>
-                    <button class="btn" onclick="event.stopPropagation(); saveReadingPair('${escapeJs(segment.ar)}', '${escapeJs(segment.ru)}', 'Чтение / ${escapeJs(section.title)}')">📝</button>
+                    <button type="button" class="btn" onclick="event.stopPropagation(); speak('${escapeJs(segment.ar)}', event)">🔊</button>
+                    <button type="button" class="btn" onclick="event.stopPropagation(); saveReadingPair('${escapeJs(segment.ar)}', '${escapeJs(segment.ru)}', 'Чтение / ${escapeJs(section.title)}')">📝</button>
                   </div>
                 </span>
                 <span class="reading-ar">${escapeHtml(segment.ar)}</span>
@@ -2517,7 +2551,7 @@ body.dict-searching .reading-box {
                 <div style="display:flex; align-items:flex-start; justify-content:flex-end; width:100%; margin-bottom:8px;">${getFavoriteColorDot(f.markColor)}</div>
                 <div class="ar">${escapeHtml(f.ar || '')}</div>
                 <div class="actions" style="width:100%; margin-top:14px;">
-                  <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
+                  <button type="button" class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
                   <button class="btn" onclick="event.stopPropagation(); openFavoriteEditModal('${escapeJs(f.id)}')">✏️ Перевод</button>
                   ${(isSpecificFolder || f.collection)
                     ? `<button class="btn warn" onclick="event.stopPropagation(); removeFavoriteFromFolder('${escapeJs(f.id)}')">📂</button>`
@@ -2611,7 +2645,7 @@ body.dict-searching .reading-box {
           <div class="ru">${escapeHtml(n.ru || '')}</div>
           <div class="ar">${escapeHtml(n.ar || '')}</div>
           <div class="actions">
-            <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
+            <button type="button" class="btn" onclick="event.stopPropagation(); speak('${escapeJs(n.ar || '')}', event)">🔊 Слушать</button>
             <button class="btn" onclick="event.stopPropagation(); openNoteEditModal('${escapeJs(n.id)}')">✏️ Редактировать</button>
             ${(isSpecificFolder || n.collection)
               ? `<button class="btn warn" onclick="event.stopPropagation(); removeNoteFromFolder('${escapeJs(n.id)}')">📂 Убрать из папки</button>`
@@ -2629,6 +2663,7 @@ body.dict-searching .reading-box {
     renderSelectionPanel();
     renderNoteSelectionPanel();
     updateTrialIndicator();
+    updateCompactLoginUi();
 
     const dictQuery = (document.getElementById('queryInput')?.value || '').trim();
     const dictSearching = activeTab === 'dict' && dictQuery.length > 0;
@@ -2795,6 +2830,7 @@ body.dict-searching .reading-box {
     }
     updateSyncIndicator();
     updateTrialIndicator();
+    updateCompactLoginUi();
     renderApp();
   });
 
