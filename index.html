@@ -323,37 +323,30 @@
       overflow: hidden;
       background: #fff;
       box-shadow: 0 4px 18px rgba(0,0,0,0.04);
+      padding: 12px;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
-    .reading-box summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      font-size: 16px;
+    .reading-box,
+    .reading-box * {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .reading-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
       font-weight: 800;
       color: #0f172a;
-      background: #f8fafc;
-      border-bottom: 1px solid #eef2f7;
-    }
-    .reading-box summary::-webkit-details-marker { display: none; }
-    .reading-box summary::after {
-      content: '▾';
-      float: left;
-      color: var(--primary);
-      font-size: 15px;
-    }
-    .reading-box[open] summary::after { content: '▴'; }
-    .reading-body { padding: 12px; }
-    .reading-subtitle {
-      font-size: 13px;
-      line-height: 1.45;
-      color: var(--muted);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
     .reading-tabs {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-bottom: 12px;
     }
     .reading-tab {
       border: 1px solid #dbe3ec;
@@ -371,28 +364,56 @@
       color: #fff;
       box-shadow: 0 4px 12px rgba(39,174,96,0.22);
     }
-    .reading-article {
+    .reading-panel {
+      margin-top: 10px;
       border: 1px solid #edf2f7;
       border-radius: 16px;
-      padding: 14px;
       background: #fcfdfd;
+      overflow: hidden;
     }
-    .reading-article-title {
-      font-size: 15px;
-      font-weight: 800;
-      color: #0f172a;
-      margin-bottom: 8px;
+    .reading-preview {
+      padding: 12px 14px;
+      cursor: pointer;
     }
-    .reading-article-note {
+    .reading-preview-label {
       font-size: 12px;
-      line-height: 1.45;
+      font-weight: 800;
       color: var(--muted);
-      margin-bottom: 12px;
+      margin-bottom: 6px;
     }
+    .reading-preview-line {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--primary);
+      direction: rtl;
+      text-align: right;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .reading-preview-line.preview-ru {
+      font-size: 14px;
+      color: #334155;
+      direction: ltr;
+      text-align: left;
+      font-weight: 700;
+    }
+    .reading-preview-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .reading-full {
+      display: none;
+      border-top: 1px dashed #e2e8f0;
+      padding: 12px 14px;
+    }
+    .reading-full.open { display: block; }
     .reading-placeholder {
       font-size: 14px;
       color: var(--muted);
-      padding: 14px 4px;
+      line-height: 1.45;
     }
     .reading-sentence {
       padding: 10px 0;
@@ -416,7 +437,6 @@
       align-items: flex-end;
       justify-content: flex-end;
       cursor: pointer;
-      user-select: none;
       touch-action: manipulation;
     }
     .reading-ar {
@@ -628,7 +648,8 @@
   let noteSnapshotPending = false;
   let favModalWord = null;
   let currentEditingNoteId = null;
-  let activeReadingSection = 'politics';
+  let activeReadingSection = '';
+  let expandedReadingSection = '';
   let readingPressTimer = null;
   let readingPressState = { id: null, startX: 0, startY: 0, moved: false };
 
@@ -1254,7 +1275,8 @@
   const READING_LIBRARY = {
     politics: {
       title: 'Политика',
-      note: 'Удерживай слово или фразу 400 мс — перевод появится сверху. Внутри есть озвучка и сохранение в блокнот.',
+      previewLabel: 'Короткий отрывок',
+      previewAr: 'اَلْبَيْتُ الْأَبْيَضُ: تَرَامْب سَيَبْحَثُ مَعَ أَمِينِ عَامِّ النَّاتُو...',
       sentences: [
         [
           { ar: 'اَلْبَيْتُ الْأَبْيَضُ', ru: 'Белый дом' },
@@ -1369,16 +1391,29 @@
     },
     sport: {
       title: 'Спорт',
-      placeholder: 'Раздел готов для наполнения. Сюда лучше добавлять короткие спортивные заметки по 3–6 предложений.'
+      previewLabel: 'Короткий отрывок',
+      previewRu: 'Раздел спорта будет добавлен следующим блоком.',
+      placeholder: 'Здесь появятся короткие новости и адаптированные тексты про спорт.'
     },
     literature: {
       title: 'Литература',
-      placeholder: 'Раздел готов для наполнения. Сюда хорошо зайдут короткие адаптированные отрывки и диалоги.'
+      previewLabel: 'Короткий отрывок',
+      previewRu: 'Раздел литературы будет добавлен следующим блоком.',
+      placeholder: 'Здесь появятся короткие литературные отрывки с переводом по нажатию.'
     }
   };
 
   function setReadingSection(section) {
     activeReadingSection = section;
+    expandedReadingSection = '';
+    hideReadingTranslations();
+    renderApp();
+  }
+
+  function toggleReadingArticle(section) {
+    if (activeReadingSection !== section) activeReadingSection = section;
+    expandedReadingSection = expandedReadingSection === section ? '' : section;
+    hideReadingTranslations();
     renderApp();
   }
 
@@ -1389,6 +1424,11 @@
   }
 
   function startReadingPress(id, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
     const point = getEventPoint(event);
     clearTimeout(readingPressTimer);
 
@@ -1429,77 +1469,85 @@
     readingPressState = { id: null, startX: 0, startY: 0, moved: false };
   }
 
-  function renderReadingArticle(sectionKey) {
+  function renderReadingFullContent(sectionKey) {
     const section = READING_LIBRARY[sectionKey];
     if (!section) return '';
 
     if (section.placeholder) {
-      return `
-        <div class="reading-article">
-          <div class="reading-article-title">${escapeHtml(section.title)}</div>
-          <div class="reading-placeholder">${escapeHtml(section.placeholder)}</div>
-        </div>
-      `;
+      return `<div class="reading-placeholder">${escapeHtml(section.placeholder)}</div>`;
     }
 
     return `
-      <div class="reading-article">
-        <div class="reading-article-title">${escapeHtml(section.title)}</div>
-        <div class="reading-article-note">${escapeHtml(section.note)}</div>
-        ${section.sentences.map((sentence, sentenceIndex) => `
-          <div class="reading-sentence">
-            <div class="reading-line">
-              ${sentence.map((segment, segmentIndex) => {
-                const tokenId = `reading_${sectionKey}_${sentenceIndex}_${segmentIndex}`;
-                return `
-                  <span
-                    id="${tokenId}"
-                    class="reading-token ${segment.ar.includes(' ') ? 'phrase' : ''}"
-                    onmousedown="startReadingPress('${tokenId}', event)"
-                    onmouseup="cancelReadingPress()"
-                    onmouseleave="cancelReadingPress()"
-                    onmousemove="moveReadingPress(event)"
-                    ontouchstart="startReadingPress('${tokenId}', event)"
-                    ontouchend="cancelReadingPress()"
-                    ontouchcancel="cancelReadingPress()"
-                    ontouchmove="moveReadingPress(event)"
-                  >
-                    <span class="reading-translation">
-                      <div class="reading-translation-text">${escapeHtml(segment.ru)}</div>
-                      <div class="reading-translation-actions">
-                        <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(segment.ar)}', event)">🔊</button>
-                        <button class="btn" onclick="event.stopPropagation(); saveReadingPair('${escapeJs(segment.ar)}', '${escapeJs(segment.ru)}', '${escapeJs(section.title)}')">📝</button>
-                      </div>
-                    </span>
-                    <span class="reading-ar">${escapeHtml(segment.ar)}</span>
+      ${section.sentences.map((sentence, sentenceIndex) => `
+        <div class="reading-sentence">
+          <div class="reading-line">
+            ${sentence.map((segment, segmentIndex) => {
+              const tokenId = `reading_${sectionKey}_${sentenceIndex}_${segmentIndex}`;
+              return `
+                <span
+                  id="${tokenId}"
+                  class="reading-token ${segment.ar.includes(' ') ? 'phrase' : ''}"
+                  oncontextmenu="return false"
+                  onmousedown="startReadingPress('${tokenId}', event)"
+                  onmouseup="cancelReadingPress()"
+                  onmouseleave="cancelReadingPress()"
+                  onmousemove="moveReadingPress(event)"
+                  ontouchstart="startReadingPress('${tokenId}', event)"
+                  ontouchend="cancelReadingPress()"
+                  ontouchcancel="cancelReadingPress()"
+                  ontouchmove="moveReadingPress(event)"
+                >
+                  <span class="reading-translation">
+                    <div class="reading-translation-text">${escapeHtml(segment.ru)}</div>
+                    <div class="reading-translation-actions">
+                      <button class="btn" onclick="event.stopPropagation(); speak('${escapeJs(segment.ar)}', event)">🔊</button>
+                      <button class="btn" onclick="event.stopPropagation(); saveReadingPair('${escapeJs(segment.ar)}', '${escapeJs(segment.ru)}', '${escapeJs(section.title)}')">📝</button>
+                    </div>
                   </span>
-                `;
-              }).join('')}
-            </div>
+                  <span class="reading-ar">${escapeHtml(segment.ar)}</span>
+                </span>
+              `;
+            }).join('')}
           </div>
-        `).join('')}
+        </div>
+      `).join('')}
+    `;
+  }
+
+  function renderReadingPanel(sectionKey) {
+    const section = READING_LIBRARY[sectionKey];
+    if (!section) return '';
+
+    const isOpen = expandedReadingSection === sectionKey;
+    const previewLine = section.previewAr
+      ? `<div class="reading-preview-line">${escapeHtml(section.previewAr)}</div>`
+      : `<div class="reading-preview-line preview-ru">${escapeHtml(section.previewRu || '')}</div>`;
+
+    return `
+      <div class="reading-panel" oncontextmenu="return false">
+        <div class="reading-preview" onclick="toggleReadingArticle('${escapeJs(sectionKey)}')" oncontextmenu="return false">
+          <div class="reading-preview-label">${escapeHtml(section.title)} · ${escapeHtml(section.previewLabel || 'Отрывок')}</div>
+          ${previewLine}
+          <div class="reading-preview-hint">${isOpen ? 'Нажми, чтобы свернуть текст' : 'Нажми, чтобы открыть весь текст'}</div>
+        </div>
+        <div class="reading-full ${isOpen ? 'open' : ''}">
+          ${renderReadingFullContent(sectionKey)}
+        </div>
       </div>
     `;
   }
 
   function renderReadingHub() {
     return `
-      <details class="reading-box" open>
-        <summary>📖 Читай, чтобы быстрее усвоить</summary>
-        <div class="reading-body">
-          <div class="reading-subtitle">
-            Здесь текст разбит на смысловые куски. Там, где удобнее для понимания, перевод показывается над целой фразой.
-          </div>
-
-          <div class="reading-tabs">
-            <button class="reading-tab ${activeReadingSection === 'politics' ? 'active' : ''}" onclick="setReadingSection('politics')">Политика</button>
-            <button class="reading-tab ${activeReadingSection === 'sport' ? 'active' : ''}" onclick="setReadingSection('sport')">Спорт</button>
-            <button class="reading-tab ${activeReadingSection === 'literature' ? 'active' : ''}" onclick="setReadingSection('literature')">Литература</button>
-          </div>
-
-          ${renderReadingArticle(activeReadingSection)}
+      <div class="reading-box" oncontextmenu="return false">
+        <div class="reading-header">📖 Читай, чтобы быстрее усвоить</div>
+        <div class="reading-tabs">
+          <button class="reading-tab ${activeReadingSection === 'politics' ? 'active' : ''}" onclick="setReadingSection('politics')">Политика</button>
+          <button class="reading-tab ${activeReadingSection === 'sport' ? 'active' : ''}" onclick="setReadingSection('sport')">Спорт</button>
+          <button class="reading-tab ${activeReadingSection === 'literature' ? 'active' : ''}" onclick="setReadingSection('literature')">Литература</button>
         </div>
-      </details>
+        ${activeReadingSection ? renderReadingPanel(activeReadingSection) : ''}
+      </div>
     `;
   }
 
@@ -1823,6 +1871,14 @@
 
   document.addEventListener('scroll', () => {
     hideReadingTranslations();
+  }, true);
+
+  document.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('.reading-box')) event.preventDefault();
+  }, true);
+
+  document.addEventListener('selectstart', (event) => {
+    if (event.target.closest('.reading-box')) event.preventDefault();
   }, true);
 
   ['favModalWrap', 'noteEditModalWrap', 'authModalWrap'].forEach(id => {
