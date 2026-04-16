@@ -2902,5 +2902,495 @@ body.dict-searching .reading-box {
     installBackButtonHandler();
   });
 </script>
+
+<style>
+  .compact-auth-bar {
+    display: none;
+    align-items: center;
+    justify-content: flex-end;
+    margin: -4px 0 10px;
+  }
+
+  .compact-auth-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  .compact-auth-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    background: #94a3b8;
+    box-shadow: 0 0 0 3px rgba(148,163,184,0.12);
+  }
+
+  .compact-auth-dot.ok {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
+  }
+
+  .compact-auth-dot.warn {
+    background: #eab308;
+    box-shadow: 0 0 0 3px rgba(234,179,8,0.18);
+  }
+
+  .compact-auth-dot.err {
+    background: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.16);
+  }
+
+  .compact-auth-dot.sync {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
+    animation: compactPulse 1s infinite ease-in-out;
+  }
+
+  @keyframes compactPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: .75; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .compact-auth-label {
+    line-height: 1;
+  }
+
+  .compact-auth-menu-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .compact-auth-modal {
+    max-width: 420px;
+    width: 100%;
+  }
+
+  .compact-auth-title {
+    margin: 0 0 14px;
+    text-align: center;
+    color: #0f172a;
+  }
+
+  .compact-auth-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #fff;
+  }
+
+  .compact-auth-card small {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    letter-spacing: .02em;
+  }
+
+  .compact-auth-main {
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .compact-auth-sub {
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 4px;
+    line-height: 1.35;
+  }
+
+  .compact-auth-status-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .compact-auth-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .compact-auth-actions .btn {
+    flex: 1;
+    min-width: 130px;
+  }
+
+  body.logged-in-compact .auth-row,
+  body.logged-in-compact #syncIndicator,
+  body.logged-in-compact #trialIndicator,
+  body.logged-in-compact #userLine {
+    display: none !important;
+  }
+
+  body.logged-in-compact #status.compact-hideable {
+    display: none !important;
+  }
+
+  body.logged-in-compact .header {
+    margin-bottom: 8px;
+  }
+
+  body.dict-searching .compact-auth-bar {
+    display: none !important;
+  }
+</style>
+
+<script>
+(function () {
+  function ready(fn) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  }
+
+  ready(function () {
+    const headerEl = document.querySelector('.header');
+    if (!headerEl) return;
+
+    let compactBar = document.getElementById('compactAuthBar');
+    if (!compactBar) {
+      compactBar = document.createElement('div');
+      compactBar.id = 'compactAuthBar';
+      compactBar.className = 'compact-auth-bar';
+      compactBar.innerHTML = `
+        <button id="compactAuthBtn" class="compact-auth-btn" type="button">
+          <span id="compactAuthDot" class="compact-auth-dot"></span>
+          <span id="compactAuthLabel" class="compact-auth-label">Статус</span>
+          <span class="compact-auth-menu-icon">☰</span>
+        </button>
+      `;
+      headerEl.insertAdjacentElement('afterend', compactBar);
+    }
+
+    let modalWrap = document.getElementById('compactAuthModalWrap');
+    if (!modalWrap) {
+      modalWrap = document.createElement('div');
+      modalWrap.id = 'compactAuthModalWrap';
+      modalWrap.className = 'modal-overlay';
+      modalWrap.innerHTML = `
+        <div class="modal compact-auth-modal">
+          <h3 class="compact-auth-title">Аккаунт и синхронизация</h3>
+
+          <div class="compact-auth-card">
+            <small>Пользователь</small>
+            <div id="compactAuthUser" class="compact-auth-main">—</div>
+            <div id="compactAuthUserSub" class="compact-auth-sub"></div>
+          </div>
+
+          <div class="compact-auth-card">
+            <small>Статус</small>
+            <div class="compact-auth-status-line">
+              <span id="compactAuthStatusDot" class="compact-auth-dot"></span>
+              <div>
+                <div id="compactAuthStatusMain" class="compact-auth-main">—</div>
+                <div id="compactAuthStatusSub" class="compact-auth-sub"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="compact-auth-card">
+            <small>Доступ</small>
+            <div id="compactAuthAccessMain" class="compact-auth-main">—</div>
+            <div id="compactAuthAccessSub" class="compact-auth-sub"></div>
+          </div>
+
+          <div class="compact-auth-actions">
+            <button id="compactAuthAccessBtn" class="btn primary" type="button">💎 Доступ</button>
+            <button id="compactAuthLogoutBtn" class="btn danger" type="button">🚪 Выйти</button>
+            <button id="compactAuthCloseBtn" class="btn" type="button">Закрыть</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalWrap);
+    }
+
+    const compactBtn = document.getElementById('compactAuthBtn');
+    const compactDot = document.getElementById('compactAuthDot');
+    const compactLabel = document.getElementById('compactAuthLabel');
+
+    const modalUser = document.getElementById('compactAuthUser');
+    const modalUserSub = document.getElementById('compactAuthUserSub');
+    const modalStatusDot = document.getElementById('compactAuthStatusDot');
+    const modalStatusMain = document.getElementById('compactAuthStatusMain');
+    const modalStatusSub = document.getElementById('compactAuthStatusSub');
+    const modalAccessMain = document.getElementById('compactAuthAccessMain');
+    const modalAccessSub = document.getElementById('compactAuthAccessSub');
+
+    const accessBtn = document.getElementById('compactAuthAccessBtn');
+    const logoutBtn = document.getElementById('compactAuthLogoutBtn');
+    const closeBtn = document.getElementById('compactAuthCloseBtn');
+
+    const statusEl = document.getElementById('status');
+    const syncEl = document.getElementById('syncIndicator');
+    const trialEl = document.getElementById('trialIndicator');
+    const authRow = document.querySelector('.auth-row');
+    const userLine = document.getElementById('userLine');
+
+    function isLoggedInNow() {
+      try { return typeof user !== 'undefined' && !!user; } catch (_) { return false; }
+    }
+
+    function getSyncState() {
+      try {
+        if (!isLoggedInNow()) {
+          return {
+            tone: 'warn',
+            short: 'Вход',
+            main: 'Требуется вход',
+            sub: 'Войдите через Google, чтобы включить синхронизацию'
+          };
+        }
+
+        const pending = !!(
+          (typeof favSnapshotPending !== 'undefined' && favSnapshotPending) ||
+          (typeof noteSnapshotPending !== 'undefined' && noteSnapshotPending)
+        );
+
+        if (!navigator.onLine && pending) {
+          return {
+            tone: 'warn',
+            short: 'Офлайн',
+            main: 'Нет сети',
+            sub: 'Изменения сохранены локально и ждут синхронизации'
+          };
+        }
+
+        if (!navigator.onLine) {
+          return {
+            tone: 'warn',
+            short: 'Офлайн',
+            main: 'Нет сети',
+            sub: 'Последние данные доступны локально'
+          };
+        }
+
+        if (pending) {
+          return {
+            tone: 'sync',
+            short: 'Синхр.',
+            main: 'Синхронизация',
+            sub: 'Данные отправляются в облако'
+          };
+        }
+
+        return {
+          tone: 'ok',
+          short: 'OK',
+          main: 'Синхронизировано',
+          sub: 'Всё сохранено в облаке'
+        };
+      } catch (_) {
+        return {
+          tone: 'warn',
+          short: 'Статус',
+          main: 'Статус обновляется',
+          sub: ''
+        };
+      }
+    }
+
+    function getAccessState() {
+      try {
+        if (!isLoggedInNow()) {
+          return {
+            main: 'Войдите в Google',
+            sub: 'После входа начнётся пробный период и включится синхронизация'
+          };
+        }
+
+        if (typeof hasPaidAccess === 'function' && hasPaidAccess()) {
+          if (typeof userAccess !== 'undefined' && userAccess && userAccess.premiumUntilMs) {
+            const d = new Date(userAccess.premiumUntilMs);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return {
+              main: 'Премиум активен',
+              sub: 'Доступ до ' + day + '.' + month + '.' + year
+            };
+          }
+          return {
+            main: 'Премиум активен',
+            sub: 'Полный доступ включён'
+          };
+        }
+
+        if (typeof getTrialInfo === 'function') {
+          const trial = getTrialInfo();
+          if (trial && trial.active) {
+            return {
+              main: 'Пробный период активен',
+              sub: 'Осталось дней: ' + trial.daysLeft
+            };
+          }
+        }
+
+        return {
+          main: 'Пробный период закончился',
+          sub: 'Открой меню и нажми “Доступ”, чтобы написать тебе для активации'
+        };
+      } catch (_) {
+        return {
+          main: 'Доступ обновляется',
+          sub: ''
+        };
+      }
+    }
+
+    function updateVisibility() {
+      const logged = isLoggedInNow();
+      document.body.classList.toggle('logged-in-compact', logged);
+
+      if (compactBar) compactBar.style.display = logged ? 'flex' : 'none';
+      if (authRow) authRow.style.display = logged ? 'none' : 'flex';
+      if (userLine) userLine.style.display = logged ? 'none' : '';
+
+      if (syncEl) syncEl.style.display = logged ? 'none' : '';
+      if (trialEl) trialEl.style.display = logged ? 'none' : '';
+
+      if (statusEl) {
+        const hideable = statusEl.classList.contains('ok');
+        statusEl.classList.toggle('compact-hideable', logged && hideable);
+        if (logged && hideable) statusEl.style.display = 'none';
+        else statusEl.style.display = '';
+      }
+    }
+
+    function applyDot(el, tone) {
+      if (!el) return;
+      el.className = 'compact-auth-dot ' + tone;
+    }
+
+    function refreshCompactUi() {
+      updateVisibility();
+
+      const syncState = getSyncState();
+      const accessState = getAccessState();
+
+      applyDot(compactDot, syncState.tone);
+      applyDot(modalStatusDot, syncState.tone);
+
+      if (compactLabel) compactLabel.textContent = syncState.short;
+      if (modalStatusMain) modalStatusMain.textContent = syncState.main;
+      if (modalStatusSub) modalStatusSub.textContent = syncState.sub;
+
+      if (modalUser) {
+        if (isLoggedInNow()) {
+          try {
+            modalUser.textContent = user.displayName || user.email || 'Пользователь';
+            modalUserSub.textContent = user.email || '';
+          } catch (_) {
+            modalUser.textContent = 'Пользователь';
+            modalUserSub.textContent = '';
+          }
+        } else {
+          modalUser.textContent = 'Не выполнен вход';
+          modalUserSub.textContent = '';
+        }
+      }
+
+      if (modalAccessMain) modalAccessMain.textContent = accessState.main;
+      if (modalAccessSub) modalAccessSub.textContent = accessState.sub;
+    }
+
+    function openCompactMenu() {
+      refreshCompactUi();
+      modalWrap.style.display = 'flex';
+    }
+
+    function closeCompactMenu() {
+      modalWrap.style.display = 'none';
+    }
+
+    compactBtn.addEventListener('click', openCompactMenu);
+    closeBtn.addEventListener('click', closeCompactMenu);
+
+    modalWrap.addEventListener('click', function (e) {
+      if (e.target === modalWrap) closeCompactMenu();
+    });
+
+    accessBtn.addEventListener('click', function () {
+      closeCompactMenu();
+      try {
+        if (!isLoggedInNow()) {
+          if (typeof openAuthModal === 'function') openAuthModal();
+          else if (typeof toggleAuth === 'function') toggleAuth();
+          return;
+        }
+        if (typeof openActivationContact === 'function') openActivationContact();
+      } catch (_) {}
+    });
+
+    logoutBtn.addEventListener('click', function () {
+      closeCompactMenu();
+      try {
+        if (typeof toggleAuth === 'function' && isLoggedInNow()) toggleAuth();
+      } catch (_) {}
+    });
+
+    const originalUpdateSyncIndicator = typeof updateSyncIndicator === 'function' ? updateSyncIndicator : null;
+    if (originalUpdateSyncIndicator) {
+      updateSyncIndicator = function () {
+        const result = originalUpdateSyncIndicator.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    const originalUpdateTrialIndicator = typeof updateTrialIndicator === 'function' ? updateTrialIndicator : null;
+    if (originalUpdateTrialIndicator) {
+      updateTrialIndicator = function () {
+        const result = originalUpdateTrialIndicator.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    const originalRenderApp = typeof renderApp === 'function' ? renderApp : null;
+    if (originalRenderApp) {
+      renderApp = function () {
+        const result = originalRenderApp.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    const originalSetStatus = typeof setStatus === 'function' ? setStatus : null;
+    if (originalSetStatus) {
+      setStatus = function () {
+        const result = originalSetStatus.apply(this, arguments);
+        refreshCompactUi();
+        return result;
+      };
+    }
+
+    window.addEventListener('online', refreshCompactUi);
+    window.addEventListener('offline', refreshCompactUi);
+    document.addEventListener('visibilitychange', refreshCompactUi);
+
+    setInterval(refreshCompactUi, 1200);
+    refreshCompactUi();
+  });
+})();
+</script>
+
+
 </body>
 </html>
