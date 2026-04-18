@@ -9,6 +9,16 @@
   <link rel="apple-touch-icon" href="icon.png">
   <title>АРАБРУС</title>
 
+  <script>
+    (function () {
+      try {
+        if (localStorage.getItem('arabrus_logged_in') === '1') {
+          document.documentElement.classList.add('prelogged-in-compact');
+        }
+      } catch (_) {}
+    })();
+  </script>
+
   <script src="base.js"></script>
   <script src="verbs.js"></script>
 
@@ -75,6 +85,13 @@
     .status.ok { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
     .status.wait { background: #fffbeb; border-color: #fde68a; color: var(--warn); }
     .status.err { background: #fef2f2; border-color: #fecaca; color: var(--danger); }
+    html.prelogged-in-compact body .auth-row,
+    html.prelogged-in-compact body #status,
+    html.prelogged-in-compact body #syncIndicator,
+    html.prelogged-in-compact body #trialIndicator,
+    html.prelogged-in-compact body #userLine {
+      display: none !important;
+    }
     #syncIndicator {
       transition: opacity .2s ease;
     }
@@ -879,7 +896,7 @@ body.logged-in-compact #trialIndicator,
 body.logged-in-compact #userLine {
   display: none !important;
 }
-body.logged-in-compact #status.compact-hideable {
+body.logged-in-compact #status {
   display: none !important;
 }
 body.logged-in-compact .header {
@@ -1117,10 +1134,13 @@ body.dict-searching .reading-box {
   function updateCompactLoginUi() {
     const logged = !!user;
     document.body.classList.toggle('logged-in-compact', logged);
+    try {
+      document.documentElement.classList.toggle('prelogged-in-compact', logged);
+      localStorage.setItem('arabrus_logged_in', logged ? '1' : '0');
+    } catch (_) {}
     if (statusEl) {
-      const hideable = statusEl.classList.contains('ok');
-      statusEl.classList.toggle('compact-hideable', logged && hideable);
-      if (logged && hideable) statusEl.style.display = 'none';
+      statusEl.classList.toggle('compact-hideable', logged);
+      if (logged) statusEl.style.display = 'none';
       else statusEl.style.display = '';
     }
   }
@@ -2430,7 +2450,7 @@ body.dict-searching .reading-box {
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
     if (!q) {
       currentRenderedWords = [];
-      return `<div class="reading-home-note">Начните вводить слово для поиска</div>${renderReadingHub()}`;
+      return '<div class="empty">Начните вводить слово для поиска</div>';
     }
 
     const nQ = normalize(q);
@@ -2895,7 +2915,6 @@ body.dict-searching .reading-box {
   window.addEventListener('online', updateSyncIndicator);
   window.addEventListener('offline', updateSyncIndicator);
   window.addEventListener('load', () => {
-    activeReadingSection = 'politics';
     updateSyncIndicator();
     updateTrialIndicator();
     renderApp();
@@ -3040,7 +3059,7 @@ body.dict-searching .reading-box {
     display: none !important;
   }
 
-  body.logged-in-compact #status.compact-hideable {
+  body.logged-in-compact #status {
     display: none !important;
   }
 
@@ -3183,17 +3202,17 @@ body.dict-searching .reading-box {
 
         if (pending) {
           return {
-            tone: 'sync',
-            short: 'Синхр.',
-            main: 'Синхронизация',
-            sub: 'Данные отправляются в облако'
+            tone: 'ok',
+            short: 'Онлайн',
+            main: 'В сети',
+            sub: 'Синхронизация с облаком...'
           };
         }
 
         return {
           tone: 'ok',
-          short: 'OK',
-          main: 'Синхронизировано',
+          short: 'Онлайн',
+          main: 'В сети',
           sub: 'Всё сохранено в облаке'
         };
       } catch (_) {
@@ -3257,6 +3276,10 @@ body.dict-searching .reading-box {
     function updateVisibility() {
       const logged = isLoggedInNow();
       document.body.classList.toggle('logged-in-compact', logged);
+      try {
+        document.documentElement.classList.toggle('prelogged-in-compact', logged);
+        localStorage.setItem('arabrus_logged_in', logged ? '1' : '0');
+      } catch (_) {}
 
       if (compactBar) compactBar.style.display = logged ? 'flex' : 'none';
       if (authRow) authRow.style.display = logged ? 'none' : 'flex';
@@ -3266,10 +3289,8 @@ body.dict-searching .reading-box {
       if (trialEl) trialEl.style.display = logged ? 'none' : '';
 
       if (statusEl) {
-        const hideable = statusEl.classList.contains('ok');
-        statusEl.classList.toggle('compact-hideable', logged && hideable);
-        if (logged && hideable) statusEl.style.display = 'none';
-        else statusEl.style.display = '';
+        statusEl.classList.toggle('compact-hideable', logged);
+        statusEl.style.display = logged ? 'none' : '';
       }
     }
 
