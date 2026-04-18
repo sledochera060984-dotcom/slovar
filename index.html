@@ -673,6 +673,30 @@
       outline: none;
     }
 
+
+    .fav-list-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      width: 100%;
+      align-items: start;
+    }
+    .fav-list-col {
+      min-width: 0;
+    }
+    .fav-list-col.ru-col {
+      text-align: left;
+    }
+    .fav-list-col.ar-col {
+      text-align: right;
+    }
+    .fav-list-col .ru {
+      margin-bottom: 0;
+    }
+    .fav-list-col .ar {
+      margin-bottom: 0;
+    }
+
     .note-topbar { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
     .note-topbar .btn { flex:1; min-width:140px; }
     .note-selection-panel {
@@ -714,6 +738,12 @@
     body.compact-favs #list { gap: 6px; padding-bottom: 16px; }
     body.compact-favs #list .item { padding: 9px 10px; border-radius: 12px; }
     body.compact-favs #list .item-head { gap: 8px; }
+
+    body.compact-favs .fav-list-pair {
+      gap: 10px;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    }
+
     body.compact-favs #list .ru { font-size: 15px; line-height: 1.22; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
     body.compact-favs #list .ar { font-size: 22px; line-height: 1.0; }
     body.compact-favs #list .hint { font-size: 11px; line-height: 1.2; margin-top: 2px; }
@@ -2814,12 +2844,24 @@ body.dict-searching .reading-box {
       const difficultyHint = getFavoriteDifficultyHint(f.markColor);
       const mainBlock = frontIsArabic
         ? `
-            <div class="ar">${escapeHtml(f.ar || '')}</div>
-            <div class="ru">${escapeHtml(f.customRu || '')}</div>
+            <div class="fav-list-pair">
+              <div class="fav-list-col ar-col">
+                <div class="ar">${escapeHtml(f.ar || '')}</div>
+              </div>
+              <div class="fav-list-col ru-col">
+                <div class="ru">${escapeHtml(f.customRu || '')}</div>
+              </div>
+            </div>
           `
         : `
-            <div class="ru">${escapeHtml(f.customRu || '')}</div>
-            <div class="ar">${escapeHtml(f.ar || '')}</div>
+            <div class="fav-list-pair">
+              <div class="fav-list-col ru-col">
+                <div class="ru">${escapeHtml(f.customRu || '')}</div>
+              </div>
+              <div class="fav-list-col ar-col">
+                <div class="ar">${escapeHtml(f.ar || '')}</div>
+              </div>
+            </div>
           `;
       return `
         <div class="item collapsible ${colorClass} fav-press-target"
