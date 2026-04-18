@@ -436,7 +436,7 @@
       margin-bottom: 8px;
       flex-wrap: wrap;
     }
-    .fav-topbar .btn { flex: 1; min-width: 140px; }
+    .fav-topbar .btn { flex: 1; min-width: 120px; }
     .fav-filter-menu {
       display: none;
       border: 1px solid #e2e8f0;
@@ -639,6 +639,17 @@
       color: #334155;
       white-space: pre-wrap;
     }
+    .card-front-ar {
+      margin: auto;
+      text-align: center;
+      direction: rtl;
+      color: var(--primary);
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.2;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
     .card-hint {
       text-align: center;
       color: #94a3b8;
@@ -687,7 +698,7 @@
     body.compact-favs .chips { margin-bottom: 6px; padding-bottom: 6px; }
     body.compact-favs .chip { padding: 6px 10px; font-size: 12px; }
     body.compact-favs #favTopbar { gap: 6px; margin-bottom: 6px; }
-    body.compact-favs #favTopbar .btn { min-height: 36px; padding: 8px 10px; font-size: 12px; }
+    body.compact-favs #favTopbar .btn { min-height: 36px; min-width: 110px; padding: 8px 10px; font-size: 12px; }
     body.compact-favs #favFilterMenu { margin-bottom: 8px; padding: 10px; border-radius: 12px; }
     body.compact-favs .fav-filter-title { font-size: 11px; margin-bottom: 6px; }
     body.compact-favs .fav-filter-summary { font-size: 12px; margin-bottom: 6px; }
@@ -1192,6 +1203,7 @@ body.dict-searching .reading-box {
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
   let favDifficultyFilter = localStorage.getItem('arabrus_fav_difficulty_filter') || 'all';
   let favFilterMenuOpen = false;
+  let favStudyDirection = localStorage.getItem('arabrus_fav_direction') || 'ru-ar';
   let noteSelectionMode = false;
   let selectedNoteIds = new Set();
   let currentEditingNoteId = null;
@@ -1858,6 +1870,16 @@ body.dict-searching .reading-box {
     if (favDifficultyFilter === 'red') return '🔴 Очень сложные';
     if (favDifficultyFilter === 'none') return '⚪ Без пометки';
     return '🎯 Все уровни';
+  }
+
+  function getFavoriteDirectionButtonLabel() {
+    return favStudyDirection === 'ar-ru' ? '🔁 AR → RU' : '🔁 RU → AR';
+  }
+
+  function toggleFavoriteStudyDirection() {
+    favStudyDirection = favStudyDirection === 'ru-ar' ? 'ar-ru' : 'ru-ar';
+    try { localStorage.setItem('arabrus_fav_direction', favStudyDirection); } catch (_) {}
+    renderApp();
   }
 
   function getFavoriteItemsForCurrentScope() {
@@ -2710,6 +2732,7 @@ body.dict-searching .reading-box {
     const isSpecificFolder = activeCollection !== 'Все';
     const favQuery = (document.getElementById('favSearchInput')?.value || '').trim().toLowerCase();
     const favQueryNormalized = normalize(favQuery);
+    const frontIsArabic = favStudyDirection === 'ar-ru';
 
     if (isSpecificFolder) items = items.filter(f => String(f.collection || '') === activeCollection);
     if (favDifficultyFilter !== 'all') items = items.filter(f => favoriteMatchesDifficulty(f));
@@ -2735,6 +2758,12 @@ body.dict-searching .reading-box {
         const colorClass = getFavoriteColorClass(f);
         const actionMode = favSelectionMode ? 'select' : 'flip';
         const difficultyHint = getFavoriteDifficultyHint(f.markColor);
+        const frontHtml = frontIsArabic
+          ? `<div class="card-front-ar">${escapeHtml(f.ar || '')}</div>`
+          : `<div class="card-front-text">${escapeHtml(f.customRu || '')}</div>`;
+        const backMainHtml = frontIsArabic
+          ? `<div class="card-front-text">${escapeHtml(f.customRu || '')}</div>`
+          : `<div class="ar">${escapeHtml(f.ar || '')}</div>`;
         return `
           <div class="card-item ${colorClass} fav-press-target"
                oncontextmenu="return false"
@@ -2755,13 +2784,13 @@ body.dict-searching .reading-box {
                   <div style="flex:1;"></div>
                   ${getFavoriteColorDot(f.markColor)}
                 </div>
-                <div class="card-front-text">${escapeHtml(f.customRu || '')}</div>
+                ${frontHtml}
                 ${difficultyHint ? `<div class="hint" style="text-align:center; margin-top:8px;">${escapeHtml(difficultyHint)}</div>` : ''}
                 <div class="card-hint">коснись, чтобы перевернуть</div>
               </div>
               <div class="card-face card-back">
                 <div style="display:flex; align-items:flex-start; justify-content:flex-end; width:100%; margin-bottom:8px;">${getFavoriteColorDot(f.markColor)}</div>
-                <div class="ar">${escapeHtml(f.ar || '')}</div>
+                ${backMainHtml}
                 ${difficultyHint ? `<div class="hint" style="margin:6px 0 2px; text-align:center;">${escapeHtml(difficultyHint)}</div>` : ''}
                 <div class="actions" style="width:100%; margin-top:14px;">
                   <button type="button" class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
@@ -2783,6 +2812,15 @@ body.dict-searching .reading-box {
       const colorClass = getFavoriteColorClass(f);
       const actionMode = favSelectionMode ? 'select' : 'expand';
       const difficultyHint = getFavoriteDifficultyHint(f.markColor);
+      const mainBlock = frontIsArabic
+        ? `
+            <div class="ar">${escapeHtml(f.ar || '')}</div>
+            <div class="ru">${escapeHtml(f.customRu || '')}</div>
+          `
+        : `
+            <div class="ru">${escapeHtml(f.customRu || '')}</div>
+            <div class="ar">${escapeHtml(f.ar || '')}</div>
+          `;
       return `
         <div class="item collapsible ${colorClass} fav-press-target"
              oncontextmenu="return false"
@@ -2799,15 +2837,16 @@ body.dict-searching .reading-box {
             <div class="select-line" style="width:100%; align-items:flex-start;">
               ${favSelectionMode ? `<input class="select-box" type="checkbox" ${selectedFavoriteIds.has(f.id) ? 'checked' : ''} onchange="event.stopPropagation(); toggleFavoriteSelected('${escapeJs(f.id)}')">` : ''}
               <div class="item-left">
-                <div class="ru">${escapeHtml(f.customRu || '')}</div>
-                <div class="ar">${escapeHtml(f.ar || '')}</div>
+                ${mainBlock}
                 ${difficultyHint ? `<div class="hint">${escapeHtml(difficultyHint)}</div>` : ''}
               </div>
               ${getFavoriteColorDot(f.markColor)}
             </div>
           </div>
           <div class="item-details" onclick="event.stopPropagation()">
-            <div class="full-translation-fav">${escapeHtml(f.ruSource || '')}</div>
+            ${frontIsArabic
+              ? `<div class="ar" style="font-size:24px; margin-bottom:8px;">${escapeHtml(f.ar || '')}</div><div class="full-translation-fav">${escapeHtml(f.ruSource || '')}</div>`
+              : `<div class="full-translation-fav">${escapeHtml(f.ruSource || '')}</div><div class="ar" style="font-size:24px; margin:4px 0 0;">${escapeHtml(f.ar || '')}</div>`}
             ${f.collection && !isSpecificFolder ? `<div class="hint">📁 ${escapeHtml(f.collection)}</div>` : ''}
             <div class="actions">
               <button class="btn" onclick="speak('${escapeJs(f.ar || '')}', event)">🔊 Слушать</button>
@@ -2823,6 +2862,7 @@ body.dict-searching .reading-box {
       `;
     }).join('');
   }
+
 
   function renderNotes() {
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать блокнот</div>';
@@ -2908,6 +2948,7 @@ body.dict-searching .reading-box {
       favFilterMenu.innerHTML = renderFavoriteDifficultyMenu();
       topbar.innerHTML = `
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
+        <button class="btn" onclick="toggleFavoriteStudyDirection()">${getFavoriteDirectionButtonLabel()}</button>
         <button class="btn ${favFilterMenuOpen ? 'primary' : ''}" onclick="toggleFavoriteDifficultyMenu()">${getFavoriteDifficultyButtonLabel()}</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
       `;
