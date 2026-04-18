@@ -437,6 +437,94 @@
       flex-wrap: wrap;
     }
     .fav-topbar .btn { flex: 1; min-width: 140px; }
+    .fav-filter-menu {
+      display: none;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.05);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .fav-filter-menu.active { display: block; }
+    .fav-filter-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    .fav-filter-summary {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .fav-filter-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .fav-filter-option {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: #f8fafc;
+      color: #334155;
+      padding: 11px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: left;
+    }
+    .fav-filter-option.active {
+      border-color: var(--primary);
+      background: #ecfdf5;
+      color: #166534;
+      box-shadow: 0 4px 12px rgba(39,174,96,0.12);
+    }
+    .fav-filter-option-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .fav-filter-option-count {
+      min-width: 26px;
+      text-align: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #fff;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid #e2e8f0;
+    }
+    .fav-filter-option.active .fav-filter-option-count {
+      border-color: #bbf7d0;
+      color: #166534;
+    }
+    .fav-filter-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      background: #cbd5e1;
+      box-shadow: 0 0 0 3px rgba(148,163,184,0.12);
+    }
+    .fav-filter-dot.blue {
+      background: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
+    }
+    .fav-filter-dot.red {
+      background: #dc2626;
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.14);
+    }
     .fav-searchbar {
       display: none;
       margin-bottom: 10px;
@@ -600,6 +688,12 @@
     body.compact-favs .chip { padding: 6px 10px; font-size: 12px; }
     body.compact-favs #favTopbar { gap: 6px; margin-bottom: 6px; }
     body.compact-favs #favTopbar .btn { min-height: 36px; padding: 8px 10px; font-size: 12px; }
+    body.compact-favs #favFilterMenu { margin-bottom: 8px; padding: 10px; border-radius: 12px; }
+    body.compact-favs .fav-filter-title { font-size: 11px; margin-bottom: 6px; }
+    body.compact-favs .fav-filter-summary { font-size: 12px; margin-bottom: 6px; }
+    body.compact-favs .fav-filter-options { gap: 6px; }
+    body.compact-favs .fav-filter-option { padding: 9px 10px; font-size: 13px; border-radius: 12px; }
+    body.compact-favs .fav-filter-option-count { font-size: 11px; padding: 2px 7px; }
     body.compact-favs #favSearchBar { margin-bottom: 8px; }
     body.compact-favs #favSearchBar .fav-search-input { padding: 10px 12px; font-size: 14px; border-radius: 12px; }
     body.compact-favs #selectionPanel { padding: 10px; margin-bottom: 8px; border-radius: 12px; }
@@ -944,6 +1038,7 @@ body.dict-searching .reading-box {
 
     <div id="chips" class="chips" style="display:none;"></div>
     <div id="favTopbar" class="fav-topbar" style="display:none;"></div>
+    <div id="favFilterMenu" class="fav-filter-menu" style="display:none;"></div>
     <div id="favSearchBar" class="fav-searchbar" style="display:none;">
       <input id="favSearchInput" class="field fav-search-input" type="text" placeholder="Поиск по избранному..." oninput="renderApp()">
     </div>
@@ -1095,6 +1190,8 @@ body.dict-searching .reading-box {
   let favSelectionMode = false;
   let selectedFavoriteIds = new Set();
   let favViewMode = localStorage.getItem('arabrus_fav_view_mode') || 'list';
+  let favDifficultyFilter = localStorage.getItem('arabrus_fav_difficulty_filter') || 'all';
+  let favFilterMenuOpen = false;
   let noteSelectionMode = false;
   let selectedNoteIds = new Set();
   let currentEditingNoteId = null;
@@ -1740,6 +1837,93 @@ body.dict-searching .reading-box {
       if (n.collection && String(n.collection).trim()) set.add(String(n.collection).trim());
     });
     return Array.from(set);
+  }
+
+  function getFavoriteDifficultyHint(color) {
+    if (color === 'blue') return '🔵 Сложное';
+    if (color === 'red') return '🔴 Очень сложное';
+    return '';
+  }
+
+  function favoriteMatchesDifficulty(f, filterValue = favDifficultyFilter) {
+    const color = String(f?.markColor || '').trim();
+    if (filterValue === 'blue') return color === 'blue';
+    if (filterValue === 'red') return color === 'red';
+    if (filterValue === 'none') return !color;
+    return true;
+  }
+
+  function getFavoriteDifficultyButtonLabel() {
+    if (favDifficultyFilter === 'blue') return '🔵 Сложные';
+    if (favDifficultyFilter === 'red') return '🔴 Очень сложные';
+    if (favDifficultyFilter === 'none') return '⚪ Без пометки';
+    return '🎯 Все уровни';
+  }
+
+  function getFavoriteItemsForCurrentScope() {
+    let items = [...favorites];
+    if (activeCollection !== 'Все') {
+      items = items.filter(f => String(f.collection || '') === activeCollection);
+    }
+    return items;
+  }
+
+  function getFavoriteDifficultyStats(items) {
+    const stats = { all: items.length, blue: 0, red: 0, none: 0 };
+    items.forEach((f) => {
+      const color = String(f?.markColor || '').trim();
+      if (color === 'blue') stats.blue += 1;
+      else if (color === 'red') stats.red += 1;
+      else stats.none += 1;
+    });
+    return stats;
+  }
+
+  function setFavoriteDifficultyFilter(filterValue) {
+    favDifficultyFilter = filterValue || 'all';
+    try { localStorage.setItem('arabrus_fav_difficulty_filter', favDifficultyFilter); } catch (_) {}
+    favFilterMenuOpen = false;
+    renderApp();
+  }
+
+  function toggleFavoriteDifficultyMenu(forceValue = null) {
+    favFilterMenuOpen = forceValue === null ? !favFilterMenuOpen : !!forceValue;
+    renderApp();
+  }
+
+  function renderFavoriteDifficultyMenu() {
+    const scopeItems = getFavoriteItemsForCurrentScope();
+    const stats = getFavoriteDifficultyStats(scopeItems);
+    const scopeLabel = activeCollection === 'Все'
+      ? 'во всём избранном'
+      : 'в папке «' + escapeHtml(activeCollection) + '»';
+
+    const options = [
+      { key: 'all', label: 'Все слова', count: stats.all, dotClass: '' },
+      { key: 'none', label: 'Без пометки', count: stats.none, dotClass: '' },
+      { key: 'blue', label: 'Сложные', count: stats.blue, dotClass: 'blue' },
+      { key: 'red', label: 'Очень сложные', count: stats.red, dotClass: 'red' }
+    ];
+
+    return `
+      <div class="fav-filter-title">Фильтр по сложности</div>
+      <div class="fav-filter-summary">Показывать слова по уровню сложности ${scopeLabel}.</div>
+      <div class="fav-filter-options">
+        ${options.map((option) => `
+          <button
+            type="button"
+            class="fav-filter-option ${favDifficultyFilter === option.key ? 'active' : ''}"
+            onclick="setFavoriteDifficultyFilter('${escapeJs(option.key)}')"
+          >
+            <span class="fav-filter-option-left">
+              <span class="fav-filter-dot ${option.dotClass}"></span>
+              <span>${escapeHtml(option.label)}</span>
+            </span>
+            <span class="fav-filter-option-count">${option.count}</span>
+          </button>
+        `).join('')}
+      </div>
+    `;
   }
 
   function toggleFavoriteSelectionMode(forceValue = null) {
@@ -2528,6 +2712,7 @@ body.dict-searching .reading-box {
     const favQueryNormalized = normalize(favQuery);
 
     if (isSpecificFolder) items = items.filter(f => String(f.collection || '') === activeCollection);
+    if (favDifficultyFilter !== 'all') items = items.filter(f => favoriteMatchesDifficulty(f));
     if (favQuery) {
       items = items.filter(f => {
         const ar = String(f.ar || '').toLowerCase();
@@ -2538,12 +2723,18 @@ body.dict-searching .reading-box {
       });
     }
     items.sort((a, b) => Number(b.ts || 0) - Number(a.ts || 0));
-    if (!items.length) return `<div class="empty">${favQuery ? 'Ничего не найдено в избранном' : 'В избранном пока пусто'}</div>`;
+    if (!items.length) {
+      const emptyText = favQuery
+        ? 'Ничего не найдено в избранном'
+        : (favDifficultyFilter !== 'all' ? 'По выбранной сложности слов не найдено' : 'В избранном пока пусто');
+      return `<div class="empty">${emptyText}</div>`;
+    }
 
     if (favViewMode === 'cards') {
       return `<div class="cards-grid">` + items.map(f => {
         const colorClass = getFavoriteColorClass(f);
         const actionMode = favSelectionMode ? 'select' : 'flip';
+        const difficultyHint = getFavoriteDifficultyHint(f.markColor);
         return `
           <div class="card-item ${colorClass} fav-press-target"
                oncontextmenu="return false"
@@ -2565,11 +2756,13 @@ body.dict-searching .reading-box {
                   ${getFavoriteColorDot(f.markColor)}
                 </div>
                 <div class="card-front-text">${escapeHtml(f.customRu || '')}</div>
+                ${difficultyHint ? `<div class="hint" style="text-align:center; margin-top:8px;">${escapeHtml(difficultyHint)}</div>` : ''}
                 <div class="card-hint">коснись, чтобы перевернуть</div>
               </div>
               <div class="card-face card-back">
                 <div style="display:flex; align-items:flex-start; justify-content:flex-end; width:100%; margin-bottom:8px;">${getFavoriteColorDot(f.markColor)}</div>
                 <div class="ar">${escapeHtml(f.ar || '')}</div>
+                ${difficultyHint ? `<div class="hint" style="margin:6px 0 2px; text-align:center;">${escapeHtml(difficultyHint)}</div>` : ''}
                 <div class="actions" style="width:100%; margin-top:14px;">
                   <button type="button" class="btn" onclick="event.stopPropagation(); speak('${escapeJs(f.ar || '')}', event)">🔊</button>
                   <button class="btn" onclick="event.stopPropagation(); openFavoriteEditModal('${escapeJs(f.id)}')">✏️ Перевод</button>
@@ -2589,6 +2782,7 @@ body.dict-searching .reading-box {
     return items.map(f => {
       const colorClass = getFavoriteColorClass(f);
       const actionMode = favSelectionMode ? 'select' : 'expand';
+      const difficultyHint = getFavoriteDifficultyHint(f.markColor);
       return `
         <div class="item collapsible ${colorClass} fav-press-target"
              oncontextmenu="return false"
@@ -2607,6 +2801,7 @@ body.dict-searching .reading-box {
               <div class="item-left">
                 <div class="ru">${escapeHtml(f.customRu || '')}</div>
                 <div class="ar">${escapeHtml(f.ar || '')}</div>
+                ${difficultyHint ? `<div class="hint">${escapeHtml(difficultyHint)}</div>` : ''}
               </div>
               ${getFavoriteColorDot(f.markColor)}
             </div>
@@ -2693,6 +2888,7 @@ body.dict-searching .reading-box {
     document.body.classList.toggle('dict-searching', dictSearching);
 
     const topbar = document.getElementById('favTopbar');
+    const favFilterMenu = document.getElementById('favFilterMenu');
     const favSearchBar = document.getElementById('favSearchBar');
     const noteTopbar = document.getElementById('noteTopbar');
     const noteSelectBtn = document.getElementById('noteSelectBtn');
@@ -2707,13 +2903,20 @@ body.dict-searching .reading-box {
     if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
       favSearchBar.style.display = 'block';
+      favFilterMenu.style.display = 'block';
+      favFilterMenu.className = 'fav-filter-menu' + (favFilterMenuOpen ? ' active' : '');
+      favFilterMenu.innerHTML = renderFavoriteDifficultyMenu();
       topbar.innerHTML = `
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
+        <button class="btn ${favFilterMenuOpen ? 'primary' : ''}" onclick="toggleFavoriteDifficultyMenu()">${getFavoriteDifficultyButtonLabel()}</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
       `;
     } else {
       topbar.style.display = 'none';
       topbar.innerHTML = '';
+      favFilterMenu.style.display = 'none';
+      favFilterMenu.className = 'fav-filter-menu';
+      favFilterMenu.innerHTML = '';
       favSearchBar.style.display = 'none';
     }
 
@@ -2881,6 +3084,13 @@ body.dict-searching .reading-box {
 
   document.addEventListener('scroll', () => {
     hideReadingTranslations();
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    if (!favFilterMenuOpen) return;
+    if (event.target.closest('#favTopbar') || event.target.closest('#favFilterMenu')) return;
+    favFilterMenuOpen = false;
+    if (activeTab === 'fav') renderApp();
   }, true);
 
   ['favModalWrap', 'noteEditModalWrap', 'folderModalWrap', 'markColorModalWrap', 'authModalWrap'].forEach(id => {
