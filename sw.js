@@ -1,96 +1,65 @@
-const CACHE_NAME = 'arabrus-cache-v5';
-const APP_SHELL = [
-  './',
-  './index.html',
-  './offline.html',
-  './manifest.json',
-  './base.js',
-  './verbs.js',
-  './icon.png',
-  './icons/192x192.png',
-  './icons/512x512.png',
-  './icons/512x512-monochrome.png'
+const CACHE_NAME = 'arabus-pro-cache-v2';
+const URLS_TO_CACHE = [
+    './',
+    './index.html',
+    './base.js',
+    './manifest.json'
 ];
 
-function isSameOrigin(url) {
-  return url.origin === self.location.origin;
-}
-
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+// Установка кэша при первом заходе
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+        .then(cache => cache.addAll(URLS_TO_CACHE))
+        .then(() => self.skipWaiting())
+    );
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-    )).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys()
+            .then(keys => Promise.all(
+                keys
+                    .filter(key => key !== CACHE_NAME)
+                    .map(key => caches.delete(key))
+            ))
+            .then(() => self.clients.claim())
+    );
 });
 
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  const networkPromise = fetch(request)
-    .then((response) => {
-      if (response && response.ok) {
-        cache.put(request, response.clone()).catch(() => {});
-      }
-      return response;
-    })
-    .catch(() => null);
-  return cached || networkPromise || caches.match('./offline.html');
-}
+// Перехват запросов
+self.addEventListener('fetch', event => {
+    if (event.request.method !== 'GET') return;
+    
+    // Игнорируем запросы к облаку Firebase (они работают через свой механизм)
+    if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('google')) return;
 
-async function networkFirstPage(request) {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request);
-    if (response && response.ok) {
-      cache.put('./index.html', response.clone()).catch(() => {});
+    // Для index.html используем "сначала сеть, потом кэш", чтобы быстрее получать свежие фиксы.
+    if (event.request.mode === 'navigate' || event.request.url.endsWith('/index.html')) {
+        event.respondWith(
+            fetch(event.request)
+                .then(networkResponse => {
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+                    return networkResponse;
+                })
+                .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
+        );
+        return;
     }
-    return response;
-  } catch (_) {
-    return (await cache.match('./index.html')) || (await cache.match('./offline.html'));
-  }
-}
 
-self.addEventListener('fetch', (event) => {
-  const request = event.request;
-  if (request.method !== 'GET') return;
+    // Для остального: "Сначала кэш, потом сеть" (Stale-While-Revalidate)
+    event.respondWith(
+        caches.match(event.request).then(cachedResponse => {
+            const fetchPromise = fetch(event.request).then(networkResponse => {
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, networkResponse.clone());
+                });
+                return networkResponse;
+            }).catch(() => {
+                console.log("Офлайн режим: загружено из памяти");
+            });
 
-  const url = new URL(request.url);
-
-  if (!isSameOrigin(url)) {
-    return;
-  }
-
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirstPage(request));
-    return;
-  }
-
-  if (APP_SHELL.some((asset) => url.pathname.endsWith(asset.replace('./', '/')) || url.pathname === asset.replace('./', '/'))) {
-    event.respondWith(staleWhileRevalidate(request));
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-      if (response && response.ok) {
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())).catch(() => {});
-      }
-      return response;
-    }).catch(() => caches.match('./offline.html')))
-  );
-});
-
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+            return cachedResponse || fetchPromise;
+        })
+    );
 });
