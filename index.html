@@ -1066,7 +1066,7 @@ body.dict-searching .reading-box {
     </div>
 
     <div id="dictSection">
-      <input id="queryInput" class="search" type="text" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="renderApp()" autocomplete="off">
+      <input id="queryInput" class="search" type="text" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="handleDictionaryInput()" autocomplete="off">
     </div>
 
     <div id="notesComposer" style="display:none;">
@@ -2471,6 +2471,9 @@ body.dict-searching .reading-box {
   let expandedReadingSection = '';
   let readingPressTimer = null;
   let readingPressState = { id: null, startX: 0, startY: 0, moved: false };
+  let dictRenderTimer = null;
+  const russianPartsCache = new WeakMap();
+
 
   const READING_LIBRARY = {
     politics: {
@@ -2702,6 +2705,8 @@ body.dict-searching .reading-box {
   }
 
   function getRussianSearchParts(word) {
+    if (russianPartsCache.has(word)) return russianPartsCache.get(word);
+
     const parts = [];
     const shortRu = cleanRussianSearchText(word.short_ru || '');
     const fullRu = splitRussianSearchParts(word.ru || '');
@@ -2711,10 +2716,25 @@ body.dict-searching .reading-box {
       if (!parts.includes(part)) parts.push(part);
     }
 
+    russianPartsCache.set(word, parts);
     return parts;
   }
 
+  function getRussianPrimaryPart(word) {
+    return getRussianSearchParts(word)[0] || '';
+  }
+
+  function handleDictionaryInput() {
+    clearTimeout(dictRenderTimer);
+    const query = (document.getElementById('queryInput')?.value || '').trim();
+    document.body.classList.toggle('dict-searching', activeTab === 'dict' && query.length > 0);
+    dictRenderTimer = setTimeout(() => {
+      renderApp();
+    }, 90);
+  }
+
   function getRussianTokens(text) {
+
     return cleanRussianSearchText(text)
       .split(' ')
       .map(x => x.trim())
@@ -2797,69 +2817,74 @@ body.dict-searching .reading-box {
     const stems = getArabicStems(nQ);
     const mappedPastTense = reverseVerbsMap[nQ];
 
-    const filtered = dictBase.filter(w => {
-      const nWordAr = normalize(w.ar);
-      const nRoot = normalize(w.root || '');
-      const nWordRu = String(w.ru || '').toLowerCase();
-
-      if (isRussianQuery) {
-        return getRussianSearchScore(w, q) > 0;
+    if (isRussianQuery) {
+      const ranked = [];
+      for (const w of dictBase) {
+        const score = getRussianSearchScore(w, q);
+        if (score > 0) {
+          ranked.push({
+            w,
+            score,
+            primary: getRussianPrimaryPart(w)
+          });
+        }
       }
 
-      if (nWordRu.includes(q)) return true;
-      if (mappedPastTense && nWordAr === mappedPastTense) return true;
+      ranked.sort((a, b) => {
+        if (a.score !== b.score) return b.score - a.score;
+        if (a.primary.length !== b.primary.length) return a.primary.length - b.primary.length;
+        return String(a.w.ar || '').localeCompare(String(b.w.ar || ''));
+      });
 
-      for (const stem of stems) {
-        if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
-      }
-      return false;
-    });
+      currentRenderedWords = ranked.slice(0, 50).map(item => item.w);
+    } else {
+      const filtered = dictBase.filter(w => {
+        const nWordAr = normalize(w.ar);
+        const nRoot = normalize(w.root || '');
+        const nWordRu = String(w.ru || '').toLowerCase();
 
-    filtered.sort((a, b) => {
-      if (isRussianQuery) {
-        const scoreA = getRussianSearchScore(a, q);
-        const scoreB = getRussianSearchScore(b, q);
+        if (nWordRu.includes(q)) return true;
+        if (mappedPastTense && nWordAr === mappedPastTense) return true;
 
-        if (scoreA !== scoreB) return scoreB - scoreA;
+        for (const stem of stems) {
+          if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
+        }
+        return false;
+      });
 
-        const aPrimary = (getRussianSearchParts(a)[0] || '');
-        const bPrimary = (getRussianSearchParts(b)[0] || '');
+      filtered.sort((a, b) => {
+        const normAAr = normalize(a.ar);
+        const normBAr = normalize(b.ar);
+        const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+        const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
 
-        if (aPrimary.length !== bPrimary.length) return aPrimary.length - bPrimary.length;
+        if (mappedPastTense) {
+          if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
+          if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
+        }
 
-        return String(a.ar || '').localeCompare(String(b.ar || ''));
-      }
+        if (normAAr === nQ && normBAr !== nQ) return -1;
+        if (normBAr === nQ && normAAr !== nQ) return 1;
 
-      const normAAr = normalize(a.ar);
-      const normBAr = normalize(b.ar);
-      const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
-      const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+        const startsRuA = ruA.startsWith(q);
+        const startsRuB = ruB.startsWith(q);
 
-      if (mappedPastTense) {
-        if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
-        if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
-      }
+        if (startsRuA && !startsRuB) return -1;
+        if (startsRuB && !startsRuA) return 1;
 
-      if (normAAr === nQ && normBAr !== nQ) return -1;
-      if (normBAr === nQ && normAAr !== nQ) return 1;
+        return String(a.ru || '').length - String(b.ru || '').length;
+      });
 
-      const startsRuA = ruA.startsWith(q);
-      const startsRuB = ruB.startsWith(q);
+      currentRenderedWords = filtered.slice(0, 50);
+    }
 
-      if (startsRuA && !startsRuB) return -1;
-      if (startsRuB && !startsRuA) return 1;
-
-      return String(a.ru || '').length - String(b.ru || '').length;
-    });
-
-    currentRenderedWords = filtered.slice(0, 50);
     if (!currentRenderedWords.length) return '<div class="empty">Ничего не найдено</div>';
 
     return currentRenderedWords.map((w, idx) => {
       const fav = getFavoriteByWord(w);
       const present = normalizedVerbs[normalize(w.ar)];
       const locked = isPremiumLocked();
-      const shortRu = w.short_ru || getRussianSearchParts(w)[0] || String(w.ru || '').split(';')[0] || '';
+      const shortRu = w.short_ru || getRussianPrimaryPart(w) || String(w.ru || '').split(';')[0] || '';
       return `
         <div class="item collapsible" onclick="this.classList.toggle('expanded')">
           <div class="item-head">
@@ -2884,8 +2909,8 @@ body.dict-searching .reading-box {
     }).join('');
   }
 
-
   function renderFavorites() {
+
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
     if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
