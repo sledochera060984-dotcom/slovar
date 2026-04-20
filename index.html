@@ -2007,7 +2007,7 @@ body.dict-searching .reading-box {
   function renderDictionaryHomeGuide() {
     return `
       <div class="home-guide">
-        <div class="home-guide-title">Как это работает</div>
+        <div class="home-guide-title">Как работает приложение</div>
         <div class="home-guide-list">
           <div class="home-guide-item">
             <span class="home-guide-num">1</span>
@@ -2857,7 +2857,7 @@ body.dict-searching .reading-box {
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
     if (!q) {
       currentRenderedWords = [];
-      return renderDictionaryHomeGuide() + '<div class="empty">Начните вводить слово для поиска</div>';
+      return '<div class="empty">Начните вводить слово для поиска</div>' + renderDictionaryHomeGuide();
     }
 
     const isRussianQuery = hasCyrillic(q);
