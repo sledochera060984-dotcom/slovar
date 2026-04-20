@@ -1,9 +1,10 @@
-const CACHE_NAME = 'arabus-pro-cache-v2';
+const CACHE_NAME = 'arabus-pro-cache-v3';
 const URLS_TO_CACHE = [
     './',
     './index.html',
     './base.js',
-    './manifest.json'
+    './manifest.json',
+    './tts-native.js'
 ];
 
 // Установка кэша при первом заходе
