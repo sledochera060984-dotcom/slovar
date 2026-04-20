@@ -2680,6 +2680,109 @@ body.dict-searching .reading-box {
     `;
   }
 
+
+  function hasCyrillic(text) {
+    return /[а-яё]/i.test(String(text || ''));
+  }
+
+  function cleanRussianSearchText(text) {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[()«»"'`~!@#$%^&*_=+\[\]{}\\|<>/?№:;,.]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function splitRussianSearchParts(text) {
+    const raw = String(text || '');
+    return raw
+      .split(/[\n;\/]|(?:\s[-–—]\s)|,/g)
+      .map(part => cleanRussianSearchText(part))
+      .filter(Boolean);
+  }
+
+  function getRussianSearchParts(word) {
+    const parts = [];
+    const shortRu = cleanRussianSearchText(word.short_ru || '');
+    const fullRu = splitRussianSearchParts(word.ru || '');
+
+    if (shortRu) parts.push(shortRu);
+    for (const part of fullRu) {
+      if (!parts.includes(part)) parts.push(part);
+    }
+
+    return parts;
+  }
+
+  function getRussianTokens(text) {
+    return cleanRussianSearchText(text)
+      .split(' ')
+      .map(x => x.trim())
+      .filter(Boolean);
+  }
+
+  function getRussianSearchScore(word, query) {
+    const q = cleanRussianSearchText(query);
+    if (!q) return 0;
+
+    const parts = getRussianSearchParts(word);
+    if (!parts.length) return 0;
+
+    const qTokens = getRussianTokens(q);
+    const primary = parts[0] || '';
+
+    let best = 0;
+
+    for (const part of parts) {
+      if (!part) continue;
+
+      const tokens = getRussianTokens(part);
+      const tokenSet = new Set(tokens);
+
+      if (part === q) {
+        best = Math.max(best, 12000 - part.length);
+      }
+
+      if (primary === q) {
+        best = Math.max(best, 13000 - primary.length);
+      }
+
+      if (part.startsWith(q)) {
+        best = Math.max(best, 10000 - part.length);
+      }
+
+      if (primary.startsWith(q)) {
+        best = Math.max(best, 11000 - primary.length);
+      }
+
+      if (tokenSet.has(q)) {
+        best = Math.max(best, 9500 - part.length);
+      }
+
+      for (const token of tokens) {
+        if (token.startsWith(q)) {
+          best = Math.max(best, 9000 - token.length);
+        } else if (token.includes(q)) {
+          best = Math.max(best, 7600 - token.length);
+        }
+      }
+
+      if (part.includes(q)) {
+        best = Math.max(best, 7000 - part.length);
+      }
+
+      if (qTokens.length > 1) {
+        const allTokensFound = qTokens.every(token => part.includes(token));
+        if (allTokensFound) {
+          best = Math.max(best, 9800 - part.length);
+        }
+      }
+    }
+
+    return best;
+  }
+
+
   function renderDictionary() {
     if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return '<div class="empty">База ещё не загружена</div>';
 
@@ -2689,6 +2792,7 @@ body.dict-searching .reading-box {
       return '<div class="empty">Начните вводить слово для поиска</div>';
     }
 
+    const isRussianQuery = hasCyrillic(q);
     const nQ = normalize(q);
     const stems = getArabicStems(nQ);
     const mappedPastTense = reverseVerbsMap[nQ];
@@ -2697,8 +2801,14 @@ body.dict-searching .reading-box {
       const nWordAr = normalize(w.ar);
       const nRoot = normalize(w.root || '');
       const nWordRu = String(w.ru || '').toLowerCase();
+
+      if (isRussianQuery) {
+        return getRussianSearchScore(w, q) > 0;
+      }
+
       if (nWordRu.includes(q)) return true;
       if (mappedPastTense && nWordAr === mappedPastTense) return true;
+
       for (const stem of stems) {
         if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
       }
@@ -2706,20 +2816,39 @@ body.dict-searching .reading-box {
     });
 
     filtered.sort((a, b) => {
+      if (isRussianQuery) {
+        const scoreA = getRussianSearchScore(a, q);
+        const scoreB = getRussianSearchScore(b, q);
+
+        if (scoreA !== scoreB) return scoreB - scoreA;
+
+        const aPrimary = (getRussianSearchParts(a)[0] || '');
+        const bPrimary = (getRussianSearchParts(b)[0] || '');
+
+        if (aPrimary.length !== bPrimary.length) return aPrimary.length - bPrimary.length;
+
+        return String(a.ar || '').localeCompare(String(b.ar || ''));
+      }
+
       const normAAr = normalize(a.ar);
       const normBAr = normalize(b.ar);
       const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
       const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+
       if (mappedPastTense) {
         if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
         if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
       }
+
       if (normAAr === nQ && normBAr !== nQ) return -1;
       if (normBAr === nQ && normAAr !== nQ) return 1;
+
       const startsRuA = ruA.startsWith(q);
       const startsRuB = ruB.startsWith(q);
+
       if (startsRuA && !startsRuB) return -1;
       if (startsRuB && !startsRuA) return 1;
+
       return String(a.ru || '').length - String(b.ru || '').length;
     });
 
@@ -2730,11 +2859,12 @@ body.dict-searching .reading-box {
       const fav = getFavoriteByWord(w);
       const present = normalizedVerbs[normalize(w.ar)];
       const locked = isPremiumLocked();
+      const shortRu = w.short_ru || getRussianSearchParts(w)[0] || String(w.ru || '').split(';')[0] || '';
       return `
         <div class="item collapsible" onclick="this.classList.toggle('expanded')">
           <div class="item-head">
             <div class="item-left">
-              <div class="ru">${escapeHtml(w.short_ru || String(w.ru || '').split(';')[0] || '')}</div>
+              <div class="ru">${escapeHtml(shortRu)}</div>
               <div class="ar">${escapeHtml(w.ar)}</div>
               ${present ? `<div class="hint">Настоящее время: <b>${escapeHtml(present)}</b></div>` : ''}
               ${fav ? `<div class="hint">⭐ Уже в избранном</div>` : ''}
@@ -2753,6 +2883,7 @@ body.dict-searching .reading-box {
       `;
     }).join('');
   }
+
 
   function renderFavorites() {
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
