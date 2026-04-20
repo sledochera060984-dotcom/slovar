@@ -2,12 +2,21 @@
   "id": "com.arabrus.app",
   "name": "АРАБРУС",
   "short_name": "АРАБРУС",
-  "start_url": "/slovar/",
-  "scope": "/slovar/",
+  "description": "Арабско-русский словарь с офлайн-доступом, избранным и блокнотом.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "description": "Арабско-русский словарь",
+  "theme_color": "#27ae60",
+  "orientation": "portrait-primary",
+  "categories": [
+    "education",
+    "books",
+    "reference"
+  ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/192x192.png",
@@ -18,7 +27,8 @@
     {
       "src": "icons/512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "icons/512x512-monochrome.png",
