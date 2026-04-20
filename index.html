@@ -829,6 +829,32 @@
       line-height: 1.45;
       font-size: 14px;
     }
+    .support-box {
+      margin: 0 0 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.04);
+      padding: 14px;
+    }
+    .support-box-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .support-box-text {
+      color: #334155;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .support-box .btn {
+      width: 100%;
+      min-height: 42px;
+    }
     .home-guide-num {
       width: 24px;
       height: 24px;
@@ -844,7 +870,8 @@
       flex: 0 0 auto;
       margin-top: 1px;
     }
-    body.dict-searching .home-guide {
+    body.dict-searching .home-guide,
+    body.dict-searching .support-box {
       display: none !important;
     }
 
@@ -1718,7 +1745,7 @@ body.dict-searching .reading-box {
     if (!user) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
     const createdAtMs = getUserCreatedAtMs();
     if (!createdAtMs) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
-    const trialMs = 14 * 24 * 60 * 60 * 1000;
+    const trialMs = 20 * 24 * 60 * 60 * 1000;
     const endMs = createdAtMs + trialMs;
     const remainingMs = endMs - Date.now();
     const active = remainingMs > 0;
@@ -1760,6 +1787,24 @@ body.dict-searching .reading-box {
     }
   }
 
+  function openSupportEmail() {
+    const subject = encodeURIComponent('Техническая поддержка АРАБРУС');
+    const body = encodeURIComponent(
+      'Здравствуйте! Нужна помощь по приложению АРАБРУС.\n\n'
+      + 'Опишите проблему здесь:\n\n'
+      + 'Устройство: \n'
+      + 'Что произошло: \n'
+      + 'Как повторить: \n\n'
+      + 'Мой email: ' + (user?.email || 'не указан')
+    );
+    try {
+      window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    } catch (e) {
+      console.error(e);
+      showMsg('Напишите в поддержку: ' + CONTACT_EMAIL);
+    }
+  }
+
   function showActivationPrompt() {
     if (!user) { openAuthModal(); return; }
     if (hasPaidAccess()) return;
@@ -1771,7 +1816,7 @@ body.dict-searching .reading-box {
       <div class="lock-card">
         <div class="lock-icon">🔒</div>
         <div class="lock-title">${featureName} доступны по подписке</div>
-        <div class="lock-text">Пробный период 14 дней закончился.
+        <div class="lock-text">Пробный период 20 дней закончился.
 Напишите мне для активации доступа.
 Стоимость: 100 ₽ в месяц.</div>
         <button class="btn primary" onclick="openActivationContact()">Напишите мне для активации</button>
@@ -1783,7 +1828,7 @@ body.dict-searching .reading-box {
     if (!trialIndicatorEl) return;
     if (!user) {
       trialIndicatorEl.className = 'status wait';
-      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 14 дней бесплатного доступа';
+      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 20 дней бесплатного доступа';
       return;
     }
     if (hasPaidAccess()) {
@@ -2125,6 +2170,16 @@ body.dict-searching .reading-box {
             <span>Создавай коллекции (папки) для слов по темам и повторения.</span>
           </div>
         </div>
+      </div>
+    `;
+  }
+
+  function renderSupportSection() {
+    return `
+      <div class="support-box">
+        <div class="support-box-title">Техническая поддержка</div>
+        <div class="support-box-text">Если что-то не работает, хотите предложить улучшение или нужна помощь по доступу — напишите мне на почту.</div>
+        <button class="btn primary" onclick="openSupportEmail()">✉️ Написать в поддержку</button>
       </div>
     `;
   }
@@ -2960,7 +3015,7 @@ body.dict-searching .reading-box {
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
     if (!q) {
       currentRenderedWords = [];
-      return '<div class="empty">Начните вводить слово для поиска</div>' + renderDictionaryHomeGuide();
+      return '<div class="empty">Начните вводить слово для поиска</div>' + renderDictionaryHomeGuide() + renderSupportSection();
     }
 
     const isRussianQuery = hasCyrillic(q);
