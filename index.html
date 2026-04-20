@@ -19,12 +19,15 @@
     })();
   </script>
 
+  <meta name="application-name" content="АРАБРУС">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="АРАБРУС">
+  <link rel="icon" href="icon.png" sizes="192x192">
+
   <script src="base.js"></script>
   <script src="verbs.js"></script>
-
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <style>
     :root {
@@ -1221,7 +1224,7 @@ body.dict-searching .reading-box {
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
     });
   }
 
@@ -1234,15 +1237,111 @@ body.dict-searching .reading-box {
     appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
   };
 
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-  const provider = new firebase.auth.GoogleAuthProvider();
   const CONTACT_EMAIL = 'sledochera060984@gmail.com';
+  const FIREBASE_SDK_URLS = [
+    'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
+    'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js'
+  ];
 
-  db.enablePersistence().catch((err) => {
-    console.error('Persistence error:', err);
-  });
+  let firebaseReady = false;
+  let firebaseLoadingPromise = null;
+  let provider = null;
+  let authStateUnsub = null;
+
+  function makeUnavailableError(message = 'Для входа и синхронизации нужен интернет') {
+    const error = new Error(message);
+    error.code = 'firebase/unavailable';
+    return error;
+  }
+
+  function createOfflineAuthStub() {
+    return {
+      __offlineStub: true,
+      async signOut() { return null; },
+      async signInWithPopup() { throw makeUnavailableError(); },
+      async signInWithRedirect() { throw makeUnavailableError(); },
+      async getRedirectResult() { return null; },
+      onAuthStateChanged(callback) {
+        const timer = setTimeout(() => {
+          try { callback(null); } catch (_) {}
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    };
+  }
+
+  function createOfflineDbStub() {
+    const emptyDocSnap = { exists: false, data: () => ({}) };
+    const emptyQuerySnap = { docs: [], metadata: { hasPendingWrites: false } };
+
+    const docApi = {
+      async set() { throw makeUnavailableError(); },
+      async update() { throw makeUnavailableError(); },
+      async delete() { throw makeUnavailableError(); },
+      collection() { return collectionApi; },
+      onSnapshot(onNext) {
+        const timer = setTimeout(() => {
+          try { onNext(emptyDocSnap); } catch (_) {}
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    const collectionApi = {
+      doc() { return docApi; },
+      async add() { throw makeUnavailableError(); },
+      onSnapshot(onNext) {
+        const timer = setTimeout(() => {
+          try { onNext(emptyQuerySnap); } catch (_) {}
+        }, 0);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    return {
+      __offlineStub: true,
+      async enablePersistence() { return true; },
+      collection() { return collectionApi; },
+      batch() {
+        return {
+          set() {},
+          update() {},
+          delete() {},
+          async commit() { throw makeUnavailableError(); }
+        };
+      }
+    };
+  }
+
+  let auth = createOfflineAuthStub();
+  let db = createOfflineDbStub();
+
+  function loadExternalScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-src="${src}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === '1') {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('Script load failed: ' + src)), { once: true });
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.defer = true;
+      script.dataset.src = src;
+      script.onload = () => {
+        script.dataset.loaded = '1';
+        resolve();
+      };
+      script.onerror = () => reject(new Error('Script load failed: ' + src));
+      document.head.appendChild(script);
+    });
+  }
 
   let user = null;
   let activeTab = 'dict';
@@ -1575,7 +1674,11 @@ body.dict-searching .reading-box {
     if (!syncIndicatorEl) return;
     if (!user) {
       syncIndicatorEl.className = 'status wait';
-      syncIndicatorEl.innerText = '☁️ Войдите в Google для синхронизации';
+      syncIndicatorEl.innerText = firebaseReady
+        ? '☁️ Войдите в Google для синхронизации'
+        : (navigator.onLine
+            ? '☁️ Подключаем вход и синхронизацию...'
+            : '📴 Офлайн: словарь работает, вход и синхронизация появятся при интернете');
       return;
     }
     const hasPending = favSnapshotPending || noteSnapshotPending;
@@ -3290,12 +3393,116 @@ body.dict-searching .reading-box {
       });
   }
 
+  function applyAuthState(u) {
+    stopListeners();
+    user = u;
+    favorites = [];
+    notes = [];
+    const btn = document.getElementById('authBtn');
+    const userLine = document.getElementById('userLine');
+
+    if (user) {
+      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
+      userLine.innerText = user.email || user.uid;
+      startUserListeners();
+    } else {
+      btn.innerText = '🌐 Войти через Google';
+      userLine.innerText = firebaseReady ? 'Не выполнен вход' : 'Офлайн-режим';
+    }
+    updateSyncIndicator();
+    updateTrialIndicator();
+    updateCompactLoginUi();
+    renderApp();
+  }
+
+  function attachAuthStateListener(currentAuth) {
+    if (authStateUnsub) {
+      try { authStateUnsub(); } catch (_) {}
+      authStateUnsub = null;
+    }
+    currentAuth.getRedirectResult().catch((e) => {
+      console.error('Redirect auth error:', e);
+    });
+    authStateUnsub = currentAuth.onAuthStateChanged((u) => {
+      applyAuthState(u);
+    });
+  }
+
+  async function initFirebaseServices() {
+    if (!window.firebase) return false;
+    try {
+      if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
+      auth = window.firebase.auth();
+      db = window.firebase.firestore();
+      provider = new window.firebase.auth.GoogleAuthProvider();
+      firebaseReady = true;
+      db.enablePersistence().catch((err) => {
+        console.error('Persistence error:', err);
+      });
+      attachAuthStateListener(auth);
+      updateSyncIndicator();
+      updateTrialIndicator();
+      renderApp();
+      return true;
+    } catch (err) {
+      console.error('Firebase init error:', err);
+      firebaseReady = false;
+      auth = createOfflineAuthStub();
+      db = createOfflineDbStub();
+      provider = null;
+      attachAuthStateListener(auth);
+      return false;
+    }
+  }
+
+  async function loadFirebaseSdk(force = false) {
+    if (firebaseReady && window.firebase && !force) return true;
+    if (!navigator.onLine && !force) {
+      updateSyncIndicator();
+      return false;
+    }
+    if (firebaseLoadingPromise && !force) return firebaseLoadingPromise;
+
+    firebaseLoadingPromise = (async () => {
+      try {
+        for (const src of FIREBASE_SDK_URLS) {
+          await loadExternalScript(src);
+        }
+        return await initFirebaseServices();
+      } catch (err) {
+        console.error('Firebase SDK load error:', err);
+        firebaseReady = false;
+        auth = createOfflineAuthStub();
+        db = createOfflineDbStub();
+        provider = null;
+        attachAuthStateListener(auth);
+        updateSyncIndicator();
+        updateTrialIndicator();
+        renderApp();
+        return false;
+      } finally {
+        firebaseLoadingPromise = null;
+      }
+    })();
+
+    return firebaseLoadingPromise;
+  }
+
   async function toggleAuth() {
     try {
       if (user) {
         await auth.signOut();
         return;
       }
+
+      if (!firebaseReady) {
+        const loaded = await loadFirebaseSdk(true);
+        if (!loaded || !provider) {
+          showMsg('Для входа через Google нужен интернет');
+          return;
+        }
+      }
+
       try {
         await auth.signInWithPopup(provider);
       } catch (popupError) {
@@ -3314,35 +3521,11 @@ body.dict-searching .reading-box {
       }
     } catch (e) {
       console.error('Auth error:', e);
-      showMsg('Ошибка входа через Google');
+      showMsg(e && e.code === 'firebase/unavailable' ? 'Для входа через Google нужен интернет' : 'Ошибка входа через Google');
     }
   }
 
-  auth.getRedirectResult().catch((e) => {
-    console.error('Redirect auth error:', e);
-  });
-
-  auth.onAuthStateChanged((u) => {
-    stopListeners();
-    user = u;
-    favorites = [];
-    notes = [];
-    const btn = document.getElementById('authBtn');
-    const userLine = document.getElementById('userLine');
-
-    if (user) {
-      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
-      userLine.innerText = user.email || user.uid;
-      startUserListeners();
-    } else {
-      btn.innerText = '🌐 Войти через Google';
-      userLine.innerText = 'Не выполнен вход';
-    }
-    updateSyncIndicator();
-    updateTrialIndicator();
-    updateCompactLoginUi();
-    renderApp();
-  });
+  attachAuthStateListener(auth);
 
   const initStartedAt = Date.now();
   const initInterval = setInterval(() => {
@@ -3416,6 +3599,7 @@ body.dict-searching .reading-box {
     updateTrialIndicator();
     renderApp();
     installBackButtonHandler();
+    loadFirebaseSdk();
   });
 </script>
 
