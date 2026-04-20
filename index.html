@@ -19,15 +19,12 @@
     })();
   </script>
 
-  <meta name="application-name" content="АРАБРУС">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="АРАБРУС">
-  <link rel="icon" href="icon.png" sizes="192x192">
-
   <script src="base.js"></script>
   <script src="verbs.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <style>
     :root {
@@ -829,32 +826,6 @@
       line-height: 1.45;
       font-size: 14px;
     }
-    .support-box {
-      margin: 0 0 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 4px 16px rgba(15,23,42,0.04);
-      padding: 14px;
-    }
-    .support-box-title {
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .03em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .support-box-text {
-      color: #334155;
-      font-size: 14px;
-      line-height: 1.5;
-      margin-bottom: 12px;
-    }
-    .support-box .btn {
-      width: 100%;
-      min-height: 42px;
-    }
     .home-guide-num {
       width: 24px;
       height: 24px;
@@ -870,8 +841,7 @@
       flex: 0 0 auto;
       margin-top: 1px;
     }
-    body.dict-searching .home-guide,
-    body.dict-searching .support-box {
+    body.dict-searching .home-guide {
       display: none !important;
     }
 
@@ -1251,7 +1221,7 @@ body.dict-searching .reading-box {
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     });
   }
 
@@ -1264,111 +1234,15 @@ body.dict-searching .reading-box {
     appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
   };
 
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const provider = new firebase.auth.GoogleAuthProvider();
   const CONTACT_EMAIL = 'sledochera060984@gmail.com';
-  const FIREBASE_SDK_URLS = [
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js'
-  ];
 
-  let firebaseReady = false;
-  let firebaseLoadingPromise = null;
-  let provider = null;
-  let authStateUnsub = null;
-
-  function makeUnavailableError(message = 'Для входа и синхронизации нужен интернет') {
-    const error = new Error(message);
-    error.code = 'firebase/unavailable';
-    return error;
-  }
-
-  function createOfflineAuthStub() {
-    return {
-      __offlineStub: true,
-      async signOut() { return null; },
-      async signInWithPopup() { throw makeUnavailableError(); },
-      async signInWithRedirect() { throw makeUnavailableError(); },
-      async getRedirectResult() { return null; },
-      onAuthStateChanged(callback) {
-        const timer = setTimeout(() => {
-          try { callback(null); } catch (_) {}
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    };
-  }
-
-  function createOfflineDbStub() {
-    const emptyDocSnap = { exists: false, data: () => ({}) };
-    const emptyQuerySnap = { docs: [], metadata: { hasPendingWrites: false } };
-
-    const docApi = {
-      async set() { throw makeUnavailableError(); },
-      async update() { throw makeUnavailableError(); },
-      async delete() { throw makeUnavailableError(); },
-      collection() { return collectionApi; },
-      onSnapshot(onNext) {
-        const timer = setTimeout(() => {
-          try { onNext(emptyDocSnap); } catch (_) {}
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    const collectionApi = {
-      doc() { return docApi; },
-      async add() { throw makeUnavailableError(); },
-      onSnapshot(onNext) {
-        const timer = setTimeout(() => {
-          try { onNext(emptyQuerySnap); } catch (_) {}
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    return {
-      __offlineStub: true,
-      async enablePersistence() { return true; },
-      collection() { return collectionApi; },
-      batch() {
-        return {
-          set() {},
-          update() {},
-          delete() {},
-          async commit() { throw makeUnavailableError(); }
-        };
-      }
-    };
-  }
-
-  let auth = createOfflineAuthStub();
-  let db = createOfflineDbStub();
-
-  function loadExternalScript(src) {
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[data-src="${src}"]`);
-      if (existing) {
-        if (existing.dataset.loaded === '1') {
-          resolve();
-          return;
-        }
-        existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(new Error('Script load failed: ' + src)), { once: true });
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.defer = true;
-      script.dataset.src = src;
-      script.onload = () => {
-        script.dataset.loaded = '1';
-        resolve();
-      };
-      script.onerror = () => reject(new Error('Script load failed: ' + src));
-      document.head.appendChild(script);
-    });
-  }
+  db.enablePersistence().catch((err) => {
+    console.error('Persistence error:', err);
+  });
 
   let user = null;
   let activeTab = 'dict';
@@ -1701,11 +1575,7 @@ body.dict-searching .reading-box {
     if (!syncIndicatorEl) return;
     if (!user) {
       syncIndicatorEl.className = 'status wait';
-      syncIndicatorEl.innerText = firebaseReady
-        ? '☁️ Войдите в Google для синхронизации'
-        : (navigator.onLine
-            ? '☁️ Подключаем вход и синхронизацию...'
-            : '📴 Офлайн: словарь работает, вход и синхронизация появятся при интернете');
+      syncIndicatorEl.innerText = '☁️ Войдите в Google для синхронизации';
       return;
     }
     const hasPending = favSnapshotPending || noteSnapshotPending;
@@ -1745,7 +1615,7 @@ body.dict-searching .reading-box {
     if (!user) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
     const createdAtMs = getUserCreatedAtMs();
     if (!createdAtMs) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
-    const trialMs = 20 * 24 * 60 * 60 * 1000;
+    const trialMs = 14 * 24 * 60 * 60 * 1000;
     const endMs = createdAtMs + trialMs;
     const remainingMs = endMs - Date.now();
     const active = remainingMs > 0;
@@ -1787,24 +1657,6 @@ body.dict-searching .reading-box {
     }
   }
 
-  function openSupportEmail() {
-    const subject = encodeURIComponent('Техническая поддержка АРАБРУС');
-    const body = encodeURIComponent(
-      'Здравствуйте! Нужна помощь по приложению АРАБРУС.\n\n'
-      + 'Опишите проблему здесь:\n\n'
-      + 'Устройство: \n'
-      + 'Что произошло: \n'
-      + 'Как повторить: \n\n'
-      + 'Мой email: ' + (user?.email || 'не указан')
-    );
-    try {
-      window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
-    } catch (e) {
-      console.error(e);
-      showMsg('Напишите в поддержку: ' + CONTACT_EMAIL);
-    }
-  }
-
   function showActivationPrompt() {
     if (!user) { openAuthModal(); return; }
     if (hasPaidAccess()) return;
@@ -1816,7 +1668,7 @@ body.dict-searching .reading-box {
       <div class="lock-card">
         <div class="lock-icon">🔒</div>
         <div class="lock-title">${featureName} доступны по подписке</div>
-        <div class="lock-text">Пробный период 20 дней закончился.
+        <div class="lock-text">Пробный период 14 дней закончился.
 Напишите мне для активации доступа.
 Стоимость: 100 ₽ в месяц.</div>
         <button class="btn primary" onclick="openActivationContact()">Напишите мне для активации</button>
@@ -1828,7 +1680,7 @@ body.dict-searching .reading-box {
     if (!trialIndicatorEl) return;
     if (!user) {
       trialIndicatorEl.className = 'status wait';
-      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 20 дней бесплатного доступа';
+      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 14 дней бесплатного доступа';
       return;
     }
     if (hasPaidAccess()) {
@@ -2170,16 +2022,6 @@ body.dict-searching .reading-box {
             <span>Создавай коллекции (папки) для слов по темам и повторения.</span>
           </div>
         </div>
-      </div>
-    `;
-  }
-
-  function renderSupportSection() {
-    return `
-      <div class="support-box">
-        <div class="support-box-title">Техническая поддержка</div>
-        <div class="support-box-text">Если что-то не работает, хотите предложить улучшение или нужна помощь по доступу — напишите мне на почту.</div>
-        <button class="btn primary" onclick="openSupportEmail()">✉️ Написать в поддержку</button>
       </div>
     `;
   }
@@ -3448,116 +3290,12 @@ body.dict-searching .reading-box {
       });
   }
 
-  function applyAuthState(u) {
-    stopListeners();
-    user = u;
-    favorites = [];
-    notes = [];
-    const btn = document.getElementById('authBtn');
-    const userLine = document.getElementById('userLine');
-
-    if (user) {
-      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
-      userLine.innerText = user.email || user.uid;
-      startUserListeners();
-    } else {
-      btn.innerText = '🌐 Войти через Google';
-      userLine.innerText = firebaseReady ? 'Не выполнен вход' : 'Офлайн-режим';
-    }
-    updateSyncIndicator();
-    updateTrialIndicator();
-    updateCompactLoginUi();
-    renderApp();
-  }
-
-  function attachAuthStateListener(currentAuth) {
-    if (authStateUnsub) {
-      try { authStateUnsub(); } catch (_) {}
-      authStateUnsub = null;
-    }
-    currentAuth.getRedirectResult().catch((e) => {
-      console.error('Redirect auth error:', e);
-    });
-    authStateUnsub = currentAuth.onAuthStateChanged((u) => {
-      applyAuthState(u);
-    });
-  }
-
-  async function initFirebaseServices() {
-    if (!window.firebase) return false;
-    try {
-      if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
-      auth = window.firebase.auth();
-      db = window.firebase.firestore();
-      provider = new window.firebase.auth.GoogleAuthProvider();
-      firebaseReady = true;
-      db.enablePersistence().catch((err) => {
-        console.error('Persistence error:', err);
-      });
-      attachAuthStateListener(auth);
-      updateSyncIndicator();
-      updateTrialIndicator();
-      renderApp();
-      return true;
-    } catch (err) {
-      console.error('Firebase init error:', err);
-      firebaseReady = false;
-      auth = createOfflineAuthStub();
-      db = createOfflineDbStub();
-      provider = null;
-      attachAuthStateListener(auth);
-      return false;
-    }
-  }
-
-  async function loadFirebaseSdk(force = false) {
-    if (firebaseReady && window.firebase && !force) return true;
-    if (!navigator.onLine && !force) {
-      updateSyncIndicator();
-      return false;
-    }
-    if (firebaseLoadingPromise && !force) return firebaseLoadingPromise;
-
-    firebaseLoadingPromise = (async () => {
-      try {
-        for (const src of FIREBASE_SDK_URLS) {
-          await loadExternalScript(src);
-        }
-        return await initFirebaseServices();
-      } catch (err) {
-        console.error('Firebase SDK load error:', err);
-        firebaseReady = false;
-        auth = createOfflineAuthStub();
-        db = createOfflineDbStub();
-        provider = null;
-        attachAuthStateListener(auth);
-        updateSyncIndicator();
-        updateTrialIndicator();
-        renderApp();
-        return false;
-      } finally {
-        firebaseLoadingPromise = null;
-      }
-    })();
-
-    return firebaseLoadingPromise;
-  }
-
   async function toggleAuth() {
     try {
       if (user) {
         await auth.signOut();
         return;
       }
-
-      if (!firebaseReady) {
-        const loaded = await loadFirebaseSdk(true);
-        if (!loaded || !provider) {
-          showMsg('Для входа через Google нужен интернет');
-          return;
-        }
-      }
-
       try {
         await auth.signInWithPopup(provider);
       } catch (popupError) {
@@ -3576,11 +3314,35 @@ body.dict-searching .reading-box {
       }
     } catch (e) {
       console.error('Auth error:', e);
-      showMsg(e && e.code === 'firebase/unavailable' ? 'Для входа через Google нужен интернет' : 'Ошибка входа через Google');
+      showMsg('Ошибка входа через Google');
     }
   }
 
-  attachAuthStateListener(auth);
+  auth.getRedirectResult().catch((e) => {
+    console.error('Redirect auth error:', e);
+  });
+
+  auth.onAuthStateChanged((u) => {
+    stopListeners();
+    user = u;
+    favorites = [];
+    notes = [];
+    const btn = document.getElementById('authBtn');
+    const userLine = document.getElementById('userLine');
+
+    if (user) {
+      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
+      userLine.innerText = user.email || user.uid;
+      startUserListeners();
+    } else {
+      btn.innerText = '🌐 Войти через Google';
+      userLine.innerText = 'Не выполнен вход';
+    }
+    updateSyncIndicator();
+    updateTrialIndicator();
+    updateCompactLoginUi();
+    renderApp();
+  });
 
   const initStartedAt = Date.now();
   const initInterval = setInterval(() => {
@@ -3654,7 +3416,6 @@ body.dict-searching .reading-box {
     updateTrialIndicator();
     renderApp();
     installBackButtonHandler();
-    loadFirebaseSdk();
   });
 </script>
 
@@ -3868,7 +3629,6 @@ body.dict-searching .reading-box {
 
           <div class="compact-auth-actions">
             <button id="compactAuthAccessBtn" class="btn primary" type="button">💎 Доступ</button>
-            <button id="compactAuthSupportBtn" class="btn" type="button">✉️ Техподдержка</button>
             <button id="compactAuthLogoutBtn" class="btn danger" type="button">🚪 Выйти</button>
             <button id="compactAuthCloseBtn" class="btn" type="button">Закрыть</button>
           </div>
@@ -3890,7 +3650,6 @@ body.dict-searching .reading-box {
     const modalAccessSub = document.getElementById('compactAuthAccessSub');
 
     const accessBtn = document.getElementById('compactAuthAccessBtn');
-    const supportBtn = document.getElementById('compactAuthSupportBtn');
     const logoutBtn = document.getElementById('compactAuthLogoutBtn');
     const closeBtn = document.getElementById('compactAuthCloseBtn');
 
@@ -4094,13 +3853,6 @@ body.dict-searching .reading-box {
           return;
         }
         if (typeof openActivationContact === 'function') openActivationContact();
-      } catch (_) {}
-    });
-
-    supportBtn.addEventListener('click', function () {
-      closeCompactMenu();
-      try {
-        if (typeof openSupportEmail === 'function') openSupportEmail();
       } catch (_) {}
     });
 
