@@ -19,15 +19,12 @@
     })();
   </script>
 
-  <meta name="application-name" content="АРАБРУС">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="АРАБРУС">
-  <link rel="icon" href="icon.png" sizes="192x192">
-
   <script src="base.js"></script>
   <script src="verbs.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <style>
     :root {
@@ -445,11 +442,25 @@
       border: 1px solid #e2e8f0;
       border-radius: 16px;
       background: #fff;
-      box-shadow: 0 10px 28px rgba(15,23,42,0.08);
-      padding: 8px;
-      margin: -2px 0 10px;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.05);
+      padding: 10px;
+      margin-bottom: 10px;
     }
     .fav-filter-menu.active { display: block; }
+    .fav-filter-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    .fav-filter-summary {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
     .fav-filter-options {
       display: flex;
       flex-direction: column;
@@ -483,18 +494,6 @@
       gap: 10px;
       min-width: 0;
     }
-    .fav-filter-trigger {
-      position: relative;
-    }
-    .fav-filter-trigger::after {
-      content: '▾';
-      margin-left: 8px;
-      font-size: 12px;
-      opacity: 0.7;
-    }
-    .fav-filter-trigger.primary::after {
-      opacity: 1;
-    }
     .fav-filter-option-count {
       min-width: 26px;
       text-align: center;
@@ -509,6 +508,22 @@
     .fav-filter-option.active .fav-filter-option-count {
       border-color: #bbf7d0;
       color: #166534;
+    }
+    .fav-filter-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      background: #cbd5e1;
+      box-shadow: 0 0 0 3px rgba(148,163,184,0.12);
+    }
+    .fav-filter-dot.blue {
+      background: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
+    }
+    .fav-filter-dot.red {
+      background: #dc2626;
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.14);
     }
     .fav-searchbar {
       display: none;
@@ -716,8 +731,6 @@
     body.compact-favs .fav-filter-option-count { font-size: 11px; padding: 2px 7px; }
     body.compact-favs #favSearchBar { margin-bottom: 8px; }
     body.compact-favs #favSearchBar .fav-search-input { padding: 10px 12px; font-size: 14px; border-radius: 12px; }
-    body.compact-favs #favFilterMenu { padding: 6px; margin-top: -2px; }
-    body.compact-favs .fav-filter-option { padding: 8px 10px; font-size: 13px; }
     body.compact-favs #selectionPanel { padding: 10px; margin-bottom: 8px; border-radius: 12px; }
     body.compact-favs #selectionPanel .folder-select,
     body.compact-favs #selectionPanel .field { margin-bottom: 8px; padding: 10px 12px; font-size: 14px; }
@@ -798,83 +811,6 @@
     body.dict-searching #list .item-details { margin-top: 8px; padding-top: 8px; }
     body.dict-searching #list .actions { margin-top: 8px; gap: 6px; }
     body.dict-searching #list .actions .btn { min-height: 34px; padding: 7px 8px; font-size: 12px; }
-
-
-    .home-guide {
-      margin: 2px 0 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 4px 16px rgba(15,23,42,0.04);
-      padding: 14px;
-    }
-    .home-guide-title {
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .03em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .home-guide-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .home-guide-item {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      color: #334155;
-      line-height: 1.45;
-      font-size: 14px;
-    }
-    .support-box {
-      margin: 0 0 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 18px;
-      background: #fff;
-      box-shadow: 0 4px 16px rgba(15,23,42,0.04);
-      padding: 14px;
-    }
-    .support-box-title {
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: .03em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .support-box-text {
-      color: #334155;
-      font-size: 14px;
-      line-height: 1.5;
-      margin-bottom: 12px;
-    }
-    .support-box .btn {
-      width: 100%;
-      min-height: 42px;
-    }
-    .home-guide-num {
-      width: 24px;
-      height: 24px;
-      border-radius: 999px;
-      background: #ecfdf5;
-      color: #166534;
-      border: 1px solid #bbf7d0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 800;
-      flex: 0 0 auto;
-      margin-top: 1px;
-    }
-    body.dict-searching .home-guide,
-    body.dict-searching .support-box {
-      display: none !important;
-    }
-
 
     .toast {
       display: none;
@@ -1130,7 +1066,7 @@ body.dict-searching .reading-box {
     </div>
 
     <div id="dictSection">
-      <input id="queryInput" class="search" type="text" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="handleDictionaryInput()" autocomplete="off">
+      <input id="queryInput" class="search" type="text" placeholder="Поиск (дверь, باب, قال, يقول)..." oninput="renderApp()" autocomplete="off">
     </div>
 
     <div id="notesComposer" style="display:none;">
@@ -1251,7 +1187,7 @@ body.dict-searching .reading-box {
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js', { scope: './' }).catch(() => {});
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     });
   }
 
@@ -1264,111 +1200,15 @@ body.dict-searching .reading-box {
     appId: "1:814248156149:web:e2acce197a00eb3ceb5ebc"
   };
 
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const provider = new firebase.auth.GoogleAuthProvider();
   const CONTACT_EMAIL = 'sledochera060984@gmail.com';
-  const FIREBASE_SDK_URLS = [
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js',
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js',
-    'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js'
-  ];
 
-  let firebaseReady = false;
-  let firebaseLoadingPromise = null;
-  let provider = null;
-  let authStateUnsub = null;
-
-  function makeUnavailableError(message = 'Для входа и синхронизации нужен интернет') {
-    const error = new Error(message);
-    error.code = 'firebase/unavailable';
-    return error;
-  }
-
-  function createOfflineAuthStub() {
-    return {
-      __offlineStub: true,
-      async signOut() { return null; },
-      async signInWithPopup() { throw makeUnavailableError(); },
-      async signInWithRedirect() { throw makeUnavailableError(); },
-      async getRedirectResult() { return null; },
-      onAuthStateChanged(callback) {
-        const timer = setTimeout(() => {
-          try { callback(null); } catch (_) {}
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    };
-  }
-
-  function createOfflineDbStub() {
-    const emptyDocSnap = { exists: false, data: () => ({}) };
-    const emptyQuerySnap = { docs: [], metadata: { hasPendingWrites: false } };
-
-    const docApi = {
-      async set() { throw makeUnavailableError(); },
-      async update() { throw makeUnavailableError(); },
-      async delete() { throw makeUnavailableError(); },
-      collection() { return collectionApi; },
-      onSnapshot(onNext) {
-        const timer = setTimeout(() => {
-          try { onNext(emptyDocSnap); } catch (_) {}
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    const collectionApi = {
-      doc() { return docApi; },
-      async add() { throw makeUnavailableError(); },
-      onSnapshot(onNext) {
-        const timer = setTimeout(() => {
-          try { onNext(emptyQuerySnap); } catch (_) {}
-        }, 0);
-        return () => clearTimeout(timer);
-      }
-    };
-
-    return {
-      __offlineStub: true,
-      async enablePersistence() { return true; },
-      collection() { return collectionApi; },
-      batch() {
-        return {
-          set() {},
-          update() {},
-          delete() {},
-          async commit() { throw makeUnavailableError(); }
-        };
-      }
-    };
-  }
-
-  let auth = createOfflineAuthStub();
-  let db = createOfflineDbStub();
-
-  function loadExternalScript(src) {
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[data-src="${src}"]`);
-      if (existing) {
-        if (existing.dataset.loaded === '1') {
-          resolve();
-          return;
-        }
-        existing.addEventListener('load', () => resolve(), { once: true });
-        existing.addEventListener('error', () => reject(new Error('Script load failed: ' + src)), { once: true });
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = src;
-      script.async = true;
-      script.defer = true;
-      script.dataset.src = src;
-      script.onload = () => {
-        script.dataset.loaded = '1';
-        resolve();
-      };
-      script.onerror = () => reject(new Error('Script load failed: ' + src));
-      document.head.appendChild(script);
-    });
-  }
+  db.enablePersistence().catch((err) => {
+    console.error('Persistence error:', err);
+  });
 
   let user = null;
   let activeTab = 'dict';
@@ -1701,11 +1541,7 @@ body.dict-searching .reading-box {
     if (!syncIndicatorEl) return;
     if (!user) {
       syncIndicatorEl.className = 'status wait';
-      syncIndicatorEl.innerText = firebaseReady
-        ? '☁️ Войдите в Google для синхронизации'
-        : (navigator.onLine
-            ? '☁️ Подключаем вход и синхронизацию...'
-            : '📴 Офлайн: словарь работает, вход и синхронизация появятся при интернете');
+      syncIndicatorEl.innerText = '☁️ Войдите в Google для синхронизации';
       return;
     }
     const hasPending = favSnapshotPending || noteSnapshotPending;
@@ -1745,7 +1581,7 @@ body.dict-searching .reading-box {
     if (!user) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
     const createdAtMs = getUserCreatedAtMs();
     if (!createdAtMs) return { active: false, expired: false, daysLeft: 0, endMs: 0 };
-    const trialMs = 20 * 24 * 60 * 60 * 1000;
+    const trialMs = 14 * 24 * 60 * 60 * 1000;
     const endMs = createdAtMs + trialMs;
     const remainingMs = endMs - Date.now();
     const active = remainingMs > 0;
@@ -1787,24 +1623,6 @@ body.dict-searching .reading-box {
     }
   }
 
-  function openSupportEmail() {
-    const subject = encodeURIComponent('Техническая поддержка АРАБРУС');
-    const body = encodeURIComponent(
-      'Здравствуйте! Нужна помощь по приложению АРАБРУС.\n\n'
-      + 'Опишите проблему здесь:\n\n'
-      + 'Устройство: \n'
-      + 'Что произошло: \n'
-      + 'Как повторить: \n\n'
-      + 'Мой email: ' + (user?.email || 'не указан')
-    );
-    try {
-      window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
-    } catch (e) {
-      console.error(e);
-      showMsg('Напишите в поддержку: ' + CONTACT_EMAIL);
-    }
-  }
-
   function showActivationPrompt() {
     if (!user) { openAuthModal(); return; }
     if (hasPaidAccess()) return;
@@ -1816,7 +1634,7 @@ body.dict-searching .reading-box {
       <div class="lock-card">
         <div class="lock-icon">🔒</div>
         <div class="lock-title">${featureName} доступны по подписке</div>
-        <div class="lock-text">Пробный период 20 дней закончился.
+        <div class="lock-text">Пробный период 14 дней закончился.
 Напишите мне для активации доступа.
 Стоимость: 100 ₽ в месяц.</div>
         <button class="btn primary" onclick="openActivationContact()">Напишите мне для активации</button>
@@ -1828,7 +1646,7 @@ body.dict-searching .reading-box {
     if (!trialIndicatorEl) return;
     if (!user) {
       trialIndicatorEl.className = 'status wait';
-      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 20 дней бесплатного доступа';
+      trialIndicatorEl.innerText = '🎁 Войдите в Google — после регистрации начнутся 14 дней бесплатного доступа';
       return;
     }
     if (hasPaidAccess()) {
@@ -2078,10 +1896,10 @@ body.dict-searching .reading-box {
   }
 
   function getFavoriteDifficultyButtonLabel() {
-    if (favDifficultyFilter === 'blue') return 'Сложные';
-    if (favDifficultyFilter === 'red') return 'Очень сложные';
-    if (favDifficultyFilter === 'none') return 'Без пометки';
-    return 'Все уровни';
+    if (favDifficultyFilter === 'blue') return '🔵 Сложные';
+    if (favDifficultyFilter === 'red') return '🔴 Очень сложные';
+    if (favDifficultyFilter === 'none') return '⚪ Без пометки';
+    return '🎯 Все уровни';
   }
 
   function getFavoriteDirectionButtonLabel() {
@@ -2128,15 +1946,20 @@ body.dict-searching .reading-box {
   function renderFavoriteDifficultyMenu() {
     const scopeItems = getFavoriteItemsForCurrentScope();
     const stats = getFavoriteDifficultyStats(scopeItems);
+    const scopeLabel = activeCollection === 'Все'
+      ? 'во всём избранном'
+      : 'в папке «' + escapeHtml(activeCollection) + '»';
 
     const options = [
-      { key: 'all', label: 'Все слова', count: stats.all },
-      { key: 'none', label: 'Без пометки', count: stats.none },
-      { key: 'blue', label: 'Сложные', count: stats.blue },
-      { key: 'red', label: 'Очень сложные', count: stats.red }
+      { key: 'all', label: 'Все слова', count: stats.all, dotClass: '' },
+      { key: 'none', label: 'Без пометки', count: stats.none, dotClass: '' },
+      { key: 'blue', label: 'Сложные', count: stats.blue, dotClass: 'blue' },
+      { key: 'red', label: 'Очень сложные', count: stats.red, dotClass: 'red' }
     ];
 
     return `
+      <div class="fav-filter-title">Фильтр по сложности</div>
+      <div class="fav-filter-summary">Показывать слова по уровню сложности ${scopeLabel}.</div>
       <div class="fav-filter-options">
         ${options.map((option) => `
           <button
@@ -2144,42 +1967,13 @@ body.dict-searching .reading-box {
             class="fav-filter-option ${favDifficultyFilter === option.key ? 'active' : ''}"
             onclick="setFavoriteDifficultyFilter('${escapeJs(option.key)}')"
           >
-            <span class="fav-filter-option-left">${escapeHtml(option.label)}</span>
+            <span class="fav-filter-option-left">
+              <span class="fav-filter-dot ${option.dotClass}"></span>
+              <span>${escapeHtml(option.label)}</span>
+            </span>
             <span class="fav-filter-option-count">${option.count}</span>
           </button>
         `).join('')}
-      </div>
-    `;
-  }
-
-  function renderDictionaryHomeGuide() {
-    return `
-      <div class="home-guide">
-        <div class="home-guide-title">Как работает приложение</div>
-        <div class="home-guide-list">
-          <div class="home-guide-item">
-            <span class="home-guide-num">1</span>
-            <span>Зажми слово в избранных, чтобы отметить сложность.</span>
-          </div>
-          <div class="home-guide-item">
-            <span class="home-guide-num">2</span>
-            <span>Меняй режим просмотра в избранных: списком или карточками.</span>
-          </div>
-          <div class="home-guide-item">
-            <span class="home-guide-num">3</span>
-            <span>Создавай коллекции (папки) для слов по темам и повторения.</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function renderSupportSection() {
-    return `
-      <div class="support-box">
-        <div class="support-box-title">Техническая поддержка</div>
-        <div class="support-box-text">Если что-то не работает, хотите предложить улучшение или нужна помощь по доступу — напишите мне на почту.</div>
-        <button class="btn primary" onclick="openSupportEmail()">✉️ Написать в поддержку</button>
       </div>
     `;
   }
@@ -2677,9 +2471,6 @@ body.dict-searching .reading-box {
   let expandedReadingSection = '';
   let readingPressTimer = null;
   let readingPressState = { id: null, startX: 0, startY: 0, moved: false };
-  let dictRenderTimer = null;
-  const russianPartsCache = new WeakMap();
-
 
   const READING_LIBRARY = {
     politics: {
@@ -2889,213 +2680,61 @@ body.dict-searching .reading-box {
     `;
   }
 
-
-  function hasCyrillic(text) {
-    return /[а-яё]/i.test(String(text || ''));
-  }
-
-  function cleanRussianSearchText(text) {
-    return String(text || '')
-      .toLowerCase()
-      .replace(/[()«»"'`~!@#$%^&*_=+\[\]{}\\|<>/?№:;,.]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function splitRussianSearchParts(text) {
-    const raw = String(text || '');
-    return raw
-      .split(/[\n;\/]|(?:\s[-–—]\s)|,/g)
-      .map(part => cleanRussianSearchText(part))
-      .filter(Boolean);
-  }
-
-  function getRussianSearchParts(word) {
-    if (russianPartsCache.has(word)) return russianPartsCache.get(word);
-
-    const parts = [];
-    const shortRu = cleanRussianSearchText(word.short_ru || '');
-    const fullRu = splitRussianSearchParts(word.ru || '');
-
-    if (shortRu) parts.push(shortRu);
-    for (const part of fullRu) {
-      if (!parts.includes(part)) parts.push(part);
-    }
-
-    russianPartsCache.set(word, parts);
-    return parts;
-  }
-
-  function getRussianPrimaryPart(word) {
-    return getRussianSearchParts(word)[0] || '';
-  }
-
-  function handleDictionaryInput() {
-    clearTimeout(dictRenderTimer);
-    const query = (document.getElementById('queryInput')?.value || '').trim();
-    document.body.classList.toggle('dict-searching', activeTab === 'dict' && query.length > 0);
-    dictRenderTimer = setTimeout(() => {
-      renderApp();
-    }, 90);
-  }
-
-  function getRussianTokens(text) {
-
-    return cleanRussianSearchText(text)
-      .split(' ')
-      .map(x => x.trim())
-      .filter(Boolean);
-  }
-
-  function getRussianSearchScore(word, query) {
-    const q = cleanRussianSearchText(query);
-    if (!q) return 0;
-
-    const parts = getRussianSearchParts(word);
-    if (!parts.length) return 0;
-
-    const qTokens = getRussianTokens(q);
-    const primary = parts[0] || '';
-
-    let best = 0;
-
-    for (const part of parts) {
-      if (!part) continue;
-
-      const tokens = getRussianTokens(part);
-      const tokenSet = new Set(tokens);
-
-      if (part === q) {
-        best = Math.max(best, 12000 - part.length);
-      }
-
-      if (primary === q) {
-        best = Math.max(best, 13000 - primary.length);
-      }
-
-      if (part.startsWith(q)) {
-        best = Math.max(best, 10000 - part.length);
-      }
-
-      if (primary.startsWith(q)) {
-        best = Math.max(best, 11000 - primary.length);
-      }
-
-      if (tokenSet.has(q)) {
-        best = Math.max(best, 9500 - part.length);
-      }
-
-      for (const token of tokens) {
-        if (token.startsWith(q)) {
-          best = Math.max(best, 9000 - token.length);
-        } else if (token.includes(q)) {
-          best = Math.max(best, 7600 - token.length);
-        }
-      }
-
-      if (part.includes(q)) {
-        best = Math.max(best, 7000 - part.length);
-      }
-
-      if (qTokens.length > 1) {
-        const allTokensFound = qTokens.every(token => part.includes(token));
-        if (allTokensFound) {
-          best = Math.max(best, 9800 - part.length);
-        }
-      }
-    }
-
-    return best;
-  }
-
-
   function renderDictionary() {
     if (typeof dictBase === 'undefined' || !Array.isArray(dictBase)) return '<div class="empty">База ещё не загружена</div>';
 
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
     if (!q) {
       currentRenderedWords = [];
-      return '<div class="empty">Начните вводить слово для поиска</div>' + renderDictionaryHomeGuide() + renderSupportSection();
+      return '<div class="empty">Начните вводить слово для поиска</div>';
     }
 
-    const isRussianQuery = hasCyrillic(q);
     const nQ = normalize(q);
     const stems = getArabicStems(nQ);
     const mappedPastTense = reverseVerbsMap[nQ];
 
-    if (isRussianQuery) {
-      const ranked = [];
-      for (const w of dictBase) {
-        const score = getRussianSearchScore(w, q);
-        if (score > 0) {
-          ranked.push({
-            w,
-            score,
-            primary: getRussianPrimaryPart(w)
-          });
-        }
+    const filtered = dictBase.filter(w => {
+      const nWordAr = normalize(w.ar);
+      const nRoot = normalize(w.root || '');
+      const nWordRu = String(w.ru || '').toLowerCase();
+      if (nWordRu.includes(q)) return true;
+      if (mappedPastTense && nWordAr === mappedPastTense) return true;
+      for (const stem of stems) {
+        if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
       }
+      return false;
+    });
 
-      ranked.sort((a, b) => {
-        if (a.score !== b.score) return b.score - a.score;
-        if (a.primary.length !== b.primary.length) return a.primary.length - b.primary.length;
-        return String(a.w.ar || '').localeCompare(String(b.w.ar || ''));
-      });
+    filtered.sort((a, b) => {
+      const normAAr = normalize(a.ar);
+      const normBAr = normalize(b.ar);
+      const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+      const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
+      if (mappedPastTense) {
+        if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
+        if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
+      }
+      if (normAAr === nQ && normBAr !== nQ) return -1;
+      if (normBAr === nQ && normAAr !== nQ) return 1;
+      const startsRuA = ruA.startsWith(q);
+      const startsRuB = ruB.startsWith(q);
+      if (startsRuA && !startsRuB) return -1;
+      if (startsRuB && !startsRuA) return 1;
+      return String(a.ru || '').length - String(b.ru || '').length;
+    });
 
-      currentRenderedWords = ranked.slice(0, 50).map(item => item.w);
-    } else {
-      const filtered = dictBase.filter(w => {
-        const nWordAr = normalize(w.ar);
-        const nRoot = normalize(w.root || '');
-        const nWordRu = String(w.ru || '').toLowerCase();
-
-        if (nWordRu.includes(q)) return true;
-        if (mappedPastTense && nWordAr === mappedPastTense) return true;
-
-        for (const stem of stems) {
-          if (nWordAr.includes(stem) || (nRoot && nRoot.includes(stem))) return true;
-        }
-        return false;
-      });
-
-      filtered.sort((a, b) => {
-        const normAAr = normalize(a.ar);
-        const normBAr = normalize(b.ar);
-        const ruA = String(a.short_ru || a.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
-        const ruB = String(b.short_ru || b.ru || '').toLowerCase().replace(/^[\d\)\s]+/, '');
-
-        if (mappedPastTense) {
-          if (normAAr === mappedPastTense && normBAr !== mappedPastTense) return -1;
-          if (normBAr === mappedPastTense && normAAr !== mappedPastTense) return 1;
-        }
-
-        if (normAAr === nQ && normBAr !== nQ) return -1;
-        if (normBAr === nQ && normAAr !== nQ) return 1;
-
-        const startsRuA = ruA.startsWith(q);
-        const startsRuB = ruB.startsWith(q);
-
-        if (startsRuA && !startsRuB) return -1;
-        if (startsRuB && !startsRuA) return 1;
-
-        return String(a.ru || '').length - String(b.ru || '').length;
-      });
-
-      currentRenderedWords = filtered.slice(0, 50);
-    }
-
+    currentRenderedWords = filtered.slice(0, 50);
     if (!currentRenderedWords.length) return '<div class="empty">Ничего не найдено</div>';
 
     return currentRenderedWords.map((w, idx) => {
       const fav = getFavoriteByWord(w);
       const present = normalizedVerbs[normalize(w.ar)];
       const locked = isPremiumLocked();
-      const shortRu = w.short_ru || getRussianPrimaryPart(w) || String(w.ru || '').split(';')[0] || '';
       return `
         <div class="item collapsible" onclick="this.classList.toggle('expanded')">
           <div class="item-head">
             <div class="item-left">
-              <div class="ru">${escapeHtml(shortRu)}</div>
+              <div class="ru">${escapeHtml(w.short_ru || String(w.ru || '').split(';')[0] || '')}</div>
               <div class="ar">${escapeHtml(w.ar)}</div>
               ${present ? `<div class="hint">Настоящее время: <b>${escapeHtml(present)}</b></div>` : ''}
               ${fav ? `<div class="hint">⭐ Уже в избранном</div>` : ''}
@@ -3116,7 +2755,6 @@ body.dict-searching .reading-box {
   }
 
   function renderFavorites() {
-
     if (!user) return '<div class="empty">Войдите через Google, чтобы использовать избранное</div>';
     if (isPremiumLocked()) return renderLockedFeature('Избранное');
 
@@ -3347,13 +2985,13 @@ body.dict-searching .reading-box {
     if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
       favSearchBar.style.display = 'block';
-      favFilterMenu.style.display = favFilterMenuOpen ? 'block' : 'none';
+      favFilterMenu.style.display = 'block';
       favFilterMenu.className = 'fav-filter-menu' + (favFilterMenuOpen ? ' active' : '');
-      favFilterMenu.innerHTML = favFilterMenuOpen ? renderFavoriteDifficultyMenu() : '';
+      favFilterMenu.innerHTML = renderFavoriteDifficultyMenu();
       topbar.innerHTML = `
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
         <button class="btn" onclick="toggleFavoriteStudyDirection()">${getFavoriteDirectionButtonLabel()}</button>
-        <button class="btn fav-filter-trigger ${favFilterMenuOpen ? 'primary' : ''}" onclick="toggleFavoriteDifficultyMenu()">${getFavoriteDifficultyButtonLabel()}</button>
+        <button class="btn ${favFilterMenuOpen ? 'primary' : ''}" onclick="toggleFavoriteDifficultyMenu()">${getFavoriteDifficultyButtonLabel()}</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
       `;
     } else {
@@ -3448,116 +3086,12 @@ body.dict-searching .reading-box {
       });
   }
 
-  function applyAuthState(u) {
-    stopListeners();
-    user = u;
-    favorites = [];
-    notes = [];
-    const btn = document.getElementById('authBtn');
-    const userLine = document.getElementById('userLine');
-
-    if (user) {
-      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
-      userLine.innerText = user.email || user.uid;
-      startUserListeners();
-    } else {
-      btn.innerText = '🌐 Войти через Google';
-      userLine.innerText = firebaseReady ? 'Не выполнен вход' : 'Офлайн-режим';
-    }
-    updateSyncIndicator();
-    updateTrialIndicator();
-    updateCompactLoginUi();
-    renderApp();
-  }
-
-  function attachAuthStateListener(currentAuth) {
-    if (authStateUnsub) {
-      try { authStateUnsub(); } catch (_) {}
-      authStateUnsub = null;
-    }
-    currentAuth.getRedirectResult().catch((e) => {
-      console.error('Redirect auth error:', e);
-    });
-    authStateUnsub = currentAuth.onAuthStateChanged((u) => {
-      applyAuthState(u);
-    });
-  }
-
-  async function initFirebaseServices() {
-    if (!window.firebase) return false;
-    try {
-      if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
-      auth = window.firebase.auth();
-      db = window.firebase.firestore();
-      provider = new window.firebase.auth.GoogleAuthProvider();
-      firebaseReady = true;
-      db.enablePersistence().catch((err) => {
-        console.error('Persistence error:', err);
-      });
-      attachAuthStateListener(auth);
-      updateSyncIndicator();
-      updateTrialIndicator();
-      renderApp();
-      return true;
-    } catch (err) {
-      console.error('Firebase init error:', err);
-      firebaseReady = false;
-      auth = createOfflineAuthStub();
-      db = createOfflineDbStub();
-      provider = null;
-      attachAuthStateListener(auth);
-      return false;
-    }
-  }
-
-  async function loadFirebaseSdk(force = false) {
-    if (firebaseReady && window.firebase && !force) return true;
-    if (!navigator.onLine && !force) {
-      updateSyncIndicator();
-      return false;
-    }
-    if (firebaseLoadingPromise && !force) return firebaseLoadingPromise;
-
-    firebaseLoadingPromise = (async () => {
-      try {
-        for (const src of FIREBASE_SDK_URLS) {
-          await loadExternalScript(src);
-        }
-        return await initFirebaseServices();
-      } catch (err) {
-        console.error('Firebase SDK load error:', err);
-        firebaseReady = false;
-        auth = createOfflineAuthStub();
-        db = createOfflineDbStub();
-        provider = null;
-        attachAuthStateListener(auth);
-        updateSyncIndicator();
-        updateTrialIndicator();
-        renderApp();
-        return false;
-      } finally {
-        firebaseLoadingPromise = null;
-      }
-    })();
-
-    return firebaseLoadingPromise;
-  }
-
   async function toggleAuth() {
     try {
       if (user) {
         await auth.signOut();
         return;
       }
-
-      if (!firebaseReady) {
-        const loaded = await loadFirebaseSdk(true);
-        if (!loaded || !provider) {
-          showMsg('Для входа через Google нужен интернет');
-          return;
-        }
-      }
-
       try {
         await auth.signInWithPopup(provider);
       } catch (popupError) {
@@ -3576,11 +3110,35 @@ body.dict-searching .reading-box {
       }
     } catch (e) {
       console.error('Auth error:', e);
-      showMsg(e && e.code === 'firebase/unavailable' ? 'Для входа через Google нужен интернет' : 'Ошибка входа через Google');
+      showMsg('Ошибка входа через Google');
     }
   }
 
-  attachAuthStateListener(auth);
+  auth.getRedirectResult().catch((e) => {
+    console.error('Redirect auth error:', e);
+  });
+
+  auth.onAuthStateChanged((u) => {
+    stopListeners();
+    user = u;
+    favorites = [];
+    notes = [];
+    const btn = document.getElementById('authBtn');
+    const userLine = document.getElementById('userLine');
+
+    if (user) {
+      btn.innerText = `Выйти (${(user.displayName || 'Пользователь').split(' ')[0]})`;
+      userLine.innerText = user.email || user.uid;
+      startUserListeners();
+    } else {
+      btn.innerText = '🌐 Войти через Google';
+      userLine.innerText = 'Не выполнен вход';
+    }
+    updateSyncIndicator();
+    updateTrialIndicator();
+    updateCompactLoginUi();
+    renderApp();
+  });
 
   const initStartedAt = Date.now();
   const initInterval = setInterval(() => {
@@ -3654,7 +3212,6 @@ body.dict-searching .reading-box {
     updateTrialIndicator();
     renderApp();
     installBackButtonHandler();
-    loadFirebaseSdk();
   });
 </script>
 
