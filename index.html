@@ -3015,7 +3015,7 @@ body.dict-searching .reading-box {
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
     if (!q) {
       currentRenderedWords = [];
-      return '<div class="empty">Начните вводить слово для поиска</div>' + renderDictionaryHomeGuide() + renderSupportSection();
+      return '<div class="empty">Начните вводить слово для поиска</div>' + renderDictionaryHomeGuide();
     }
 
     const isRussianQuery = hasCyrillic(q);
@@ -3868,6 +3868,7 @@ body.dict-searching .reading-box {
 
           <div class="compact-auth-actions">
             <button id="compactAuthAccessBtn" class="btn primary" type="button">💎 Доступ</button>
+            <button id="compactAuthSupportBtn" class="btn" type="button">✉️ Техподдержка</button>
             <button id="compactAuthLogoutBtn" class="btn danger" type="button">🚪 Выйти</button>
             <button id="compactAuthCloseBtn" class="btn" type="button">Закрыть</button>
           </div>
@@ -3889,6 +3890,7 @@ body.dict-searching .reading-box {
     const modalAccessSub = document.getElementById('compactAuthAccessSub');
 
     const accessBtn = document.getElementById('compactAuthAccessBtn');
+    const supportBtn = document.getElementById('compactAuthSupportBtn');
     const logoutBtn = document.getElementById('compactAuthLogoutBtn');
     const closeBtn = document.getElementById('compactAuthCloseBtn');
 
@@ -4092,6 +4094,13 @@ body.dict-searching .reading-box {
           return;
         }
         if (typeof openActivationContact === 'function') openActivationContact();
+      } catch (_) {}
+    });
+
+    supportBtn.addEventListener('click', function () {
+      closeCompactMenu();
+      try {
+        if (typeof openSupportEmail === 'function') openSupportEmail();
       } catch (_) {}
     });
 
