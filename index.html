@@ -442,25 +442,11 @@
       border: 1px solid #e2e8f0;
       border-radius: 16px;
       background: #fff;
-      box-shadow: 0 6px 18px rgba(15,23,42,0.05);
-      padding: 10px;
-      margin-bottom: 10px;
+      box-shadow: 0 10px 28px rgba(15,23,42,0.08);
+      padding: 8px;
+      margin: -2px 0 10px;
     }
     .fav-filter-menu.active { display: block; }
-    .fav-filter-title {
-      font-size: 12px;
-      font-weight: 800;
-      color: var(--muted);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: .02em;
-    }
-    .fav-filter-summary {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 8px;
-      line-height: 1.4;
-    }
     .fav-filter-options {
       display: flex;
       flex-direction: column;
@@ -494,6 +480,18 @@
       gap: 10px;
       min-width: 0;
     }
+    .fav-filter-trigger {
+      position: relative;
+    }
+    .fav-filter-trigger::after {
+      content: '▾';
+      margin-left: 8px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
+    .fav-filter-trigger.primary::after {
+      opacity: 1;
+    }
     .fav-filter-option-count {
       min-width: 26px;
       text-align: center;
@@ -508,22 +506,6 @@
     .fav-filter-option.active .fav-filter-option-count {
       border-color: #bbf7d0;
       color: #166534;
-    }
-    .fav-filter-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      flex: 0 0 auto;
-      background: #cbd5e1;
-      box-shadow: 0 0 0 3px rgba(148,163,184,0.12);
-    }
-    .fav-filter-dot.blue {
-      background: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37,99,235,0.14);
-    }
-    .fav-filter-dot.red {
-      background: #dc2626;
-      box-shadow: 0 0 0 3px rgba(220,38,38,0.14);
     }
     .fav-searchbar {
       display: none;
@@ -731,6 +713,8 @@
     body.compact-favs .fav-filter-option-count { font-size: 11px; padding: 2px 7px; }
     body.compact-favs #favSearchBar { margin-bottom: 8px; }
     body.compact-favs #favSearchBar .fav-search-input { padding: 10px 12px; font-size: 14px; border-radius: 12px; }
+    body.compact-favs #favFilterMenu { padding: 6px; margin-top: -2px; }
+    body.compact-favs .fav-filter-option { padding: 8px 10px; font-size: 13px; }
     body.compact-favs #selectionPanel { padding: 10px; margin-bottom: 8px; border-radius: 12px; }
     body.compact-favs #selectionPanel .folder-select,
     body.compact-favs #selectionPanel .field { margin-bottom: 8px; padding: 10px 12px; font-size: 14px; }
@@ -811,6 +795,56 @@
     body.dict-searching #list .item-details { margin-top: 8px; padding-top: 8px; }
     body.dict-searching #list .actions { margin-top: 8px; gap: 6px; }
     body.dict-searching #list .actions .btn { min-height: 34px; padding: 7px 8px; font-size: 12px; }
+
+
+    .home-guide {
+      margin: 2px 0 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 4px 16px rgba(15,23,42,0.04);
+      padding: 14px;
+    }
+    .home-guide-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .home-guide-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .home-guide-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: #334155;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    .home-guide-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #ecfdf5;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 800;
+      flex: 0 0 auto;
+      margin-top: 1px;
+    }
+    body.dict-searching .home-guide {
+      display: none !important;
+    }
+
 
     .toast {
       display: none;
@@ -1896,10 +1930,10 @@ body.dict-searching .reading-box {
   }
 
   function getFavoriteDifficultyButtonLabel() {
-    if (favDifficultyFilter === 'blue') return '🔵 Сложные';
-    if (favDifficultyFilter === 'red') return '🔴 Очень сложные';
-    if (favDifficultyFilter === 'none') return '⚪ Без пометки';
-    return '🎯 Все уровни';
+    if (favDifficultyFilter === 'blue') return 'Сложные';
+    if (favDifficultyFilter === 'red') return 'Очень сложные';
+    if (favDifficultyFilter === 'none') return 'Без пометки';
+    return 'Все уровни';
   }
 
   function getFavoriteDirectionButtonLabel() {
@@ -1946,20 +1980,15 @@ body.dict-searching .reading-box {
   function renderFavoriteDifficultyMenu() {
     const scopeItems = getFavoriteItemsForCurrentScope();
     const stats = getFavoriteDifficultyStats(scopeItems);
-    const scopeLabel = activeCollection === 'Все'
-      ? 'во всём избранном'
-      : 'в папке «' + escapeHtml(activeCollection) + '»';
 
     const options = [
-      { key: 'all', label: 'Все слова', count: stats.all, dotClass: '' },
-      { key: 'none', label: 'Без пометки', count: stats.none, dotClass: '' },
-      { key: 'blue', label: 'Сложные', count: stats.blue, dotClass: 'blue' },
-      { key: 'red', label: 'Очень сложные', count: stats.red, dotClass: 'red' }
+      { key: 'all', label: 'Все слова', count: stats.all },
+      { key: 'none', label: 'Без пометки', count: stats.none },
+      { key: 'blue', label: 'Сложные', count: stats.blue },
+      { key: 'red', label: 'Очень сложные', count: stats.red }
     ];
 
     return `
-      <div class="fav-filter-title">Фильтр по сложности</div>
-      <div class="fav-filter-summary">Показывать слова по уровню сложности ${scopeLabel}.</div>
       <div class="fav-filter-options">
         ${options.map((option) => `
           <button
@@ -1967,13 +1996,32 @@ body.dict-searching .reading-box {
             class="fav-filter-option ${favDifficultyFilter === option.key ? 'active' : ''}"
             onclick="setFavoriteDifficultyFilter('${escapeJs(option.key)}')"
           >
-            <span class="fav-filter-option-left">
-              <span class="fav-filter-dot ${option.dotClass}"></span>
-              <span>${escapeHtml(option.label)}</span>
-            </span>
+            <span class="fav-filter-option-left">${escapeHtml(option.label)}</span>
             <span class="fav-filter-option-count">${option.count}</span>
           </button>
         `).join('')}
+      </div>
+    `;
+  }
+
+  function renderDictionaryHomeGuide() {
+    return `
+      <div class="home-guide">
+        <div class="home-guide-title">Как это работает</div>
+        <div class="home-guide-list">
+          <div class="home-guide-item">
+            <span class="home-guide-num">1</span>
+            <span>Зажми слово в избранных, чтобы отметить сложность.</span>
+          </div>
+          <div class="home-guide-item">
+            <span class="home-guide-num">2</span>
+            <span>Меняй режим просмотра в избранных: списком или карточками.</span>
+          </div>
+          <div class="home-guide-item">
+            <span class="home-guide-num">3</span>
+            <span>Создавай коллекции (папки) для слов по темам и повторения.</span>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -2809,7 +2857,7 @@ body.dict-searching .reading-box {
     const q = document.getElementById('queryInput').value.toLowerCase().trim();
     if (!q) {
       currentRenderedWords = [];
-      return '<div class="empty">Начните вводить слово для поиска</div>';
+      return renderDictionaryHomeGuide() + '<div class="empty">Начните вводить слово для поиска</div>';
     }
 
     const isRussianQuery = hasCyrillic(q);
@@ -3141,13 +3189,13 @@ body.dict-searching .reading-box {
     if (activeTab === 'fav' && user && !locked) {
       topbar.style.display = 'flex';
       favSearchBar.style.display = 'block';
-      favFilterMenu.style.display = 'block';
+      favFilterMenu.style.display = favFilterMenuOpen ? 'block' : 'none';
       favFilterMenu.className = 'fav-filter-menu' + (favFilterMenuOpen ? ' active' : '');
-      favFilterMenu.innerHTML = renderFavoriteDifficultyMenu();
+      favFilterMenu.innerHTML = favFilterMenuOpen ? renderFavoriteDifficultyMenu() : '';
       topbar.innerHTML = `
         <button class="btn" onclick="toggleFavoriteViewMode()">${favViewMode === 'list' ? '🎴 Режим карточек' : '📄 Режим списка'}</button>
         <button class="btn" onclick="toggleFavoriteStudyDirection()">${getFavoriteDirectionButtonLabel()}</button>
-        <button class="btn ${favFilterMenuOpen ? 'primary' : ''}" onclick="toggleFavoriteDifficultyMenu()">${getFavoriteDifficultyButtonLabel()}</button>
+        <button class="btn fav-filter-trigger ${favFilterMenuOpen ? 'primary' : ''}" onclick="toggleFavoriteDifficultyMenu()">${getFavoriteDifficultyButtonLabel()}</button>
         <button class="btn" onclick="toggleFavoriteSelectionMode()">${favSelectionMode ? '✖ Завершить выбор' : '☑️ Выбрать'}</button>
       `;
     } else {
